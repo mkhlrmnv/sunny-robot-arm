@@ -111,28 +111,19 @@ class BoxWithRailVisualizer:
             [self.rail_vertices[1], self.rail_vertices[3], self.rail_vertices[7], self.rail_vertices[5]]   # Right face
         ]
 
-    def draw_3d_box(self, ax, rectangle1, rectangle2):
-        """
-        Draw a 3D box given two rectangles in 3D space.
-        
-        Parameters:
-        ax: The 3D axis to draw on.
-        rectangle1: List of four corner points for the first rectangle.
-        rectangle2: List of four corner points for the second rectangle.
-        """
-        # Define the box faces by connecting corresponding points from both rectangles
-        faces = [
-            [rectangle1[0], rectangle1[1], rectangle2[1], rectangle2[0]],  # Front face
-            [rectangle1[1], rectangle1[2], rectangle2[2], rectangle2[1]],  # Side face
-            [rectangle1[2], rectangle1[3], rectangle2[3], rectangle2[2]],  # Back face
-            [rectangle1[3], rectangle1[0], rectangle2[0], rectangle2[3]],  # Side face
-            [rectangle1[0], rectangle1[1], rectangle1[2], rectangle1[3]],  # Top face
-            [rectangle2[0], rectangle2[1], rectangle2[2], rectangle2[3]]   # Bottom face
-        ]
+    def draw_3d_box(self, ax, rectangles):
+        """Draw a 3D box given multiple rectangles in 3D space."""
+        for i in range(len(rectangles) - 1):
+            rect1, rect2 = rectangles[i], rectangles[i + 1]
+            faces = [
+                [rect1[0], rect1[1], rect2[1], rect2[0]],  # Front face
+                [rect1[1], rect1[2], rect2[2], rect2[1]],  # Side face
+                [rect1[2], rect1[3], rect2[3], rect2[2]],  # Back face
+                [rect1[3], rect1[0], rect2[0], rect2[3]]   # Side face
+            ]
+            box_faces = Poly3DCollection(faces, color='green', alpha=0.5, edgecolor='black')
+            ax.add_collection3d(box_faces)
 
-        # Draw each face
-        box_faces = Poly3DCollection(faces, color='green', alpha=0.5, edgecolor='black')
-        ax.add_collection3d(box_faces)
 
     def draw_arc(self, ax, center, start, end, num_points=100):
         """Draw an arc between three points in 3D space."""
@@ -203,8 +194,12 @@ class BoxWithRailVisualizer:
         p2_new = np.array([self.arc_points["D"][0], self.arc_points["D"][1], p1_new[2]])
         rectangle2 = self.calculate_rectangle_3d(p1_new, p2_new, width=0.1)
 
-        # Draw the 3D box between the two rectangles
-        self.draw_3d_box(ax, rectangle1, rectangle2)
+        p1_third = p2_new
+        p2_third = self.arc_points["D"]
+        rectangle3 = self.calculate_rectangle_3d(p1_third, p2_third, width=0.1)
+
+        # Draw the 3D box connecting the three rectangles
+        self.draw_3d_box(ax, [rectangle1, rectangle2, rectangle3])
 
         # Set labels and title
         ax.set_xlabel('X-axis')
