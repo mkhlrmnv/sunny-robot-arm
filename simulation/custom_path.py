@@ -2,62 +2,48 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-# Define points from your image (converted to meters if needed)
-points = {
-    "A": np.array([0.8091, 0.775, 1.13]),
-    "B": np.array([0.91, -0.7193, 2.13]),
-    "C": np.array([0.7524, -0.8522, 2.13]),
-    "D": np.array([-0.56, -1.3541, 1.13]),
-    "E": np.array([0.5195, 0.0293, 1.63]),
-    "F": np.array([-0.0405, -0.7457, 1.63])
-}
+def draw_cylinder(ax, radius, height, center=(0, 0), num_points=50):
+    """
+    Draws a 3D cylinder.
+    
+    Parameters:
+    ax: The 3D axis to draw on.
+    radius: Radius of the cylinder.
+    height: Height of the cylinder.
+    center: (x, y) coordinates of the cylinder's center.
+    num_points: Number of points used to generate the surface.
+    """
+    # Generate cylinder coordinates
+    theta = np.linspace(0, 2 * np.pi, num_points)
+    z = np.linspace(0, height, num_points)
+    theta_grid, z_grid = np.meshgrid(theta, z)
 
-# Function to draw an arc between three points (center, start, end)
-def draw_arc(ax, center, start, end, num_points=100):
-    center = np.array(center)
-    start = np.array(start) - center
-    end = np.array(end) - center
+    # Parametric equations for the cylinder surface
+    x = center[0] + radius * np.cos(theta_grid)
+    y = center[1] + radius * np.sin(theta_grid)
+    z = 163 + z_grid
 
-    # Calculate normal vector to the plane of the arc
-    normal = np.cross(start, end)
-    normal /= np.linalg.norm(normal)
+    # Plot the surface of the cylinder
+    ax.plot_surface(x, y, z, color='cyan', alpha=0.6)
 
-    # Calculate angle between start and end vectors
-    angle = np.arccos(np.dot(start, end) / (np.linalg.norm(start) * np.linalg.norm(end)))
+    # Optional: Draw top and bottom faces
+    ax.plot(x[0], y[0], z[0], color='blue')  # Bottom edge
+    ax.plot(x[-1], y[-1], z[-1], color='blue')  # Top edge
 
-    # Generate arc points
-    t = np.linspace(0, angle, num_points)
-    arc_points = np.array([
-        center + np.cos(theta) * start + np.sin(theta) * np.cross(normal, start)
-        for theta in t
-    ])
-
-    # Plot the arc
-    ax.plot(arc_points[:, 0], arc_points[:, 1], arc_points[:, 2], color='black', linewidth=2)
-
-# Plotting the 3D visualization
+# Plotting the cylinder
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 
-# Plot points
-for name, coord in points.items():
-    ax.scatter(*coord, label=name)
-    ax.text(*coord, name, fontsize=10, color='red')
-
-# Draw arcs
-draw_arc(ax, points["E"], points["A"], points["B"])
-draw_arc(ax, points["F"], points["C"], points["D"])
-
-# Connect other points with straight lines (if needed)
-ax.plot([points["A"][0], points["B"][0]], [points["A"][1], points["B"][1]], [points["A"][2], points["B"][2]], color='blue', linestyle='dashed')
-ax.plot([points["C"][0], points["D"][0]], [points["C"][1], points["D"][1]], [points["C"][2], points["D"][2]], color='blue', linestyle='dashed')
+# Draw a cylinder with radius 1, height 2, and centered at (0, 0)
+draw_cylinder(ax, radius=0.1, height=0.1, center=(-0.045, -74.57))
 
 # Set labels and title
 ax.set_xlabel('X-axis')
 ax.set_ylabel('Y-axis')
 ax.set_zlabel('Z-axis')
-ax.set_title("3D Paths Visualization")
-ax.legend()
+ax.set_title('3D Cylinder (Lieriö)')
 
-# Display the plot
+# Set the axis limits
+
+# Show the plot
 plt.show()
