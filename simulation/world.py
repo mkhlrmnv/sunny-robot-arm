@@ -8,11 +8,12 @@ class BoxWithRailVisualizer:
         self.height = height
         self.depth = depth
         self.rail_width = rail_width
-        self.figure = figure if figure else plt.figure()  # Use provided figure or create a new one
         self.box_vertices = []
         self.rail_vertices = []
         self.box_faces = []
         self.rail_faces = []
+        self.arm1_length = 0.8
+        self.amr2_length = 0.5
 
         # Points for drawing arcs and rectangle
         self.arc_points = {
@@ -111,18 +112,13 @@ class BoxWithRailVisualizer:
             [self.rail_vertices[1], self.rail_vertices[3], self.rail_vertices[7], self.rail_vertices[5]]   # Right face
         ]
 
-    def draw_3d_box(self, ax, rectangles):
-        """Draw a 3D box given multiple rectangles in 3D space."""
-        for i in range(len(rectangles) - 1):
-            rect1, rect2 = rectangles[i], rectangles[i + 1]
-            faces = [
-                [rect1[0], rect1[1], rect2[1], rect2[0]],  # Front face
-                [rect1[1], rect1[2], rect2[2], rect2[1]],  # Side face
-                [rect1[2], rect1[3], rect2[3], rect2[2]],  # Back face
-                [rect1[3], rect1[0], rect2[0], rect2[3]]   # Side face
-            ]
-            box_faces = Poly3DCollection(faces, color='green', alpha=0.5, edgecolor='black')
-            ax.add_collection3d(box_faces)
+    def draw_3d_box(self, ax, p1, p2, p1_new, p2_new):
+        """Draw two lines in 3D space between specified points."""
+        # First line: from p1 to p2
+        ax.plot([p1[0], p2[0]], [p1[1], p2[1]], [p1[2], p2[2]], color='green', linewidth=2)
+
+        # Second line: from p1_new to p2_new
+        ax.plot([p1_new[0], p2_new[0]], [p1_new[1], p2_new[1]], [p1_new[2], p2_new[2]], color='green', linewidth=2)
 
 
     def draw_arc(self, ax, center, start, end, num_points=100):
@@ -162,13 +158,81 @@ class BoxWithRailVisualizer:
         # Plot the cylinder surface
         ax.plot_surface(x, y, z, color='cyan', alpha=0.6)
 
-    def plot(self):
+    def calculate_arc_points(self, center, start, end, num_points=50):
+        """
+        Calculate points along an arc between three points in 3D space.
+
+        Parameters:
+        center (array): Center point of the arc.
+        start (array): Starting point of the arc.
+        end (array): Ending point of the arc.
+        num_points (int): Number of points to calculate on the arc.
+
+        Returns:
+        np.array: Array of points on the arc.
+        """
+        center = np.array(center)
+        start = np.array(start) - center
+        end = np.array(end) - center
+
+        # Calculate normal vector to the plane of the arc
+        normal = np.cross(start, end)
+        normal /= np.linalg.norm(normal)
+
+        # Calculate angle between start and end vectors
+        angle = np.arccos(np.dot(start, end) / (np.linalg.norm(start) * np.linalg.norm(end)))
+
+        # Generate points on the arc
+        t = np.linspace(0, angle, num_points)
+        arc_points = np.array([
+            center + np.cos(theta) * start + np.sin(theta) * np.cross(normal, start)
+            for theta in t
+        ])
+
+        return arc_points
+
+    def calculate_dynamic_lines(self, start_point, end_point):
+        
+        sx, sy, sz = start_point[0], start_point[1], start_point[2]
+        ex, ey, ez = end_point[0], end_point[1], end_point[2]
+
+        delta_y = ey - sy
+        delta_x = ex - sx
+
+        theta = np.atan(delta_y / delta_x)
+
+        delta_z = ez - sz
+
+        delta_xy = np.sqrt(self.amr2_length**2 - delta_z**2)
+
+        x1 = sx - (np.cos(theta) * self.arm1_length)
+        y1 = sy - (np.sin(theta) * self.arm1_length)
+
+        x2 = x1 - (np.cos(theta) * delta_xy)
+        y2 = y1 - (np.sin(theta) * delta_xy)
+        if delta_x > 0:
+            x1 = sx + (np.cos(theta) * self.arm1_length)
+            y1 = sy + (np.sin(theta) * self.arm1_length)
+            x2 = x1 + (np.cos(theta) * delta_xy)
+            y2 = y1 + (np.sin(theta) * delta_xy)
+
+        middle_point = [x1, y1, sz]
+        real_end = np.array([x2, y2, ez])
+
+        # Checks that arms are correct leght
+        assert round(np.linalg.norm(middle_point - real_end), 2) == self.amr2_length
+        assert round(np.linalg.norm(start_point - middle_point), 2) == self.arm1_length
+
+        return start_point, middle_point, real_end
+
+    def plot(self, index):
         # Calculate vertices and faces
         self.calculate_box_vertices()
         self.calculate_rail_vertices()
 
         # Create an axis in the provided figure
-        ax = self.figure.add_subplot(111, projection='3d')
+        plt.figure(index, figsize=(8, 8))
+        ax = plt.axes(projection='3d')
 
         # Add the box and rail to the plot
         ax.add_collection3d(Poly3DCollection(self.box_faces, facecolors='pink', linewidths=1, edgecolors='black', alpha=0.2))
@@ -184,22 +248,23 @@ class BoxWithRailVisualizer:
         self.draw_arc(ax, self.arc_points["E"], self.arc_points["A"], self.arc_points["B"])
         self.draw_arc(ax, self.arc_points["F"], self.arc_points["C"], self.arc_points["D"])
 
-        # Calculate and draw a rectangle
-        p1 = np.array([self.arc_points["F"][0], self.arc_points["F"][1], 1.38 + 0.2])  # Center of the circle
-        p2 = np.array([self.arc_points["D"][0], self.arc_points["D"][1], p1[2]])  # Adjusted point with same height
-        rectangle1 = self.calculate_rectangle_3d(p1, p2, width=0.1)
+        # Calculate and plot arc points
+        arc1_points = self.calculate_arc_points(self.arc_points["E"], self.arc_points["A"], self.arc_points["B"])
+        arc2_points = self.calculate_arc_points(self.arc_points["F"], self.arc_points["C"], self.arc_points["D"])
 
-        # Calculate and draw the second rectangle
-        p1_new = np.array([-0.0405, -0.7457, p1[2] + 0.1])
-        p2_new = np.array([self.arc_points["D"][0], self.arc_points["D"][1], p1_new[2]])
-        rectangle2 = self.calculate_rectangle_3d(p1_new, p2_new, width=0.1)
+        # Plot the arcs
+        ax.scatter(arc1_points[:, 0], arc1_points[:, 1], arc1_points[:, 2], color='black', s=10, label='Arc 1 Points')
+        ax.scatter(arc2_points[:, 0], arc2_points[:, 1], arc2_points[:, 2], color='black', s=10, label='Arc 2 Points')
 
-        p1_third = p2_new
-        p2_third = self.arc_points["D"]
-        rectangle3 = self.calculate_rectangle_3d(p1_third, p2_third, width=0.1)
+        # Define the starting point dynamically
+        start_point = self.arc_points["F"]
 
-        # Draw the 3D box connecting the three rectangles
-        self.draw_3d_box(ax, [rectangle1, rectangle2, rectangle3])
+        # Calculate dynamic points for the lines
+        p1, p2, final = self.calculate_dynamic_lines(start_point, arc2_points[index])
+
+        # Plot the dynamic lines
+        ax.plot([p1[0], p2[0]], [p1[1], p2[1]], [p1[2], p2[2]], color='green', linewidth=2, label='Arm 1')
+        ax.plot([p2[0], final[0]], [p2[1], final[1]], [p2[2], final[2]], color='blue', linewidth=2, label='Arm 2')
 
         # Set labels and title
         ax.set_xlabel('X-axis')
@@ -209,8 +274,9 @@ class BoxWithRailVisualizer:
         ax.legend()
 
 # Example usage
-figure = plt.figure(figsize=(8, 8))
-visualizer = BoxWithRailVisualizer(width=1.12, height=1.38, depth=1.55, rail_width=0.10, figure=figure)
-visualizer.plot()
+visualizer = BoxWithRailVisualizer(width=1.12, height=1.38, depth=1.55, rail_width=0.10)
 
-plt.show()
+for i in range(50):
+    visualizer.plot(i)
+    plt.show()
+    plt.close()
