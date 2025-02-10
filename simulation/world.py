@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 class BoxWithRailVisualizer:
-    def __init__(self, width, height, depth, rail_width, figure=None):
+    def __init__(self, width, height, depth, rail_width, num_of_point=50):
         self.width = width
         self.height = height
         self.depth = depth
@@ -14,6 +14,8 @@ class BoxWithRailVisualizer:
         self.rail_faces = []
         self.arm1_length = 0.8
         self.amr2_length = 0.5
+
+        self.num_of_points = num_of_point
 
         # Points for drawing arcs and rectangle
         self.arc_points = {
@@ -158,7 +160,7 @@ class BoxWithRailVisualizer:
         # Plot the cylinder surface
         ax.plot_surface(x, y, z, color='cyan', alpha=0.6)
 
-    def calculate_arc_points(self, center, start, end, num_points=50):
+    def calculate_arc_points(self, center, start, end):
         """
         Calculate points along an arc between three points in 3D space.
 
@@ -183,7 +185,7 @@ class BoxWithRailVisualizer:
         angle = np.arccos(np.dot(start, end) / (np.linalg.norm(start) * np.linalg.norm(end)))
 
         # Generate points on the arc
-        t = np.linspace(0, angle, num_points)
+        t = np.linspace(0, angle, self.num_of_points)
         arc_points = np.array([
             center + np.cos(theta) * start + np.sin(theta) * np.cross(normal, start)
             for theta in t
@@ -233,13 +235,28 @@ class BoxWithRailVisualizer:
         self.calculate_rail_vertices()
 
         # Create an axis in the provided figure
-        plt.figure(index, figsize=(8, 8))
+        plt.figure(index, figsize=(18, 9))
         ax = plt.axes(projection='3d')
+
+        # Calculate and plot arc points
+        arc1_points = self.calculate_arc_points(self.arc_points["E"], self.arc_points["A"], self.arc_points["B"])
+        arc2_points = self.calculate_arc_points(self.arc_points["F"], self.arc_points["C"], self.arc_points["D"])
+
+        if index < self.num_of_points:
+            point = arc1_points[index]
+            circle_center = (0.5195, 0.0293)
+            start_point = self.arc_points["E"]
+        elif (index - self.num_of_points) < self.num_of_points:
+            point = arc2_points[index - self.num_of_points]
+            circle_center = (-0.045, -0.7457)
+            start_point = self.arc_points["F"]
+        else:
+            return
 
         # Add the box and rail to the plot
         ax.add_collection3d(Poly3DCollection(self.box_faces, facecolors='pink', linewidths=1, edgecolors='black', alpha=0.2))
         ax.add_collection3d(Poly3DCollection(self.rail_faces, facecolors='steelblue', linewidths=1, edgecolors='black', alpha=0.9))
-        self.draw_cylinder(ax, radius=0.1, height=0.1, center=(-0.045, -0.7457))
+        self.draw_cylinder(ax, radius=0.1, height=0.1, center=circle_center)
 
         # Plot points and arcs
         for name, coord in self.arc_points.items():
@@ -250,19 +267,15 @@ class BoxWithRailVisualizer:
         self.draw_arc(ax, self.arc_points["E"], self.arc_points["A"], self.arc_points["B"])
         self.draw_arc(ax, self.arc_points["F"], self.arc_points["C"], self.arc_points["D"])
 
-        # Calculate and plot arc points
-        arc1_points = self.calculate_arc_points(self.arc_points["E"], self.arc_points["A"], self.arc_points["B"])
-        arc2_points = self.calculate_arc_points(self.arc_points["F"], self.arc_points["C"], self.arc_points["D"])
-
         # Plot the arcs
         ax.scatter(arc1_points[:, 0], arc1_points[:, 1], arc1_points[:, 2], color='black', s=10, label='Arc 1 Points')
         ax.scatter(arc2_points[:, 0], arc2_points[:, 1], arc2_points[:, 2], color='black', s=10, label='Arc 2 Points')
 
         # Define the starting point dynamically
-        start_point = self.arc_points["F"]
+        # start_point = self.arc_points["F"]
 
         # Calculate dynamic points for the lines
-        p1, p2, final = self.calculate_dynamic_lines(start_point, arc2_points[index])
+        p1, p2, final = self.calculate_dynamic_lines(start_point, point)
 
         # Plot the dynamic lines
         ax.plot([p1[0], p2[0]], [p1[1], p2[1]], [p1[2], p2[2]], color='green', linewidth=2, label='Arm 1')
@@ -278,7 +291,7 @@ class BoxWithRailVisualizer:
 # Example usage
 visualizer = BoxWithRailVisualizer(width=1.12, height=1.38, depth=1.55, rail_width=0.10)
 
-for i in range(50):
+for i in range(visualizer.num_of_points*2):
     visualizer.plot(i)
     plt.show()
     plt.close()
