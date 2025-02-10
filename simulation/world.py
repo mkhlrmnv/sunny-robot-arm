@@ -4,6 +4,30 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 class BoxWithRailVisualizer:
     def __init__(self, width, height, depth, rail_width, num_of_point=50):
+        """
+        Initializes the simulation world with specified dimensions and parameters.
+
+        Args:
+            width (float): The width of the simulation world.
+            height (float): The height of the simulation world.
+            depth (float): The depth of the simulation world.
+            rail_width (float): The width of the rail in the simulation world.
+            num_of_point (int, optional): The number of points for drawing arcs and rectangles. Defaults to 50.
+
+        Attributes:
+            width (float): The width of the simulation world.
+            height (float): The height of the simulation world.
+            depth (float): The depth of the simulation world.
+            rail_width (float): The width of the rail in the simulation world.
+            box_vertices (list): List to store vertices of the box.
+            rail_vertices (list): List to store vertices of the rail.
+            box_faces (list): List to store faces of the box.
+            rail_faces (list): List to store faces of the rail.
+            arm1_length (float): Length of the first arm.
+            amr2_length (float): Length of the second arm.
+            num_of_points (int): Number of points for drawing arcs and rectangles.
+            arc_points (dict): Dictionary containing points for drawing arcs and rectangles.
+        """
         self.width = width
         self.height = height
         self.depth = depth
@@ -14,7 +38,6 @@ class BoxWithRailVisualizer:
         self.rail_faces = []
         self.arm1_length = 0.8
         self.amr2_length = 0.5
-
         self.num_of_points = num_of_point
 
         # Points for drawing arcs and rectangle
@@ -28,6 +51,22 @@ class BoxWithRailVisualizer:
         }
 
     def calculate_box_vertices(self):
+        """
+        Calculates the vertices and faces of a box based on its width, height, and depth.
+
+        This method computes the coordinates of the eight vertices of a box and stores them in the 
+        `self.box_vertices` attribute. It also defines the six faces of the box using these vertices 
+        and stores them in the `self.box_faces` attribute.
+
+        The vertices are calculated assuming the box is centered at the origin (0, 0, 0) with the 
+        bottom face lying on the XY plane.
+
+        Attributes:
+            self.box_vertices (list): A list of eight vertices, each represented as a list of three 
+                                      coordinates [x, y, z].
+            self.box_faces (list): A list of six faces, each represented as a list of four vertices.
+        """
+        """Calculates main box vertices"""
         half_width = self.width / 2
         half_height = self.height
         half_depth = self.depth / 2
@@ -94,8 +133,18 @@ class BoxWithRailVisualizer:
         return [corner1, corner2, corner3, corner4]
     
     def calculate_rail_vertices(self):
-        rail_height = self.height / 2 + (self.height / 2 - 1.48)
+        """
+        Calculate the vertices and faces of the rail.
 
+        This method defines the vertices and faces of the rail based on the height
+        and rail width attributes of the object. The vertices are defined in a 
+        3D space, and the faces are defined using these vertices to form the 
+        bottom, top, front, back, left, and right faces of the rail.
+
+        Attributes:
+            self.rail_vertices (list): A list of vertices defining the rail in 3D space.
+            self.rail_faces (list): A list of faces defined by the vertices, forming the rail.
+        """
         # Define rail vertices
         self.rail_vertices = [
             [0, -0.775, self.height], [-0.081, -0.7165, self.height],
@@ -124,6 +173,19 @@ class BoxWithRailVisualizer:
 
 
     def draw_arc(self, ax, center, start, end, num_points=100):
+        """
+        Draw an arc between three points in 3D space.
+
+        Parameters:
+        ax (matplotlib.axes._subplots.Axes3DSubplot): The 3D axes to plot the arc on.
+        center (array-like): The center point of the arc.
+        start (array-like): The starting point of the arc.
+        end (array-like): The ending point of the arc.
+        num_points (int, optional): The number of points to generate along the arc. Default is 100.
+
+        Returns:
+        None
+        """
         """Draw an arc between three points in 3D space."""
         center = np.array(center)
         start = np.array(start) - center
@@ -147,6 +209,19 @@ class BoxWithRailVisualizer:
         ax.plot(arc_points[:, 0], arc_points[:, 1], arc_points[:, 2], color='black', linewidth=2)
 
     def draw_cylinder(self, ax, radius, height, center=(0, 0), num_points=50):
+        """
+        Draw a cylinder in 3D space.
+
+        Parameters:
+        ax (matplotlib.axes._subplots.Axes3DSubplot): The 3D axis to plot the cylinder on.
+        radius (float): The radius of the cylinder.
+        height (float): The height of the cylinder.
+        center (tuple, optional): The (x, y) coordinates of the center of the cylinder's base. Default is (0, 0).
+        num_points (int, optional): The number of points to generate for the cylinder's surface. Default is 50.
+
+        Returns:
+        None
+        """
         """Draw a cylinder in 3D space."""
         theta = np.linspace(0, 2 * np.pi, num_points)
         z = np.linspace(0, height, num_points)
@@ -194,6 +269,23 @@ class BoxWithRailVisualizer:
         return arc_points
 
     def calculate_dynamic_lines(self, start_point, end_point):
+        """
+        Calculate the dynamic lines for the robot arm based on the start and end points.
+
+        This function computes the intermediate and final positions of a robot arm's segments
+        given the start and end points in 3D space. It ensures that the lengths of the arm
+        segments are correct.
+
+        Parameters:
+        start_point (list or tuple): The starting coordinates [x, y, z] of the robot arm.
+        end_point (list or tuple): The ending coordinates [x, y, z] of the robot arm.
+
+        Returns:
+        tuple: A tuple containing the start point, middle point, and real end point as lists.
+
+        Raises:
+        AssertionError: If the calculated lengths of the arm segments do not match the expected lengths.
+        """
         try:
             sx, sy, sz = start_point[0], start_point[1], start_point[2]
             ex, ey, ez = end_point[0], end_point[1], end_point[2]
@@ -227,9 +319,27 @@ class BoxWithRailVisualizer:
 
             return start_point, middle_point, real_end
         except AssertionError:
-            print
+            print(f"One of the arms was wrong size with start point: {start_point} and end point: {end_point}")
 
     def plot(self, index):
+        """
+        Plots a 3D visualization of the box, rail, arcs, and dynamic lines.
+
+        Args:
+            index (int): The index of the point to plot.
+
+        The function performs the following steps:
+        1. Calculates the vertices and faces of the box and rail.
+        2. Creates a 3D axis in the provided figure.
+        3. Calculates and plots arc points.
+        4. Determines the point and circle center based on the index.
+        5. Adds the box and rail to the plot.
+        6. Plots the points and arcs.
+        7. Draws the arcs.
+        8. Calculates dynamic points for the lines.
+        9. Plots the dynamic lines.
+        10. Sets labels and title for the plot.
+        """
         # Calculate vertices and faces
         self.calculate_box_vertices()
         self.calculate_rail_vertices()
