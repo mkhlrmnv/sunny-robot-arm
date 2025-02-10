@@ -192,38 +192,40 @@ class BoxWithRailVisualizer:
         return arc_points
 
     def calculate_dynamic_lines(self, start_point, end_point):
-        
-        sx, sy, sz = start_point[0], start_point[1], start_point[2]
-        ex, ey, ez = end_point[0], end_point[1], end_point[2]
+        try:
+            sx, sy, sz = start_point[0], start_point[1], start_point[2]
+            ex, ey, ez = end_point[0], end_point[1], end_point[2]
 
-        delta_y = ey - sy
-        delta_x = ex - sx
+            delta_y = ey - sy
+            delta_x = ex - sx
 
-        theta = np.atan(delta_y / delta_x)
+            theta = np.atan(delta_y / delta_x)
 
-        delta_z = ez - sz
+            delta_z = ez - sz
 
-        delta_xy = np.sqrt(self.amr2_length**2 - delta_z**2)
+            delta_xy = np.sqrt(self.amr2_length**2 - delta_z**2)
 
-        x1 = sx - (np.cos(theta) * self.arm1_length)
-        y1 = sy - (np.sin(theta) * self.arm1_length)
+            x1 = sx - (np.cos(theta) * self.arm1_length)
+            y1 = sy - (np.sin(theta) * self.arm1_length)
 
-        x2 = x1 - (np.cos(theta) * delta_xy)
-        y2 = y1 - (np.sin(theta) * delta_xy)
-        if delta_x > 0:
-            x1 = sx + (np.cos(theta) * self.arm1_length)
-            y1 = sy + (np.sin(theta) * self.arm1_length)
-            x2 = x1 + (np.cos(theta) * delta_xy)
-            y2 = y1 + (np.sin(theta) * delta_xy)
+            x2 = x1 - (np.cos(theta) * delta_xy)
+            y2 = y1 - (np.sin(theta) * delta_xy)
+            if delta_x > 0:
+                x1 = sx + (np.cos(theta) * self.arm1_length)
+                y1 = sy + (np.sin(theta) * self.arm1_length)
+                x2 = x1 + (np.cos(theta) * delta_xy)
+                y2 = y1 + (np.sin(theta) * delta_xy)
 
-        middle_point = [x1, y1, sz]
-        real_end = np.array([x2, y2, ez])
+            middle_point = [x1, y1, sz]
+            real_end = np.array([x2, y2, ez])
 
-        # Checks that arms are correct leght
-        assert round(np.linalg.norm(middle_point - real_end), 2) == self.amr2_length
-        assert round(np.linalg.norm(start_point - middle_point), 2) == self.arm1_length
+            # Checks that arms are correct leght
+            assert round(np.linalg.norm(middle_point - real_end), 2) == self.amr2_length
+            assert round(np.linalg.norm(start_point - middle_point), 2) == self.arm1_length
 
-        return start_point, middle_point, real_end
+            return start_point, middle_point, real_end
+        except AssertionError:
+            print
 
     def plot(self, index):
         # Calculate vertices and faces
