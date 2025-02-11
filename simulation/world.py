@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+from matplotlib.animation import FuncAnimation
 
 class BoxWithRailVisualizer:
     def __init__(self, width, height, depth, rail_width, num_of_point=50):
@@ -321,7 +322,7 @@ class BoxWithRailVisualizer:
         except AssertionError:
             print(f"One of the arms was wrong size with start point: {start_point} and end point: {end_point}")
 
-    def plot(self, index):
+    def draw_frame(self, index, ax):
         """
         Plots a 3D visualization of the box, rail, arcs, and dynamic lines.
 
@@ -340,13 +341,10 @@ class BoxWithRailVisualizer:
         9. Plots the dynamic lines.
         10. Sets labels and title for the plot.
         """
+        ax.clear()
         # Calculate vertices and faces
         self.calculate_box_vertices()
         self.calculate_rail_vertices()
-
-        # Create an axis in the provided figure
-        plt.figure(index, figsize=(18, 9))
-        ax = plt.axes(projection='3d')
 
         # Calculate and plot arc points
         arc1_points = self.calculate_arc_points(self.arc_points["E"], self.arc_points["A"], self.arc_points["B"])
@@ -396,12 +394,17 @@ class BoxWithRailVisualizer:
         ax.set_ylabel('Y-axis')
         ax.set_zlabel('Z-axis')
         ax.set_title('3D Box with Rail, Arcs, and Rectangle')
+        ax.set_xlim([-1.5, 1.5])
+        ax.set_ylim([-1.5, 1.5])
+        ax.set_zlim([0, 2])
         ax.legend()
 
 # Example usage
 visualizer = BoxWithRailVisualizer(width=1.12, height=1.38, depth=1.55, rail_width=0.10)
 
-for i in range(visualizer.num_of_points*2):
-    visualizer.plot(i)
-    plt.show()
-    plt.close()
+fig = plt.figure(figsize=(18, 9))
+ax = fig.add_subplot(111, projection='3d')
+
+
+ani = FuncAnimation(fig, visualizer.draw_frame, frames=visualizer.num_of_points * 2, fargs=(ax,), interval=500)
+plt.show()
