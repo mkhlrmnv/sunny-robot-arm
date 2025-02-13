@@ -45,8 +45,8 @@ class BoxWithRailVisualizer:
         # Points for drawing arcs and rectangle
         self.arc_points = {
             "A": np.array([0.8091, 0.775, 1.13]),
-            "B": np.array([0.91, -0.7193, 2.13]),
-            "C": np.array([0.7524, -0.8522, 2.13]),
+            "B": np.array([0.91, -0.7193, 1.83]),
+            "C": np.array([0.7524, -0.8522, 1.83]),
             "D": np.array([-0.56, -1.3541, 1.13]),  # Base point for rectangle
             "E": np.array([0.5195, 0.0293, 1.63]),
             "F": np.array([-0.0405, -0.7457, 1.63])
@@ -377,7 +377,7 @@ class BoxWithRailVisualizer:
             for name, coord in self.arc_points.items():
                 ax.scatter(*coord, label=name)
                 ax.text(*coord, name, fontsize=10, color='red')
-                
+
             ax.scatter(arc1_points[:, 0], arc1_points[:, 1], arc1_points[:, 2], color='black', s=10, label='Arc 1 Points')
             ax.scatter(arc2_points[:, 0], arc2_points[:, 1], arc2_points[:, 2], color='black', s=10, label='Arc 2 Points')
 
