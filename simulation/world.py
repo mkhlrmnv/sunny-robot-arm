@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from matplotlib.animation import FuncAnimation
+import sys
 
 class BoxWithRailVisualizer:
     def __init__(self, width, height, depth, rail_width, num_of_point=50):
@@ -294,7 +295,7 @@ class BoxWithRailVisualizer:
             delta_y = ey - sy
             delta_x = ex - sx
 
-            theta = np.atan(delta_y / delta_x)
+            theta = np.arctan(delta_y / delta_x)
 
             delta_z = ez - sz
 
@@ -366,18 +367,19 @@ class BoxWithRailVisualizer:
         ax.add_collection3d(Poly3DCollection(self.rail_faces, facecolors='steelblue', linewidths=1, edgecolors='black', alpha=0.9))
         self.draw_cylinder(ax, radius=0.1, height=0.1, center=circle_center)
 
-        # Plot points and arcs
-        for name, coord in self.arc_points.items():
-            ax.scatter(*coord, label=name)
-            ax.text(*coord, name, fontsize=10, color='red')
+        # Draw arcs if 'arc' argument is given
+        if 'arc' in sys.argv:
+            self.draw_arc(ax, self.arc_points["E"], self.arc_points["A"], self.arc_points["B"])
+            self.draw_arc(ax, self.arc_points["F"], self.arc_points["C"], self.arc_points["D"])
 
-        # Draw arcs
-        self.draw_arc(ax, self.arc_points["E"], self.arc_points["A"], self.arc_points["B"])
-        self.draw_arc(ax, self.arc_points["F"], self.arc_points["C"], self.arc_points["D"])
-
-        # Plot the arcs
-        ax.scatter(arc1_points[:, 0], arc1_points[:, 1], arc1_points[:, 2], color='black', s=10, label='Arc 1 Points')
-        ax.scatter(arc2_points[:, 0], arc2_points[:, 1], arc2_points[:, 2], color='black', s=10, label='Arc 2 Points')
+        # Draw points is 'points' argument is given
+        if 'points' in sys.argv:
+            for name, coord in self.arc_points.items():
+                ax.scatter(*coord, label=name)
+                ax.text(*coord, name, fontsize=10, color='red')
+                
+            ax.scatter(arc1_points[:, 0], arc1_points[:, 1], arc1_points[:, 2], color='black', s=10, label='Arc 1 Points')
+            ax.scatter(arc2_points[:, 0], arc2_points[:, 1], arc2_points[:, 2], color='black', s=10, label='Arc 2 Points')
 
         # Define the starting point dynamically
         # start_point = self.arc_points["F"]
@@ -399,12 +401,13 @@ class BoxWithRailVisualizer:
         ax.set_zlim([0, 2])
         ax.legend()
 
-# Example usage
+
+n = sys.argv
+
 visualizer = BoxWithRailVisualizer(width=1.12, height=1.38, depth=1.55, rail_width=0.10)
 
 fig = plt.figure(figsize=(18, 9))
 ax = fig.add_subplot(111, projection='3d')
 
-
-ani = FuncAnimation(fig, visualizer.draw_frame, frames=visualizer.num_of_points * 2, fargs=(ax,), interval=500)
+ani = FuncAnimation(fig, visualizer.draw_frame, frames=visualizer.num_of_points * 2, fargs=(ax,), interval=100)
 plt.show()
