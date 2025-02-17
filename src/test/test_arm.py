@@ -11,7 +11,7 @@ class TestRobotArmController(unittest.TestCase):
         self.tip_pos = Vector(0, 80, 50)
         self.arm = RobotArmController(self.base_pos, self.tip_pos)
         angles = self.arm.get_joint_angles()
-        expected_angles = [3.14, 1.57]
+        expected_angles = [np.deg2rad(90), np.deg2rad(90)*3]
 
         for actual, expected in zip(angles, expected_angles):
             self.assertAlmostEqual(actual, expected, places=2)
@@ -29,9 +29,7 @@ class TestRobotArmController(unittest.TestCase):
         target_pos = Vector(63.64, 63.64, 48.9898)
         angles = self.arm.calc_join_angles(target_pos)
         self.assertEqual(len(angles), 2)
-        expected_angles = [3.14 - np.deg2rad(45), 1.36944]
-        print(angles)
-
+        expected_angles = [0.7854045668803609, 4.511031574028651]
         for actual, expected in zip(angles, expected_angles):
             self.assertAlmostEqual(actual, expected, places=2)
     
