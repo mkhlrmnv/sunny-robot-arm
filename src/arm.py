@@ -1,6 +1,6 @@
 import time
 import numpy as np
-from vector import Vector
+from vector import Vector, Joints
 
 class RobotArmController:
     def __init__(self, base_pos: Vector, tip_pos: Vector, arm1_length=80, arm2_length=50):
@@ -51,7 +51,7 @@ class RobotArmController:
         
         theta3 = np.arccos(delta_z / self.arm2_length)
         theta2 = theta3 + np.deg2rad(90)
-        
+
         # calculates theta1
         delta_y = pos.y - self.base_pos.y
         theta1 = np.arcsin(delta_y / (self.arm1_length + alpha))
@@ -59,9 +59,9 @@ class RobotArmController:
         assert not np.isnan(theta1), "Calculation on theta1 failed"
         assert not np.isnan(theta2), "Calculation on theta2 failed"
         
-        return [theta1, theta2]
+        return Joints(theta1, theta2)
     
-    def calc_pos(self, theta1, theta2):
+    def calc_pos(self, joints: Joints):
         """
         Calculate the position of the robot arm's end effector based on given joint angles.
 
@@ -76,13 +76,13 @@ class RobotArmController:
             AssertionError: If theta1 or theta2 are not of type float.
             AssertionError: If the calculation of x, y, or z results in NaN.
         """
-        assert isinstance(theta1, float) and isinstance(theta2, float), "theta should be type float"
+        assert isinstance(joints, Joints), "joints should be type Joint"
 
-        theta3 = theta2 - np.deg2rad(90)
+        theta3 = joints.theta2 - np.deg2rad(90)
         alpha = np.sin(theta3) * self.arm2_length
         delta_z = np.sqrt(self.arm2_length**2 + alpha**2)
-        delta_x = np.sin(theta1) * (self.arm1_length + alpha)
-        delta_y = np.cos(theta1) * (self.arm1_length + alpha)
+        delta_x = np.sin(joints.theta1) * (self.arm1_length + alpha)
+        delta_y = np.cos(joints.theta1) * (self.arm1_length + alpha)
 
         assert not np.isnan(delta_x), "Calculation of x failed"
         assert not np.isnan(delta_y), "Calculation of y failed"
@@ -109,5 +109,3 @@ if __name__ == "__main__":
 
     target_pos = Vector(63.64, 63.64, 48.9898)
     angles = arm.calc_join_angles(target_pos)
-    for i in angles:
-        print(f"\tangle {i} => {np.rad2deg(i)}")
