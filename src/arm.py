@@ -50,11 +50,15 @@ class RobotArmController:
             alpha = np.sqrt(self.arm2_length**2 - delta_z**2)
         
         theta3 = np.arccos(delta_z / self.arm2_length)
-        theta2 = theta3 - np.deg2rad(90)
+        theta2 = theta3 + np.deg2rad(90)
+
+        print(f"alpha {alpha}")
 
         # calculates theta1
-        delta_y = self.base_pos.y - pos.y
-        theta1 = np.arccos(delta_y / (self.arm1_length + alpha))
+        delta_y = pos.y - self.base_pos.y
+        print(f"delta y {delta_y}")
+        print(f"arm + a {self.arm1_length + alpha}")
+        theta1 = np.arcsin(delta_y / (self.arm1_length + alpha))
 
         assert not np.isnan(theta1), "Calculation on theta1 failed"
         assert not np.isnan(theta2), "Calculation on theta2 failed"
@@ -107,6 +111,7 @@ if __name__ == "__main__":
     tip_pos = Vector(0, 80, 50)
     arm = RobotArmController(base_pos, tip_pos)
 
-    target_pos = Vector(40, 40, 48.9898)
+    target_pos = Vector(63.64, 63.64, 48.9898)
     angles = arm.calc_join_angles(target_pos)
-    print(angles)
+    for i in angles:
+        print(f"\tangle {i} => {np.rad2deg(i)}")
