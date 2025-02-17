@@ -1,18 +1,17 @@
 import time
 import numpy as np
-from .vector import Vector
+from vector import Vector
 
 class RobotArmController:
-    def __init__(self, base_pos: Vector, tip_pos: Vector, arm1_length=80, arm2_length=50, num_joints=3):
+    def __init__(self, base_pos: Vector, tip_pos: Vector, arm1_length=80, arm2_length=50):
         """
         Initializes the robotic arm controller with a specified number of joints.
         """
         self.base_pos = base_pos
         self.tip_pos = tip_pos
-        self.num_joints = num_joints
-        self.joint_angles = np.zeros(num_joints)  # Store joint angles (in degrees)
         self.arm1_length = arm1_length
         self.arm2_length = arm2_length
+        self.joint_angles = self.calc_join_angles(tip_pos)
 
     def get_base_pos(self):
         return self.base_pos
@@ -26,47 +25,88 @@ class RobotArmController:
         return self.joint_angles
     
     def calc_join_angles(self, pos: Vector):
-        assert type(pos) == Vector, "wrong type"
+        """
+        Calculate the joint angles for the robotic arm to reach a given position.
+        Args:
+            pos (Vector): The target position as a Vector object.
+        Returns:
+            list: A list containing the calculated angles [theta1, theta2].
+        Raises:
+            AssertionError: If the input position is not of type Vector.
+            ValueError: If the target position is unreachable.
+            AssertionError: If the calculation of theta1 or theta2 results in NaN.
+        """
+        assert isinstance(pos, Vector), "Pos should be type Vector"
+
+        distance = np.sqrt((self.base_pos.x - pos.x)**2 + (self.base_pos.y - pos.y)**2 + (self.base_pos.z - pos.z)**2)
+        if distance > (self.arm1_length + self.arm2_length) or distance < (self.arm1_length - self.arm2_length):
+            raise ValueError("The position is unreachable")
 
         # calculates theta2
         delta_z = self.base_pos.z - pos.z
-        alpha = np.sqrt(self.arm2_length**2 - delta_z**2)
+        if (self.arm2_length**2 - delta_z**2) == 0:
+            alpha = 0
+        else:
+            alpha = np.sqrt(self.arm2_length**2 - delta_z**2)
+        
         theta3 = np.arccos(delta_z / self.arm2_length)
-        theta2 = theta3 + np.deg2rad(90)
+        theta2 = theta3 - np.deg2rad(90)
 
         # calculates theta1
         delta_y = self.base_pos.y - pos.y
         theta1 = np.arccos(delta_y / (self.arm1_length + alpha))
 
-        return (theta1, theta2)
-
+        assert not np.isnan(theta1), "Calculation on theta1 failed"
+        assert not np.isnan(theta2), "Calculation on theta2 failed"
         
-    def move_to(self, x, y, z, duration=1.0):
+        return [theta1, theta2]
+    
+    def calc_pos(self, theta1, theta2):
         """
-        Moves the end-effector to the specified (x, y, z) position.
-        """
-        print(f"Moving to position: ({x}, {y}, {z})")
-        time.sleep(duration)  # Simulate movement time
-        self.position = np.array([x, y, z])
-        print("Movement complete.")
+        Calculate the position of the robot arm's end effector based on given joint angles.
 
-    def set_joint_angles(self, joint_angles, duration=1.0):
+        Args:
+            theta1 (float): The angle of the first joint in radians.
+            theta2 (float): The angle of the second joint in radians.
+
+        Returns:
+            Vector: The position of the end effector as a Vector object with x, y, and z coordinates.
+
+        Raises:
+            AssertionError: If theta1 or theta2 are not of type float.
+            AssertionError: If the calculation of x, y, or z results in NaN.
         """
-        Sets the robot arm to specified joint angles.
-        """
-        if len(joint_angles) != self.num_joints:
-            raise ValueError(f"Expected {self.num_joints} joint angles, got {len(joint_angles)}")
+        assert isinstance(theta1, float) and isinstance(theta2, float), "theta should be type float"
+
+        theta3 = theta2 - np.deg2rad(90)
+        alpha = np.sin(theta3) * self.arm2_length
+        delta_z = np.sqrt(self.arm2_length**2 + alpha**2)
+        delta_x = np.sin(theta1) * (self.arm1_length + alpha)
+        delta_y = np.cos(theta1) * (self.arm1_length + alpha)
+
+        assert not np.isnan(delta_x), "Calculation of x failed"
+        assert not np.isnan(delta_y), "Calculation of y failed"
+        assert not np.isnan(delta_z), "Calculation of z failed"
+
+        return Vector(self.base_pos.x + delta_x, 
+                      self.base_pos.y + delta_y, 
+                      self.base_pos.z + delta_z)
         
-        print(f"Setting joint angles to: {joint_angles}")
-        time.sleep(duration)  # Simulate movement time
-        self.joint_angles = np.array(joint_angles)
-        print("Joint movement complete.")
+    def set_joint_angles(self, theta1, theta2):
+        self.joint_angles = [theta1, theta2]
+        self.tip_pos = self.calc_pos(theta1, theta2)
+
+    def set_tip_pos(self, pos: Vector):
+        self.tip_pos = pos
+        self.joint_angles = self.calc_join_angles(pos)
+
 
 # Example usage
 if __name__ == "__main__":
-    arm = RobotArmController()
-    print("Initial position:", arm.get_position())
-    arm.move_to(10, 5, 15)
-    print("New position:", arm.get_position())
-    arm.set_joint_angles([30, 45, 60])
-    print("New joint angles:", arm.get_joint_angles())
+    base_pos = Vector(0, 0, 0)
+    tip_pos = Vector(0, 80, 50)
+    arm = RobotArmController(base_pos, tip_pos)
+
+    target_pos = Vector(40, 40, 48.9898)
+    angles = arm.calc_join_angles(target_pos)
+    print(angles)
