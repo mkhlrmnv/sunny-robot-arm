@@ -41,8 +41,6 @@ class RobotArmController:
         return (theta1, theta2)
 
         
-
-
     def move_to(self, x, y, z, duration=1.0):
         """
         Moves the end-effector to the specified (x, y, z) position.
