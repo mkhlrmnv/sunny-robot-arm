@@ -12,9 +12,7 @@ class TestRobotArmController(unittest.TestCase):
         self.arm = RobotArmController(self.base_pos, self.tip_pos)
         angles = self.arm.get_joint_angles()
         expected_angles = [np.deg2rad(90), np.deg2rad(90)*3]
-
-        for actual, expected in zip(angles, expected_angles):
-            self.assertAlmostEqual(actual, expected, places=2)
+        self.assertEqual(angles, expected_angles)
     
     def test_get_base_pos(self):
         """Test if get_base_pos returns the correct base position."""
@@ -30,8 +28,7 @@ class TestRobotArmController(unittest.TestCase):
         angles = self.arm.calc_join_angles(target_pos)
         self.assertEqual(len(angles), 2)
         expected_angles = [0.7854045668803609, 4.511031574028651]
-        for actual, expected in zip(angles, expected_angles):
-            self.assertAlmostEqual(actual, expected, places=2)
+        self.assertEqual(angles, expected_angles)
     
     def test_calc_joint_angles_unreachable(self):
         """Test calc_joint_angles with an unreachable position."""
