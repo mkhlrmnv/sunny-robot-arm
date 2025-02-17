@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from vector import Vector
+from vector import Vector, Joints
 from arm import RobotArmController
 
 class TestRobotArmController(unittest.TestCase):
@@ -11,7 +11,7 @@ class TestRobotArmController(unittest.TestCase):
         self.tip_pos = Vector(0, 80, 50)
         self.arm = RobotArmController(self.base_pos, self.tip_pos)
         angles = self.arm.get_joint_angles()
-        expected_angles = [np.deg2rad(90), np.deg2rad(90)*3]
+        expected_angles = Joints(np.deg2rad(90), np.deg2rad(90)*3)
         self.assertEqual(angles, expected_angles)
     
     def test_get_base_pos(self):
@@ -26,8 +26,7 @@ class TestRobotArmController(unittest.TestCase):
         """Test calc_joint_angles with a reachable position."""
         target_pos = Vector(63.64, 63.64, 48.9898)
         angles = self.arm.calc_join_angles(target_pos)
-        self.assertEqual(len(angles), 2)
-        expected_angles = [0.7854045668803609, 4.511031574028651]
+        expected_angles = Joints(0.7854045668803609, 4.511031574028651)
         self.assertEqual(angles, expected_angles)
     
     def test_calc_joint_angles_unreachable(self):
