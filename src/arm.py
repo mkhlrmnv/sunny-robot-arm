@@ -51,13 +51,9 @@ class RobotArmController:
         
         theta3 = np.arccos(delta_z / self.arm2_length)
         theta2 = theta3 + np.deg2rad(90)
-
-        print(f"alpha {alpha}")
-
+        
         # calculates theta1
         delta_y = pos.y - self.base_pos.y
-        print(f"delta y {delta_y}")
-        print(f"arm + a {self.arm1_length + alpha}")
         theta1 = np.arcsin(delta_y / (self.arm1_length + alpha))
 
         assert not np.isnan(theta1), "Calculation on theta1 failed"
