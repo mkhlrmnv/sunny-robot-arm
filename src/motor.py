@@ -46,6 +46,7 @@ class Motor:
             raise ValueError("Direction must be 1 (forward) or -1 (backward).")
         
         # GPIO.output(self.dir_pin, GPIO.HIGH if direction == 1 else GPIO.LOW)
+        print("angle", self.angle)
 
         for _ in range(abs(steps)):
             # GPIO.output(self.pulse_pin, GPIO.HIGH)
@@ -54,6 +55,8 @@ class Motor:
             time.sleep(self.calc_delay(speed)) # Delay between steps
             self.steps += direction
             self.angle += direction * (360 / (self.step_per_rev * self.gear_ratio))
+            self.angle = round(self.angle, 3)
+            print("angle", self.angle)
 
     def move_by_angle(self, angle, speed=0.5):
         """
@@ -66,8 +69,23 @@ class Motor:
         
         angle_per_step = 360 / (self.step_per_rev * self.gear_ratio)
         steps = int(angle / angle_per_step)
+        print("Steps to move:", steps)
         direction = 1 if angle > 0 else -1
         self.step(steps=abs(steps), direction=direction, speed=speed)
+
+    def move_to_angle(self, target_angle, speed=0.5):
+        """
+        Move the stepper motor to a specified angle.
+        
+        :param target_angle: Target angle in degrees.
+        """
+        if abs(target_angle) > 360:
+            raise ValueError("Target angle must be between -360 and 360 degrees.")
+    
+        angle_diff = target_angle - self.angle
+        print("Angle difference:", angle_diff)
+        
+        self.move_by_angle(angle_diff, speed=speed)
     
     def get_steps(self):
         """
@@ -97,6 +115,6 @@ class Motor:
 
 if __name__ == "__main__":
     stepper = Motor(pulse_pin=17, dir_pin=27)
-    stepper.step(steps=100, direction=1, delay=0.002)  # Move 100 steps forward
-    print("Current Position:", stepper.get_position())
+    # stepper.step(steps=100, direction=1, delay=0.002)  # Move 100 steps forward
+    stepper.move_by_angle(180, speed=1) 
     stepper.cleanup()

@@ -90,6 +90,23 @@ class TestMotor(unittest.TestCase):
         self.motor.cleanup()
         # self.mock_gpio.cleanup.assert_called_once()
 
+    def test_move_to_angle_valid(self):
+        # Test moving to a specific angle within the valid range.
+        self.motor.move_to_angle(180, speed=1)
+        self.assertAlmostEqual(self.motor.get_angle(), 180)
+        self.assertAlmostEqual(self.motor.get_steps(), 800 * self.motor.gear_ratio)  # 180 degrees should be half of 360 degrees
 
+        # Move to another angle within the valid range.
+        self.motor.move_to_angle(-90, speed=1)
+        self.assertAlmostEqual(self.motor.get_angle(), -90)
+        self.assertAlmostEqual(self.motor.get_steps(), -400 * self.motor.gear_ratio)  # -90 degrees should be a quarter of 360 degrees
+
+    def test_move_to_angle_invalid(self):
+        # Test moving to an angle outside the valid range.
+        with self.assertRaises(ValueError):
+            self.motor.move_to_angle(370, speed=0.5)
+        with self.assertRaises(ValueError):
+            self.motor.move_to_angle(-400, speed=0.5)
+            
 if __name__ == '__main__':
     unittest.main()
