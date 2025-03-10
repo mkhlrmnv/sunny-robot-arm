@@ -1,8 +1,7 @@
 import unittest
 from unittest.mock import patch
 import time
-from motor import Motor
-
+from src import Motor
 
 # --- Begin Test Code ---
 class TestMotor(unittest.TestCase):
@@ -47,7 +46,7 @@ class TestMotor(unittest.TestCase):
         self.motor.step(steps=10, direction=1, speed=1)
         self.assertEqual(self.motor.get_steps(), initial_steps + 10)
         # Each step moves by (360 / step_per_rev) degrees.
-        self.assertAlmostEqual(self.motor.get_angle(), initial_angle + 10 * (360 / 1600))
+        self.assertAlmostEqual(self.motor.get_angle(), initial_angle + 10 * (360 / (self.motor.step_per_rev * self.motor.gear_ratio)))
 
     def test_step_backward(self):
         initial_steps = self.motor.get_steps()
@@ -55,7 +54,7 @@ class TestMotor(unittest.TestCase):
         # Perform 5 backward steps at maximum speed.
         self.motor.step(steps=5, direction=-1, speed=1)
         self.assertEqual(self.motor.get_steps(), initial_steps - 5)
-        self.assertAlmostEqual(self.motor.get_angle(), initial_angle - 5 * (360 / 1600))
+        self.assertAlmostEqual(self.motor.get_angle(), initial_angle - 5 * (360 / (self.motor.step_per_rev * self.motor.gear_ratio)))
 
     def test_invalid_direction(self):
         # Direction must be either 1 or -1.
@@ -65,18 +64,18 @@ class TestMotor(unittest.TestCase):
             self.motor.step(steps=5, direction=2, speed=0.5)
 
     def test_move_by_angle_invalid(self):
-        # The current implementation of move_by_angle requires abs(angle) to be >= 360.
+        # The current implementation of move_by_angle requires abs(angle) to be <= 360.
         # For angles less than 360, it raises a ValueError.
         with self.assertRaises(ValueError):
-            self.motor.move_by_angle(90, speed=0.5)
+            self.motor.move_by_angle(370, speed=0.5)
         with self.assertRaises(ValueError):
-            self.motor.move_by_angle(-180, speed=0.5)
+            self.motor.move_by_angle(-400, speed=0.5)
 
     def test_move_by_angle_valid(self):
         # Test moving by exactly 360 degrees.
         # For step_per_rev=1600, one full revolution (360°) equals 1600 steps.
         self.motor.move_by_angle(360, speed=1)
-        self.assertEqual(self.motor.get_steps(), 1600)
+        self.assertEqual(self.motor.get_steps(), 1600 * self.motor.gear_ratio)
         self.assertAlmostEqual(self.motor.get_angle(), 360)
 
     def test_reset_position(self):

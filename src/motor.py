@@ -2,7 +2,7 @@
 import time
 
 class Motor:
-    def __init__(self, pulse_pin, dir_pin, step_per_rev=1600, min_delay=1e-5, max_delay=1):
+    def __init__(self, pulse_pin, dir_pin, step_per_rev=1600, gear_ratio=5, min_delay=1e-5, max_delay=1):
         """
         Initialize the stepper motor with the given GPIO pins.
         
@@ -16,6 +16,7 @@ class Motor:
         self.step_per_rev = step_per_rev
         self.min_delay = min_delay
         self.max_delay = max_delay
+        self.gear_ratio = gear_ratio
 
         # GPIO.setmode(GPIO.BCM)  # Use Broadcom pin numbering
         # GPIO.setup(self.pulse_pin, GPIO.OUT)
@@ -52,7 +53,7 @@ class Motor:
             # GPIO.output(self.pulse_pin, GPIO.LOW)
             time.sleep(self.calc_delay(speed)) # Delay between steps
             self.steps += direction
-            self.angle += direction * (360 / self.step_per_rev)
+            self.angle += direction * (360 / (self.step_per_rev * self.gear_ratio))
 
     def move_by_angle(self, angle, speed=0.5):
         """
@@ -60,10 +61,10 @@ class Motor:
         
         :param angle: Angle in degrees to move.
         """
-        if abs(angle) < 360:
+        if abs(angle) > 360:
             raise ValueError("Angle must be between -360 and 360 degrees.")
         
-        angle_per_step = 360 / self.step_per_rev
+        angle_per_step = 360 / (self.step_per_rev * self.gear_ratio)
         steps = int(angle / angle_per_step)
         direction = 1 if angle > 0 else -1
         self.step(steps=abs(steps), direction=direction, speed=speed)

@@ -1,8 +1,8 @@
 import time
 import numpy as np
-from vector import Vector, Joints
+from .vector import Vector, Joints
 
-class RobotArmController:
+class Arm:
     def __init__(self, base_pos: Vector, tip_pos: Vector, arm1_length=80, arm2_length=50):
         """
         Initializes the robotic arm controller with a specified number of joints.
@@ -105,7 +105,7 @@ class RobotArmController:
 if __name__ == "__main__":
     base_pos = Vector(0, 0, 0)
     tip_pos = Vector(0, 80, 50)
-    arm = RobotArmController(base_pos, tip_pos)
+    arm = Arm(base_pos, tip_pos)
 
     target_pos = Vector(63.64, 63.64, 48.9898)
     angles = arm.calc_join_angles(target_pos)
