@@ -46,7 +46,6 @@ class Motor:
             raise ValueError("Direction must be 1 (forward) or -1 (backward).")
         
         # GPIO.output(self.dir_pin, GPIO.HIGH if direction == 1 else GPIO.LOW)
-        print("angle", self.angle)
 
         for _ in range(abs(steps)):
             # GPIO.output(self.pulse_pin, GPIO.HIGH)
@@ -56,7 +55,6 @@ class Motor:
             self.steps += direction
             self.angle += direction * (360 / (self.step_per_rev * self.gear_ratio))
             self.angle = round(self.angle, 3)
-            print("angle", self.angle)
 
     def move_by_angle(self, angle, speed=0.5):
         """
@@ -69,7 +67,6 @@ class Motor:
         
         angle_per_step = 360 / (self.step_per_rev * self.gear_ratio)
         steps = int(angle / angle_per_step)
-        print("Steps to move:", steps)
         direction = 1 if angle > 0 else -1
         self.step(steps=abs(steps), direction=direction, speed=speed)
 
@@ -83,7 +80,6 @@ class Motor:
             raise ValueError("Target angle must be between -360 and 360 degrees.")
     
         angle_diff = target_angle - self.angle
-        print("Angle difference:", angle_diff)
         
         self.move_by_angle(angle_diff, speed=speed)
     
