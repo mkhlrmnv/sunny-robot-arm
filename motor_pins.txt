@@ -1,0 +1,11 @@
+Maalarin teippi 
+dir 27 
+puls 13
+
+Musta sähköteippi
+dir 12
+puls 19
+
+Keltainen sähköteippi
+dir 5
+puls 16
