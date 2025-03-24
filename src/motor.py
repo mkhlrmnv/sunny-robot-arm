@@ -1,4 +1,4 @@
-# import RPi.GPIO as GPIO
+import RPi.GPIO as GPIO
 import time
 
 class Motor:
@@ -18,9 +18,9 @@ class Motor:
         self.max_delay = max_delay
         self.gear_ratio = gear_ratio
 
-        # GPIO.setmode(GPIO.BCM)  # Use Broadcom pin numbering
-        # GPIO.setup(self.pulse_pin, GPIO.OUT)
-        # GPIO.setup(self.dir_pin, GPIO.OUT)
+        GPIO.setmode(GPIO.BCM)  # Use Broadcom pin numbering
+        GPIO.setup(self.pulse_pin, GPIO.OUT)
+        GPIO.setup(self.dir_pin, GPIO.OUT)
 
     def calc_delay(self, speed_percent):
         """
@@ -45,12 +45,12 @@ class Motor:
         if direction not in [-1, 1]:
             raise ValueError("Direction must be 1 (forward) or -1 (backward).")
         
-        # GPIO.output(self.dir_pin, GPIO.HIGH if direction == 1 else GPIO.LOW)
+        GPIO.output(self.dir_pin, GPIO.HIGH if direction == 1 else GPIO.LOW)
 
         for _ in range(abs(steps)):
-            # GPIO.output(self.pulse_pin, GPIO.HIGH)
+            GPIO.output(self.pulse_pin, GPIO.HIGH)
             time.sleep(1e-5) # Pulse width of 100KHz
-            # GPIO.output(self.pulse_pin, GPIO.LOW)
+            GPIO.output(self.pulse_pin, GPIO.LOW)
             time.sleep(self.calc_delay(speed)) # Delay between steps
             self.steps += direction
             self.angle += direction * (360 / (self.step_per_rev * self.gear_ratio))
@@ -106,11 +106,11 @@ class Motor:
         """
         Clean up GPIO settings.
         """
-        # GPIO.cleanup()
+        GPIO.cleanup()
 
 
 if __name__ == "__main__":
-    stepper = Motor(pulse_pin=17, dir_pin=27)
+    stepper = Motor(pulse_pin=13, dir_pin=27)
     # stepper.step(steps=100, direction=1, delay=0.002)  # Move 100 steps forward
     stepper.move_by_angle(180, speed=1) 
     stepper.cleanup()
