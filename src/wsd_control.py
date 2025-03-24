@@ -18,9 +18,11 @@ def getch():
 
 def main():
     # Instantiate three Motor objects with example GPIO pin assignments.
-    motor1 = Motor(pulse_pin=17, dir_pin=27)
-    motor2 = Motor(pulse_pin=22, dir_pin=23)
-    motor3 = Motor(pulse_pin=24, dir_pin=25)
+    motor1 = Motor(pulse_pin=13, dir_pin=27)
+    motor2 = Motor(pulse_pin=19, dir_pin=12)
+    motor3 = Motor(pulse_pin=16, dir_pin=5)
+
+    step_per_key = 100
     
     print("Keyboard Control for Three Motors")
     print("Controls:")
@@ -37,24 +39,24 @@ def main():
         if key == 'q':
             break
         elif key == 'w':
-            motor1.step(steps=1, direction=1, speed=speed)
+            motor1.step(steps=step_per_key, direction=1, speed=speed)
             print("Motor 1: stepped clockwise.")
         elif key == 's':
-            motor1.step(steps=1, direction=-1, speed=speed)
+            motor1.step(steps=step_per_key, direction=-1, speed=speed)
             print("Motor 1: stepped counter-clockwise.")
 
         elif key == 'a':
-            motor2.step(steps=1, direction=1, speed=speed)
+            motor2.step(steps=step_per_key, direction=1, speed=speed)
             print("Motor 2: stepped clockwise.")
         elif key == 'd':
-            motor2.step(steps=1, direction=-1, speed=speed)
+            motor2.step(steps=step_per_key, direction=-1, speed=speed)
             print("Motor 2: stepped counter-clockwise.")
 
         elif key == 'j':
-            motor3.step(steps=1, direction=1, speed=speed)
+            motor3.step(steps=step_per_key, direction=1, speed=speed)
             print("Motor 3: stepped clockwise.")
         elif key == 'k':
-            motor3.step(steps=1, direction=-1, speed=speed)
+            motor3.step(steps=step_per_key, direction=-1, speed=speed)
             print("Motor 3: stepped counter-clockwise.")
             
         elif key == 'p':
