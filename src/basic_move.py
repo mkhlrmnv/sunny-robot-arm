@@ -1,5 +1,7 @@
 from time import sleep
 import RPi.GPIO as gpio
+import threading
+from cooling import FanController
 
 direction_pins = [5, 12, 27] # brown
 pulse_pins      = [13, 16, 19] # white
@@ -12,6 +14,12 @@ for direction_pin in direction_pins:
     gpio.output(direction_pin,cw_direction)
 for pulse_pin in pulse_pins:
     gpio.setup(pulse_pin, gpio.OUT)
+
+# Create FanController instance
+# And run the fan controller in a separate thread
+cooler = FanController()
+fan_thread = threading.Thread(target=cooler.run, daemon=True)
+fan_thread.start()
 
 try:
     while True:
