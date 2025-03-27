@@ -3,8 +3,8 @@ import RPi.GPIO as gpio
 import threading
 from cooling import FanController
 
-direction_pins = [5, 12, 27] # brown
-pulse_pins      = [13, 16, 19] # white
+direction_pins = [26, 4, 19] # brown
+pulse_pins      = [13, 27, 20] # white
 cw_direction    = 0 
 ccw_direction   = 1 
 
