@@ -18,9 +18,9 @@ def getch():
 
 def main():
     # Instantiate three Motor objects with example GPIO pin assignments.
-    motor1 = Motor(pulse_pin=13, dir_pin=27)
-    motor2 = Motor(pulse_pin=19, dir_pin=12)
-    motor3 = Motor(pulse_pin=16, dir_pin=5)
+    motor1 = Motor(pulse_pin=13, dir_pin=26)
+    motor2 = Motor(pulse_pin=27, dir_pin=4)
+    motor3 = Motor(pulse_pin=20, dir_pin=19)
 
     step_per_key = 100
     
