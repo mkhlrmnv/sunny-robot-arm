@@ -39,3 +39,7 @@ class FanController:
         self.fan.value = 0.0
         self.fan.close()
         print("Fan stopped.")
+
+if __name__ == "__main__":
+    cooler = FanController(fan_pin=18, min_temp=20, max_temp=45)
+    cooler.run()
