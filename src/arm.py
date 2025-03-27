@@ -1,6 +1,8 @@
 import time
 import numpy as np
-from .vector import Vector, Joints
+from vector import Vector, Joints
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 class Arm:
     def __init__(self, base_pos: Vector, tip_pos: Vector, arm1_length=80, arm2_length=50):
@@ -43,7 +45,8 @@ class Arm:
             raise ValueError("The position is unreachable")
 
         # calculates theta2
-        delta_z = self.base_pos.z - pos.z
+        delta_z = pos.z- self.base_pos.z
+        # breakpoint()
         if (self.arm2_length**2 - delta_z**2) == 0:
             alpha = 0
         else:
@@ -92,13 +95,62 @@ class Arm:
                       self.base_pos.y + delta_y, 
                       self.base_pos.z + delta_z)
         
-    def set_joint_angles(self, theta1, theta2):
-        self.joint_angles = [theta1, theta2]
-        self.tip_pos = self.calc_pos(theta1, theta2)
+    def set_joint_angles(self, joints: Joints):
+        self.joint_angles = joints
+        self.tip_pos = self.calc_pos(joints)
 
     def set_tip_pos(self, pos: Vector):
         self.tip_pos = pos
         self.joint_angles = self.calc_join_angles(pos)
+
+    def plot(self):
+        """
+        Visualize the current state of the robotic arm in 3D.
+        """
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+
+        # Base joint (origin)
+        base = self.base_pos
+
+        # First joint
+        theta1 = self.joint_angles.theta1
+        arm1_end = Vector(
+            base.x + np.sin(theta1) * self.arm1_length,
+            base.y + np.cos(theta1) * self.arm1_length,
+            base.z
+        )
+
+        # Second joint (tip)
+        theta3 = self.joint_angles.theta2 - np.deg2rad(90)
+        delta_z = np.cos(theta3) * self.arm2_length
+        delta_x = np.sin(theta1) * np.sin(theta3) * self.arm2_length
+        delta_y = np.cos(theta1) * np.sin(theta3) * self.arm2_length
+
+        tip = Vector(
+            arm1_end.x + delta_x,
+            arm1_end.y + delta_y,
+            arm1_end.z + delta_z
+        )
+
+        # Plot links
+        xs = [base.x, arm1_end.x, tip.x]
+        ys = [base.y, arm1_end.y, tip.y]
+        zs = [base.z, arm1_end.z, tip.z]
+
+        ax.plot(xs, ys, zs, marker='o', linewidth=2, markersize=6)
+        ax.scatter([tip.x], [tip.y], [tip.z], color='red', label='End Effector')
+
+        ax.set_xlim(-150, 150)
+        ax.set_ylim(-150, 150)
+        ax.set_zlim(0, 150)
+
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_zlabel('Z')
+        ax.set_title('3D Arm Visualization')
+        ax.legend()
+        plt.show()
 
 
 # Example usage
@@ -109,3 +161,5 @@ if __name__ == "__main__":
 
     target_pos = Vector(63.64, 63.64, 48.9898)
     angles = arm.calc_join_angles(target_pos)
+    arm.set_joint_angles(angles)
+    arm.plot()
