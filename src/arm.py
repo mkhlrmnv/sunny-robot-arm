@@ -117,7 +117,7 @@ class Arm:
         theta1 = self.joint_angles.theta1
         arm1_end = Vector(
             base.x + np.sin(theta1) * self.arm1_length,
-            base.y + np.cos(theta1) * self.arm1_length,
+            base.y - np.cos(theta1) * self.arm1_length,
             base.z
         )
 
