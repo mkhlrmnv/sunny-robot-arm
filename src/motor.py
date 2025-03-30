@@ -21,9 +21,9 @@ class Motor:
         assert min_delay >= 0, "Minimum delay must be non-negative."
         assert max_delay >= min_delay, "Maximum delay must be greater than or equal to minimum delay."
         
-        # self.pulse = DigitalOutputDevice(pulse_pin)
-        # self.direction = DigitalOutputDevice(dir_pin)
-        # self.limit_switch = Button(limit_pin, pull_up=True)
+        self.pulse = DigitalOutputDevice(pulse_pin)
+        self.direction = DigitalOutputDevice(dir_pin)
+        self.limit_switch = Button(limit_pin, pull_up=True)
         self.steps = 0
         self.angle = 0
         self.step_per_rev = step_per_rev
@@ -36,15 +36,15 @@ class Motor:
             raise ValueError("Speed percent must be between 0 and 1.")
         return self.min_delay + (self.max_delay - self.min_delay) * (1 - speed_percent)
     
-    def init_motor(self):
-        # while not self.limit_switch.is_pressed:
-        #     self.step(direction=1, speed=0.5)
+    def init_motor(self, direction=1):
+        while not self.limit_switch.is_pressed:
+            self.step(direction=direction, speed=0.5)
         self.reset_position()
 
     def step(self, direction=1, speed=0.5):
-        # if self.limit_switch.is_pressed:
-        #     print("Limit switch is pressed. Cannot move motor.")
-        #     return
+        if self.limit_switch.is_pressed:
+            print("Limit switch is pressed. Cannot move motor.")
+            return
 
         if direction not in [-1, 1]:
             raise ValueError("Direction must be 1 (forward) or -1 (backward).")
@@ -52,10 +52,10 @@ class Motor:
         self.direction.value = 1 if direction == 1 else 0
         delay = self.calc_delay(speed)
 
-        # self.pulse.on()
-        # time.sleep(1e-5)
-        # self.pulse.off()
-        # time.sleep(delay)
+        self.pulse.on()
+        time.sleep(1e-5)
+        self.pulse.off()
+        time.sleep(delay)
         self.steps += direction
         self.angle += direction * (360 / (self.step_per_rev * self.gear_ratio))
         self.angle = round(self.angle, 3)

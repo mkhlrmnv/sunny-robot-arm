@@ -11,7 +11,7 @@ motor_1 = Motor(pulse_pin=puls_1, dir_pin=dir_1, limit_pin=23, step_per_rev=1600
 
 
 def init_motors():
-    motor_1.init_motor()
+    motor_1.init_motor(direction=-1)
 
 init_motors()
 
