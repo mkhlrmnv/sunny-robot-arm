@@ -5,8 +5,8 @@ from cooling import FanController
 import threading
 
 # Define motor pins
-dir_1 = 19
-puls_1 = 20
+dir_1 = 26      #brown
+puls_1 = 13#white
 
 cooler = FanController()
 fan_thread = threading.Thread(target=cooler.run, daemon=True)
