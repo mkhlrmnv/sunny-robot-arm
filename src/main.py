@@ -1,10 +1,16 @@
 from motor import Motor
 # from arm import Arm
 # from vector import Vector, Joints
+from cooling import FanController
+import threading
 
 # Define motor pins
 dir_1 = 19
 puls_1 = 20
+
+cooler = FanController()
+fan_thread = threading.Thread(target=cooler.run, daemon=True)
+fan_thread.start()
 
 # initialize motors
 motor_1 = Motor(pulse_pin=puls_1, dir_pin=dir_1, limit_pin=23, step_per_rev=1600, min_delay=0.001, max_delay=0.01, gear_ratio=1)
