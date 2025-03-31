@@ -18,11 +18,11 @@ def getch():
 
 def main():
     # Instantiate three Motor objects with example GPIO pin assignments.
-    motor1 = Motor(pulse_pin=13, dir_pin=26)
-    motor2 = Motor(pulse_pin=27, dir_pin=4)
-    motor3 = Motor(pulse_pin=20, dir_pin=19)
+    motor1 = Motor(pulse_pin=13, dir_pin=26, limit_pin=23)
+    motor2 = Motor(pulse_pin=27, dir_pin=4, limit_pin=22)
+    motor3 = Motor(pulse_pin=20, dir_pin=19, limit_pin=12)
 
-    step_per_key = 10
+    angles_per_key = 1
     
     print("Keyboard Control for Three Motors")
     print("Controls:")
@@ -40,39 +40,40 @@ def main():
         if key == 'q':
             break
         elif key == 'w':
-            motor1.step(steps=step_per_key, direction=1, speed=speed)
+            motor1.move_by_angle(angle=angles_per_key, speed=speed)
+             #motor1.step(steps=step_per_key, direction=1, speed=speed)
             print("Motor 1: stepped clockwise.")
         elif key == 's':
-            motor1.step(steps=step_per_key, direction=-1, speed=speed)
+            motor1.move_by_angle(angle=-angles_per_key, speed=speed)
             print("Motor 1: stepped counter-clockwise.")
 
         elif key == 'a':
-            motor2.step(steps=step_per_key, direction=1, speed=speed)
+            motor2.move_by_angle(angle=angles_per_key, speed=speed)
             print("Motor 2: stepped clockwise.")
         elif key == 'd':
-            motor2.step(steps=step_per_key, direction=-1, speed=speed)
+            motor2.move_by_angle(angle=-angles_per_key, speed=speed)
             print("Motor 2: stepped counter-clockwise.")
 
         elif key == 'j':
-            motor3.step(steps=step_per_key, direction=1, speed=speed)
+            motor3.move_by_angle(angle=angles_per_key, speed=speed)
             print("Motor 3: stepped clockwise.")
         elif key == 'k':
-            motor3.step(steps=step_per_key, direction=-1, speed=speed)
+            motor3.move_by_angle(angle=angles_per_key, speed=speed)
             print("Motor 3: stepped counter-clockwise.")
             
         elif key == 'p':
             print(f"Motor 1: Steps = {motor1.get_steps()}, Angle = {motor1.get_angle()}°")
             print(f"Motor 2: Steps = {motor2.get_steps()}, Angle = {motor2.get_angle()}°")
             print(f"Motor 3: Steps = {motor3.get_steps()}, Angle = {motor3.get_angle()}°")
-            print(f"Step per key: {step_per_key}")
+            print(f"Step per key: {angles_per_key}")
 
         elif key == 'i':
-            step_per_key += 10
-            print(f"Step per key increased to {step_per_key}")
+            angles_per_key += 1
+            print(f"Step per key increased to {angles_per_key}")
 
         elif key == 'o':
-            step_per_key = max(10, step_per_key - 10)  # Prevent it going below 10
-            print(f"Step per key decreased to {step_per_key}")
+            angles_per_key = max(1, angles_per_key - 1)  # Prevent it going below 1
+            print(f"Step per key decreased to {angles_per_key}")
 
         else:
             print("Unrecognized key.")
