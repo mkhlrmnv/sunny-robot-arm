@@ -1,4 +1,4 @@
-from motor import Motor
+# from motor import Motor
 import time
 import sys
 import termios
@@ -7,14 +7,19 @@ import tty
 # Interactive terminal interface to control three motors.
 # Function to capture a single key press without requiring ENTER.
 def getch():
-    fd = sys.stdin.fileno()
-    old_settings = termios.tcgetattr(fd)
-    try:
-        tty.setraw(fd)
-        ch = sys.stdin.read(1)
-    finally:
-        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-    return ch
+    if sys.stdin.isatty():
+        import termios, tty
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setraw(fd)
+            ch = sys.stdin.read(1)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        return ch
+    else:
+        # Non-interactive mode: just read one character.
+        return sys.stdin.read(1)
 
 def main():
     # Instantiate three Motor objects with example GPIO pin assignments.
