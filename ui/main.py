@@ -81,16 +81,20 @@ def index():
       <meta charset="UTF-8" />
       <title>J&M Automation</title>
       <style>
-        body {
+        /* Ensure full-page background */
+        html, body {
           margin: 0;
-          font-family: Arial, sans-serif;
-          height: 100vh;
+          padding: 0;
+          height: 100%;
+        }
+        body {
+          background: linear-gradient(to right, #79CED7, #1A56AF);
           display: flex;
         }
-        /* Left Panel Styles */
+        /* Desktop layout: two panels side by side */
         .left-panel {
           width: 33.33%;
-          background-color: #333;
+          background-color: rgba(51, 51, 51, 0.9);
           color: #fff;
           padding: 20px;
           box-sizing: border-box;
@@ -118,29 +122,29 @@ def index():
           background: conic-gradient(#3498db 0%, #3498db var(--percent), #e0e0e0 var(--percent), #e0e0e0 100%);
           margin-bottom: 5px;
         }
-
-        /* Right Panel Styles */
-        .right-panel {
+        .center-panel {
           width: 66.66%;
-          background: linear-gradient(to right, #79CED7, #1A56AF);
           display: flex;
           flex-direction: column;
-          align-items: center; /* center horizontally */
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          padding: 20px;
+          box-sizing: border-box;
         }
         .logo-container {
-          margin-top: 40px; /* space from the top */
+          margin-bottom: 10px;
           display: flex;
           justify-content: center;
           width: 100%;
         }
         .logo-container img {
-          max-height: 200px; /* adjust as needed */
+          max-height: 250px;
         }
         .button-container {
           display: flex;
-          flex-direction: column; /* stack buttons vertically */
-          align-items: center;    /* center them horizontally */
-          margin-top: 50px;
+          flex-direction: column;
+          align-items: center;
         }
         .big-button {
           background-color: #4f4f4f;
@@ -157,25 +161,40 @@ def index():
         .big-button:hover {
           background-color: #5f5f5f;
         }
+        /* Responsive design for mobile */
+        @media (max-width: 768px) {
+          body {
+            flex-direction: column;
+          }
+          .left-panel {
+            display: none;
+          }
+          .center-panel {
+            width: 100%;
+          }
+          .big-button {
+            width: 80%;
+            padding: 30px 0;
+            font-size: 32px;
+            margin: 10px 0;
+          }
+        }
       </style>
     </head>
     <body>
-      <!-- LEFT PANEL: Gauges for Temperature and Fan Speed -->
+      <!-- LEFT PANEL: Cooling Info (visible on desktop) -->
       <div class="left-panel">
         <h2>Cooling Info</h2>
-        <!-- Temperature Gauge -->
         <div class="label">Temperature</div>
         <div class="gauge" id="gaugeTemp" style="--percent: 0%;"></div>
         <div class="label temp-value" id="tempValue">-- °C</div>
-
-        <!-- Fan Speed Gauge -->
         <div class="label">Fan Speed</div>
         <div class="gauge" id="gaugeFan" style="--percent: 0%;"></div>
         <div class="label" id="fanValue">-- %</div>
       </div>
-
-      <!-- RIGHT PANEL: Logo + Main Buttons -->
-      <div class="right-panel">
+      
+      <!-- CENTER PANEL: Logo and Main Buttons -->
+      <div class="center-panel">
         <div class="logo-container">
           <img src="{{ url_for('static', filename='logo.png') }}" alt="J&M Automation Logo">
         </div>
@@ -185,36 +204,33 @@ def index():
           <button class="big-button" onclick="location.href='/manual'">MANUAL CONTROL</button>
         </div>
       </div>
-
+      
       <script>
-        // Poll /cooling_info every second to update the gauges
-        function fetchCoolingInfo() {
-          fetch('/cooling_info')
-            .then(response => response.json())
-            .then(data => updateGauges(data))
-            .catch(err => console.error('Error fetching cooling info:', err));
+        // Only poll cooling info if the left panel is visible (desktop)
+        if (window.innerWidth > 768) {
+          function fetchCoolingInfo() {
+            fetch('/cooling_info')
+              .then(response => response.json())
+              .then(data => updateGauges(data))
+              .catch(err => console.error('Error fetching cooling info:', err));
+          }
+          function updateGauges(data) {
+            // Assume max temperature for a full gauge is 60°C
+            const maxTemp = 60.0;
+            let temperature = parseFloat(data.temperature);
+            let tempPercent = (temperature / maxTemp) * 100;
+            if (tempPercent > 100) tempPercent = 100;
+            document.getElementById('gaugeTemp').style.setProperty('--percent', tempPercent + '%');
+            document.getElementById('tempValue').innerText = temperature + " °C";
+            
+            let fanSpeed = parseFloat(data.fan_speed);
+            if (fanSpeed > 100) fanSpeed = 100;
+            document.getElementById('gaugeFan').style.setProperty('--percent', fanSpeed + '%');
+            document.getElementById('fanValue').innerText = fanSpeed + " %";
+          }
+          fetchCoolingInfo();
+          setInterval(fetchCoolingInfo, 1000);
         }
-        function updateGauges(data) {
-          // Assume max temperature for full gauge fill is 60°C
-          const maxTemp = 60.0;
-          let temperature = parseFloat(data.temperature);
-          let tempPercent = (temperature / maxTemp) * 100;
-          if (tempPercent > 100) tempPercent = 100;
-
-          // Update Temperature Gauge
-          document.getElementById('gaugeTemp').style.setProperty('--percent', tempPercent + '%');
-          document.getElementById('tempValue').innerText = temperature + " °C";
-
-          // Assume fan_speed is already a percentage
-          let fanSpeed = parseFloat(data.fan_speed);
-          if (fanSpeed > 100) fanSpeed = 100;
-
-          // Update Fan Speed Gauge
-          document.getElementById('gaugeFan').style.setProperty('--percent', fanSpeed + '%');
-          document.getElementById('fanValue').innerText = fanSpeed + " %";
-        }
-        fetchCoolingInfo();
-        setInterval(fetchCoolingInfo, 1000);
       </script>
     </body>
     </html>
@@ -224,66 +240,92 @@ def index():
 # Endpoint for "INIT MOTORS" – one-off command.
 @app.route('/init')
 def init_motors():
-    # Change the path to point to the init script in your src folder
-    output, error = run_non_interactive_command('python ../src/init.py')
     template = '''
     <!DOCTYPE html>
     <html>
     <head>
       <title>Init Motors</title>
       <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; }
-        .button { background-color: #4f4f4f; border: none; color: white; padding: 10px 20px;
-                  margin-top: 20px; font-size: 18px; border-radius: 5px; cursor: pointer; }
-        pre { background-color: #eee; padding: 10px; border-radius: 5px; }
+        body {
+          font-family: Arial, sans-serif;
+          background-color: #f4f4f4;
+          margin: 0;
+          padding: 20px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          height: 100vh;
+          text-align: center;
+        }
+        .button {
+          background-color: #4f4f4f;
+          border: none;
+          color: white;
+          padding: 15px 30px;
+          font-size: 24px;
+          border-radius: 50px;
+          cursor: pointer;
+          margin-top: 20px;
+        }
       </style>
     </head>
     <body>
-      <h1>Init Motors Result</h1>
-      <pre>{{ output }}</pre>
-      <pre>{{ error }}</pre>
+      <h1>Nothing here yet</h1>
       <button class="button" onclick="location.href='/'">Back</button>
     </body>
     </html>
     '''
-    return render_template_string(template, output=output, error=error)
+    return render_template_string(template)
 
 # Endpoint for "PLAY PATH" – one-off command.
 @app.route('/play')
 def play_path():
-    # Update the command to point to your play script in the src folder.
-    output, error = run_non_interactive_command('python ../src/play.py')
     template = '''
     <!DOCTYPE html>
     <html>
     <head>
       <title>Play Path</title>
       <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; }
-        .button { background-color: #4f4f4f; border: none; color: white; padding: 10px 20px;
-                  margin-top: 20px; font-size: 18px; border-radius: 5px; cursor: pointer; }
-        pre { background-color: #eee; padding: 10px; border-radius: 5px; }
+        body {
+          font-family: Arial, sans-serif;
+          background-color: #f4f4f4;
+          margin: 0;
+          padding: 20px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          height: 100vh;
+          text-align: center;
+        }
+        .button {
+          background-color: #4f4f4f;
+          border: none;
+          color: white;
+          padding: 15px 30px;
+          font-size: 24px;
+          border-radius: 50px;
+          cursor: pointer;
+          margin-top: 20px;
+        }
       </style>
     </head>
     <body>
-      <h1>Play Path Result</h1>
-      <pre>{{ output }}</pre>
-      <pre>{{ error }}</pre>
+      <h1>Nothing here yet</h1>
       <button class="button" onclick="location.href='/'">Back</button>
     </body>
     </html>
     '''
-    return render_template_string(template, output=output, error=error)
+    return render_template_string(template)
 
-# Manual Control page.
 @app.route('/manual')
 def manual_control():
     global global_wsd_proc
-    if global_wsd_proc is None:
+    if global_wsd_proc is None or global_wsd_proc.poll() is not None:
         start_wsd_control()
-        # Wait briefly to allow the interactive script to start.
         time.sleep(1)
-        # Optionally flush any initial output from the process.
+        # Flush any initial output from the process.
         while True:
             rlist, _, _ = select.select([global_wsd_proc.stdout], [], [], 0.1)
             if not rlist:
@@ -293,37 +335,73 @@ def manual_control():
     <!DOCTYPE html>
     <html lang="en">
     <head>
-      <meta charset="UTF-8" />
-      <title>Manual Control</title>
+      <meta charset="UTF-8">
+      <title>Manual Control - J&M Automation</title>
       <style>
-        body {
+        /* Ensure full-page background */
+        html, body {
           margin: 0;
-          font-family: Arial, sans-serif;
+          padding: 0;
+          height: 100%;
+        }
+        body {
           background: linear-gradient(to right, #79CED7, #1A56AF);
-          min-height: 100vh;
+          display: flex;
+        }
+        /* LEFT PANEL: Cooling Info (visible on desktop) */
+        .left-panel {
+          width: 33.33%;
+          background-color: rgba(51,51,51,0.9);
+          color: #fff;
+          padding: 20px;
+          box-sizing: border-box;
           display: flex;
           flex-direction: column;
           align-items: center;
+          justify-content: center;
+        }
+        .left-panel h2 {
+          margin-bottom: 20px;
+        }
+        .label {
+          margin: 10px 0 5px;
+          font-size: 18px;
+          text-align: center;
+        }
+        .temp-value {
+          margin-bottom: 20px;
+          font-size: 20px;
+        }
+        .gauge {
+          width: 120px;
+          height: 120px;
+          border-radius: 50%;
+          background: conic-gradient(#3498db 0%, #3498db var(--percent), #e0e0e0 var(--percent), #e0e0e0 100%);
+          margin-bottom: 5px;
+        }
+        /* CENTER PANEL: Manual Control UI */
+        .center-panel {
+          width: 66.66%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          padding: 20px;
+          box-sizing: border-box;
         }
         .logo-container {
           position: absolute;
           top: 20px;
-          left: 20px;
-          display: flex;
-          align-items: center;
+          left: 50%;
+          transform: translateX(-50%);
         }
         .logo-container img {
-          height: 300px;
-          margin-right: 10px;
-        }
-        .logo-container span {
-          color: #fff;
-          font-size: 1.2rem;
-          font-weight: bold;
+          max-height: 100px;
         }
         h1 {
           color: #fff;
-          margin-top: 80px;
+          margin-top: 100px;
           margin-bottom: 40px;
         }
         .motor-row {
@@ -399,56 +477,109 @@ def manual_control():
         .big-button:hover {
           background-color: #5f5f5f;
         }
+        /* Responsive Design for Mobile */
+        @media (max-width: 768px) {
+          body {
+            flex-direction: column;
+          }
+          .left-panel {
+            display: none;
+          }
+          .center-panel {
+            width: 100%;
+          }
+          .arrow-button {
+            width: 100px;
+            height: 100px;
+            font-size: 40px;
+            margin: 10px;
+          }
+          .small-button {
+            width: 60px;
+            height: 60px;
+            font-size: 28px;
+            margin: 5px;
+          }
+          .big-button {
+            width: 80%;
+            padding: 30px 0;
+            font-size: 32px;
+            margin: 10px 0;
+          }
+        }
       </style>
     </head>
     <body>
-      <!-- Logo -->
-      <div class="logo-container">
-        <img src="{{ url_for('static', filename='logo.png') }}" alt="J&M Automation Logo">
+      <!-- LEFT PANEL: Cooling Info (desktop only) -->
+      <div class="left-panel">
+        <h2>Cooling Info</h2>
+        <div class="label">Temperature</div>
+        <div class="gauge" id="gaugeTemp" style="--percent: 0%;"></div>
+        <div class="label temp-value" id="tempValue">-- °C</div>
+        <div class="label">Fan Speed</div>
+        <div class="gauge" id="gaugeFan" style="--percent: 0%;"></div>
+        <div class="label" id="fanValue">-- %</div>
       </div>
-      <h1>MANUAL CONTROL</h1>
-      <!-- Motor Control Rows -->
-      <div class="motor-row">
-        <button class="arrow-button" onclick="sendCommand('w')">&larr;</button>
-        <div class="motor-info">
-          <div class="motor-name">MOTOR 1</div>
+      
+      <!-- CENTER PANEL: Manual Control UI -->
+      <div class="center-panel">
+        <div class="logo-container">
+          <img src="{{ url_for('static', filename='logo.png') }}" alt="J&M Automation Logo">
         </div>
-        <button class="arrow-button" onclick="sendCommand('s')">&rarr;</button>
-      </div>
-      <div class="motor-row">
-        <button class="arrow-button" onclick="sendCommand('a')">&larr;</button>
-        <div class="motor-info">
-          <div class="motor-name">MOTOR 2</div>
+        <h1>MANUAL CONTROL</h1>
+        <div class="motor-row">
+          <button class="arrow-button" onclick="sendCommand('w')">&larr;</button>
+          <div class="motor-info">
+            <div class="motor-name">MOTOR 1</div>
+          </div>
+          <button class="arrow-button" onclick="sendCommand('s')">&rarr;</button>
         </div>
-        <button class="arrow-button" onclick="sendCommand('d')">&rarr;</button>
-      </div>
-      <div class="motor-row">
-        <button class="arrow-button" onclick="sendCommand('j')">&larr;</button>
-        <div class="motor-info">
-          <div class="motor-name">MOTOR 3</div>
+        <div class="motor-row">
+          <button class="arrow-button" onclick="sendCommand('a')">&larr;</button>
+          <div class="motor-info">
+            <div class="motor-name">MOTOR 2</div>
+          </div>
+          <button class="arrow-button" onclick="sendCommand('d')">&rarr;</button>
         </div>
-        <button class="arrow-button" onclick="sendCommand('k')">&rarr;</button>
+        <div class="motor-row">
+          <button class="arrow-button" onclick="sendCommand('j')">&larr;</button>
+          <div class="motor-info">
+            <div class="motor-name">MOTOR 3</div>
+          </div>
+          <button class="arrow-button" onclick="sendCommand('k')">&rarr;</button>
+        </div>
+        <div class="step-control">
+          <button class="small-button" onclick="sendCommand('o')">-</button>
+          <span id="step-size-text">Step Size: 1</span>
+          <button class="small-button" onclick="sendCommand('i')">+</button>
+        </div>
+        <button class="big-button" onclick="location.href='/'">BACK</button>
       </div>
-      <!-- Step Size Control -->
-      <div class="step-control">
-        <button class="small-button" onclick="sendCommand('o')">-</button>
-        <span id="step-size-text">Step Size: 1</span>
-        <button class="small-button" onclick="sendCommand('i')">+</button>
-      </div>
-      <button class="big-button" onclick="location.href='/'">BACK</button>
+      
       <script>
-        function sendCommand(cmd) {
-          fetch('/send_char?cmd=' + cmd)
-            .then(response => response.text())
-            .then(data => {
-              console.log("Response:", data);
-              if(cmd === 'i' || cmd === 'o' || cmd === 'increase_step' || cmd === 'decrease_step'){
-                const match = data.match(/(\\d+)/);
-                if (match && match[1]) {
-                  document.getElementById('step-size-text').innerText = "Step Size: " + match[1];
-                }
-              }
-            });
+        // Only poll cooling info on desktop (left panel visible)
+        if (window.innerWidth > 768) {
+          function fetchCoolingInfo() {
+            fetch('/cooling_info')
+              .then(response => response.json())
+              .then(data => updateGauges(data))
+              .catch(err => console.error('Error fetching cooling info:', err));
+          }
+          function updateGauges(data) {
+            const maxTemp = 60.0;
+            let temperature = parseFloat(data.temperature);
+            let tempPercent = (temperature / maxTemp) * 100;
+            if (tempPercent > 100) tempPercent = 100;
+            document.getElementById('gaugeTemp').style.setProperty('--percent', tempPercent + '%');
+            document.getElementById('tempValue').innerText = temperature + " °C";
+            
+            let fanSpeed = parseFloat(data.fan_speed);
+            if (fanSpeed > 100) fanSpeed = 100;
+            document.getElementById('gaugeFan').style.setProperty('--percent', fanSpeed + '%');
+            document.getElementById('fanValue').innerText = fanSpeed + " %";
+          }
+          fetchCoolingInfo();
+          setInterval(fetchCoolingInfo, 1000);
         }
       </script>
     </body>
