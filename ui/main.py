@@ -1,12 +1,13 @@
-from flask import Flask, render_template_string, redirect, url_for
+from flask import Flask, render_template_string, redirect, url_for, request
 import paramiko
+from decouple import config
 
 app = Flask(__name__)
 
 # SSH connection settings (adjust these to your environment)
-SSH_HOST = '192.168.176.137'
-SSH_PORT = 22
-SSH_USER = 'mkhl'
+SSH_HOST = config('RASPI_IP')
+SSH_PORT = config('RASPI_PORT')
+SSH_USER = config('RASPI_USER')
 
 # Global variables for the interactive (manual control) session.
 global_ssh_client = None
@@ -21,7 +22,10 @@ def start_wsd_control():
     global_ssh_channel = global_ssh_client.invoke_shell()
     print("SSH channel created.")
     # Start the interactive control script on the Pi.
-    global_ssh_channel.send('python3 /home/mkhl/Desktop/wsd_control.py\n')
+    global_ssh_channel.send('python /home/raspi/Desktop/sunny-robot-arm/src/wsd_control.py\n')
+    if global_ssh_channel.recv_ready():
+      output = global_ssh_channel.recv(1024).decode()
+      print("Channel output:", output)
     print("Interactive wsd_control.py started.")
 
 def run_non_interactive_command(cmd):
@@ -112,7 +116,7 @@ def index():
 # Endpoint for "INIT MOTORS" – one-off command.
 @app.route('/init')
 def init_motors():
-    output, error = run_non_interactive_command('python3 /home/mkhl/Desktop/init_motors.py')
+    output, error = run_non_interactive_command('python /home/raspi/Desktop/sunny-robot-arm/src/init.py')
     template = '''
     <!DOCTYPE html>
     <html>
@@ -137,7 +141,7 @@ def init_motors():
 # Endpoint for "PLAY PATH" – one-off command.
 @app.route('/play')
 def play_path():
-    output, error = run_non_interactive_command('python3 /home/mkhl/Desktop/execute_path.py')
+    output, error = run_non_interactive_command('...')  # TODO:
     template = '''
     <!DOCTYPE html>
     <html>
@@ -165,6 +169,13 @@ def manual_control():
     global global_ssh_channel
     if global_ssh_channel is None:
         start_wsd_control()
+        # Wait briefly to allow the interactive script to start
+        import time
+        time.sleep(1)  # Adjust as needed
+
+        # Optionally flush any initial output
+        while global_ssh_channel.recv_ready():
+            dummy = global_ssh_channel.recv(1024)
     template = '''
     <!DOCTYPE html>
     <html lang="en">
@@ -287,49 +298,52 @@ def manual_control():
 
       <!-- Motor Control Rows -->
       <div class="motor-row">
-        <button class="arrow-button" onclick="sendCommand('motor1_left')">&larr;</button>
+        <button class="arrow-button" onclick="sendCommand('w')">&larr;</button>
         <div class="motor-info">
           <div class="motor-name">MOTOR 1</div>
         </div>
-        <button class="arrow-button" onclick="sendCommand('motor1_right')">&rarr;</button>
+        <button class="arrow-button" onclick="sendCommand('s')">&rarr;</button>
       </div>
 
       <div class="motor-row">
-        <button class="arrow-button" onclick="sendCommand('motor2_left')">&larr;</button>
+        <button class="arrow-button" onclick="sendCommand('a')">&larr;</button>
         <div class="motor-info">
           <div class="motor-name">MOTOR 2</div>
         </div>
-        <button class="arrow-button" onclick="sendCommand('motor2_right')">&rarr;</button>
+        <button class="arrow-button" onclick="sendCommand('d')">&rarr;</button>
       </div>
 
       <div class="motor-row">
-        <button class="arrow-button" onclick="sendCommand('motor3_left')">&larr;</button>
+        <button class="arrow-button" onclick="sendCommand('j')">&larr;</button>
         <div class="motor-info">
           <div class="motor-name">MOTOR 3</div>
         </div>
-        <button class="arrow-button" onclick="sendCommand('motor3_right')">&rarr;</button>
+        <button class="arrow-button" onclick="sendCommand('k')">&rarr;</button>
       </div>
 
       <!-- Step Size Control -->
       <div class="step-control">
-        <button class="small-button" onclick="sendCommand('decrease_step')">-</button>
-        <span id="step-size-text">Step Size: n</span>
-        <button class="small-button" onclick="sendCommand('increase_step')">+</button>
+        <button class="small-button" onclick="sendCommand('o')">-</button>
+        <span id="step-size-text">Step Size: 1</span>
+        <button class="small-button" onclick="sendCommand('i')">+</button>
       </div>
 
       <button class="big-button" onclick="location.href='/'">BACK</button>
 
       <script>
         function sendCommand(cmd) {
-          // Replace with your actual AJAX call if needed:
           fetch('/send_char?cmd=' + cmd)
             .then(response => response.text())
             .then(data => {
               console.log("Response:", data);
-              // Optionally update step size text if your backend returns a new value:
-              if(cmd === 'increase_step' || cmd === 'decrease_step'){
-                // You might have logic here to update the step size display.
-                document.getElementById('step-size-text').innerText = "Step Size: n";
+              // If the command is for changing the step size, try to extract the new value.
+              if(cmd === 'i' || cmd === 'o' || cmd === 'increase_step' || cmd === 'decrease_step'){
+                // Example expected output: "Step per key increased to 3"
+                // Use a regex to extract the first number found:
+                const match = data.match(/(\d+)/);
+                if (match && match[1]) {
+                  document.getElementById('step-size-text').innerText = "Step Size: " + match[1];
+                }
               }
             });
         }
@@ -346,13 +360,27 @@ def send_char():
     cmd = request.args.get('cmd')
     if global_ssh_channel:
         print("Sending command:", cmd)
-        global_ssh_channel.send(cmd + '\n')
+        # Send a newline so the interactive script sees the key press properly:
+        global_ssh_channel.send(cmd)
+
+        # (Optional) brief pause to let the script process the command:
+        import time
+        time.sleep(0.1)
+
         output = ""
+        # Read all available data from the channel
         while global_ssh_channel.recv_ready():
-            output += global_ssh_channel.recv(1024).decode()
+            chunk = global_ssh_channel.recv(1024).decode()
+            if not chunk:
+                break
+            output += chunk
+
         if output:
             print("Channel output:", output)
-        return f"Sent '{cmd}'"
+            # Return the entire output from your interactive script
+            return output
+        
+        return "No output from channel"
     else:
         print("SSH channel not active.")
         return "SSH channel not active."
