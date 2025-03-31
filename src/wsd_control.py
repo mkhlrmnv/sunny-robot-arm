@@ -18,9 +18,9 @@ def getch():
 
 def main():
     # Instantiate three Motor objects with example GPIO pin assignments.
-    motor1 = Motor(pulse_pin=13, dir_pin=26, limit_pin=23)
-    motor2 = Motor(pulse_pin=27, dir_pin=4, limit_pin=22)
-    motor3 = Motor(pulse_pin=20, dir_pin=19, limit_pin=12)
+    motor2 = Motor(pulse_pin=13, dir_pin=26, limit_pin=23, gear_ratio=5)
+    motor3 = Motor(pulse_pin=27, dir_pin=4, limit_pin=22, gear_ratio=1)
+    motor1 = Motor(pulse_pin=20, dir_pin=19, limit_pin=12, gear_ratio=5)
 
     angles_per_key = 1
     
@@ -58,7 +58,7 @@ def main():
             motor3.move_by_angle(angle=angles_per_key, speed=speed)
             print("Motor 3: stepped clockwise.")
         elif key == 'k':
-            motor3.move_by_angle(angle=angles_per_key, speed=speed)
+            motor3.move_by_angle(angle=-angles_per_key, speed=speed)
             print("Motor 3: stepped counter-clockwise.")
             
         elif key == 'p':
