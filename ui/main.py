@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 from flask import Flask, render_template_string, request, jsonify
 import subprocess
 import time
@@ -11,9 +12,13 @@ app = Flask(__name__)
 # Global variable for the interactive (manual control) session.
 global_wsd_proc = None
 
-# Add the src folder to the Python path and import the cooling module.
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
+# Add the absolute path to the 'src' directory to sys.path
+src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.append(src_path)
+
+# Now you can import the cooling module
 import cooling
+
 
 # Start the cooling controller in its own thread.
 def start_cooling_thread():
@@ -30,15 +35,20 @@ def cooling_info():
         reading = cooling.latest_reading
     except AttributeError:
         reading = {"temperature": "--", "fan_speed": "--"}
-    # print(reading)
+    print(reading)
     return jsonify(reading)
 
 def start_wsd_control():
     global global_wsd_proc
     print("Starting local wsd_control process...")
     # Build absolute path to your script in the src folder.
+    # Get the absolute path to the directory containing this script
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # Build path to the 'src/wsd_control.py' file relative to current script
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
-    script_path = os.path.join(base_dir, 'wsd_control.py')
+    script_path = os.path.join(current_dir, '..', 'src', 'wsd_control.py')
+    script_path = os.path.abspath(script_path)  # Resolve to full absolute path
     # Use unbuffered mode with -u flag.
     command = f"python3 -u {script_path}"
     
