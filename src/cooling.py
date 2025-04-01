@@ -1,14 +1,14 @@
-# from w1thermsensor import W1ThermSensor
-# from gpiozero import PWMOutputDevice
+from w1thermsensor import W1ThermSensor
+from gpiozero import PWMOutputDevice
 from time import sleep
-import random
+# import random
 
 latest_reading = {"temperature": "--", "fan_speed": "--"}
 
 class FanController:
     def __init__(self, fan_pin=18, min_temp=20.0, max_temp=45.0):
-        # self.sensor = W1ThermSensor()
-        # self.fan = PWMOutputDevice(fan_pin)
+        self.sensor = W1ThermSensor()
+        self.fan = PWMOutputDevice(fan_pin)
         self.min_temp = min_temp
         self.max_temp = max_temp
         self.latest_reading = None
@@ -28,9 +28,9 @@ class FanController:
         global latest_reading
         try:
             while True:
-                temperature = random.randint(20, 50)# self.sensor.get_temperature()
+                temperature = self.sensor.get_temperature()
                 fan_speed = self.map_temp_to_speed(temperature)
-                # self.fan.value = fan_speed
+                self.fan.value = fan_speed
                 latest_reading = {
                     "temperature": round(temperature, 2),
                     "fan_speed": round(fan_speed * 100, 0)
@@ -46,7 +46,7 @@ class FanController:
     def shutdown(self):
         """Gracefully stop the fan."""
         self.fan.value = 0.0
-        # self.fan.close()
+        self.fan.close()
         print("Fan stopped.")
 
 if __name__ == "__main__":
