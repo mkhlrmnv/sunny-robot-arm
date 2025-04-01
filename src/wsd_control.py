@@ -1,4 +1,4 @@
-# from motor import Motor
+from motor import Motor
 import time
 import sys
 import termios
