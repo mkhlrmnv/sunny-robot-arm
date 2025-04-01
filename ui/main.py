@@ -18,7 +18,7 @@ import cooling
 # Start the cooling controller in its own thread.
 def start_cooling_thread():
     controller = cooling.FanController(fan_pin=18, min_temp=20, max_temp=45)
-    controller.run(verbal=False, interval=1)
+    controller.run(verbal=False, interval=0.1)
 
 cooling_thread = threading.Thread(target=start_cooling_thread, daemon=True)
 cooling_thread.start()
@@ -30,7 +30,7 @@ def cooling_info():
         reading = cooling.latest_reading
     except AttributeError:
         reading = {"temperature": "--", "fan_speed": "--"}
-    print(reading)
+    # print(reading)
     return jsonify(reading)
 
 def start_wsd_control():
@@ -580,6 +580,26 @@ def manual_control():
           }
           fetchCoolingInfo();
           setInterval(fetchCoolingInfo, 1000);
+        }
+      </script>
+
+      <script>
+        function sendCommand(cmd) {
+
+          fetch('/send_char?cmd=' + cmd)
+            .then(response => response.text())
+            .then(data => {
+              console.log("Response:", data);
+              // If the command is for changing the step size, try to extract the new value.
+              if(cmd === 'i' || cmd === 'o' || cmd === 'increase_step' || cmd === 'decrease_step'){
+                // Example expected output: "Step per key increased to 3"
+                // Use a regex to extract the first number found:
+                const match = data.match(/(\d+)/);
+                if (match && match[1]) {
+                  document.getElementById('step-size-text').innerText = "Step Size: " + match[1];
+                }
+              }
+            });
         }
       </script>
     </body>
