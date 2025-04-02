@@ -2,9 +2,9 @@ from motor import Motor
 
 def main():
     # Instantiate three motors with example GPIO pin assignments.
-    motor1 = Motor(pulse_pin=17, dir_pin=27)
-    motor2 = Motor(pulse_pin=22, dir_pin=23)
-    motor3 = Motor(pulse_pin=24, dir_pin=25)
+    motor2 = Motor(pulse_pin=13, dir_pin=26, limit_pin=23, gear_ratio=5)
+    motor3 = Motor(pulse_pin=27, dir_pin=4, limit_pin=22, gear_ratio=1)
+    motor1 = Motor(pulse_pin=20, dir_pin=19, limit_pin=12, gear_ratio=5)
     
     motors = {1: motor1, 2: motor2, 3: motor3}
     
