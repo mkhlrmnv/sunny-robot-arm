@@ -4,7 +4,7 @@ from gpiozero import Button
 from signal import pause
 
 class Motor:
-    def __init__(self, pulse_pin, dir_pin, limit_pin, step_per_rev=1600, gear_ratio=5, min_delay=1e-5, max_delay=1):
+    def __init__(self, pulse_pin, dir_pin, limit_pin, step_per_rev=1600, gear_ratio=5, min_delay=1e-4, max_delay=1e-3):
         """
         Initialize the stepper motor with the given GPIO pins.
 
@@ -52,8 +52,10 @@ class Motor:
         self.direction.value = 1 if direction == 1 else 0
         delay = self.calc_delay(speed)
 
+        # print(delay)
+
         self.pulse.on()
-        time.sleep(1e-5)
+        time.sleep(delay)
         self.pulse.off()
         time.sleep(delay)
         self.steps += direction
@@ -90,5 +92,5 @@ class Motor:
 
 
 if __name__ == "__main__":
-    stepper = Motor(pulse_pin=13, dir_pin=27)
-    stepper.move_by_angle(180, speed=1)
+    motor = Motor(pulse_pin=20, dir_pin=19, limit_pin=12, gear_ratio=5)
+    motor.move_by_angle(180, speed=1)
