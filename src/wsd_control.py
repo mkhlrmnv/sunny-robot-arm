@@ -39,7 +39,7 @@ def main():
     print("  'q' quits the program")
     
     # Set a fixed speed (1 = maximum speed; adjust as needed)
-    speed = 1
+    speed = 0.5
     while True:
         key = getch()
         if key == 'q':
@@ -73,11 +73,11 @@ def main():
             print(f"Step per key: {angles_per_key}")
 
         elif key == 'i':
-            angles_per_key += 1
+            angles_per_key += 10
             print(f"Step per key increased to {angles_per_key}")
 
         elif key == 'o':
-            angles_per_key = max(1, angles_per_key - 1)  # Prevent it going below 1
+            angles_per_key = max(1, angles_per_key - 10)  # Prevent it going below 1
             print(f"Step per key decreased to {angles_per_key}")
 
         else:
