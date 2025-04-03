@@ -538,25 +538,55 @@ def manual_control():
         </div>
         <h1>MANUAL CONTROL</h1>
         <div class="motor-row">
-          <button class="arrow-button" onclick="sendCommand('w')">&larr;</button>
+          <button class="arrow-button" 
+                  onmousedown="startCommandRepeat('w')" 
+                  onmouseup="stopCommandRepeat()" 
+                  onmouseleave="stopCommandRepeat()"
+                  ontouchstart="startCommandRepeat('w')" 
+                  ontouchend="stopCommandRepeat()">&larr;</button>
           <div class="motor-info">
             <div class="motor-name">MOTOR 1</div>
           </div>
-          <button class="arrow-button" onclick="sendCommand('s')">&rarr;</button>
+          <button class="arrow-button" 
+                  onmousedown="startCommandRepeat('s')" 
+                  onmouseup="stopCommandRepeat()" 
+                  onmouseleave="stopCommandRepeat()"
+                  ontouchstart="startCommandRepeat('s')" 
+                  ontouchend="stopCommandRepeat()">&rarr;</button>
         </div>
         <div class="motor-row">
-          <button class="arrow-button" onclick="sendCommand('a')">&larr;</button>
+          <button class="arrow-button" 
+                  onmousedown="startCommandRepeat('a')" 
+                  onmouseup="stopCommandRepeat()" 
+                  onmouseleave="stopCommandRepeat()"
+                  ontouchstart="startCommandRepeat('a')" 
+                  ontouchend="stopCommandRepeat()">&larr;</button>
           <div class="motor-info">
             <div class="motor-name">MOTOR 2</div>
           </div>
-          <button class="arrow-button" onclick="sendCommand('d')">&rarr;</button>
+          <button class="arrow-button" 
+                  onmousedown="startCommandRepeat('d')" 
+                  onmouseup="stopCommandRepeat()" 
+                  onmouseleave="stopCommandRepeat()"
+                  ontouchstart="startCommandRepeat('d')" 
+                  ontouchend="stopCommandRepeat()">&rarr;</button>
         </div>
         <div class="motor-row">
-          <button class="arrow-button" onclick="sendCommand('j')">&larr;</button>
+          <button class="arrow-button" 
+                  onmousedown="startCommandRepeat('j')" 
+                  onmouseup="stopCommandRepeat()" 
+                  onmouseleave="stopCommandRepeat()"
+                  ontouchstart="startCommandRepeat('j')" 
+                  ontouchend="stopCommandRepeat()">&larr;</button>
           <div class="motor-info">
             <div class="motor-name">MOTOR 3</div>
           </div>
-          <button class="arrow-button" onclick="sendCommand('k')">&rarr;</button>
+          <button class="arrow-button" 
+                  onmousedown="startCommandRepeat('k')" 
+                  onmouseup="stopCommandRepeat()" 
+                  onmouseleave="stopCommandRepeat()"
+                  ontouchstart="startCommandRepeat('k')" 
+                  ontouchend="stopCommandRepeat()">&rarr;</button>
         </div>
         <div class="step-control">
           <button class="small-button" onclick="sendCommand('o')">-</button>
@@ -592,10 +622,23 @@ def manual_control():
           setInterval(fetchCoolingInfo, 1000);
         }
       </script>
-
+      
+      <!-- New script to enable press and hold functionality -->
+      <script>
+        var commandInterval;
+        function startCommandRepeat(cmd) {
+          // Immediately send the command on press
+          sendCommand(cmd);
+          // Set an interval to repeatedly send the command (adjust interval as needed)
+          commandInterval = setInterval(() => sendCommand(cmd), 100);
+        }
+        function stopCommandRepeat() {
+          clearInterval(commandInterval);
+        }
+      </script>
+      
       <script>
         function sendCommand(cmd) {
-
           fetch('/send_char?cmd=' + cmd)
             .then(response => response.text())
             .then(data => {
@@ -604,7 +647,7 @@ def manual_control():
               if(cmd === 'i' || cmd === 'o' || cmd === 'increase_step' || cmd === 'decrease_step'){
                 // Example expected output: "Step per key increased to 3"
                 // Use a regex to extract the first number found:
-                const match = data.match(/(\d+)/);
+                const match = data.match(/(\\d+)/);
                 if (match && match[1]) {
                   document.getElementById('step-size-text').innerText = "Step Size: " + match[1];
                 }
@@ -616,7 +659,6 @@ def manual_control():
     </html>
     '''
     return render_template_string(template)
-
 
 @app.route('/send_char')
 def send_char():
