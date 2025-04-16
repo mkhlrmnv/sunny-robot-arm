@@ -23,7 +23,7 @@ class Motor:
         
         self.pulse = DigitalOutputDevice(pulse_pin)
         self.direction = DigitalOutputDevice(dir_pin)
-        self.limit_switch = Button(limit_pin, pull_up=True)
+        self.limit_switch = Button(limit_pin, pull_up=True, bounce_time=0.02)
         self.steps = 0
         self.angle = 0
         self.step_per_rev = step_per_rev
@@ -31,18 +31,26 @@ class Motor:
         self.max_delay = max_delay
         self.gear_ratio = gear_ratio
 
+    def is_limit_pressed(self, samples=5, delay=0.01):
+        readings = []
+        for _ in range(samples):
+            readings.append(self.limit_switch.is_pressed)
+            time.sleep(delay)
+        # Return True only if all samples agree
+        return all(readings)
+
     def calc_delay(self, speed_percent):
         if not (0 <= speed_percent <= 1):
             raise ValueError("Speed percent must be between 0 and 1.")
         return self.min_delay + (self.max_delay - self.min_delay) * (1 - speed_percent)
     
     def init_motor(self, direction=1):
-        while not self.limit_switch.is_pressed:
-            self.step(direction=direction, speed=0.5)
+        while not self.is_limit_pressed():
+            self.step(direction=direction, speed=1)
         self.reset_position()
 
     def step(self, direction=1, speed=0.5):
-        if self.limit_switch.is_pressed:
+        if self.is_limit_pressed():
             print("Limit switch is pressed. Cannot move motor.")
             return
 
