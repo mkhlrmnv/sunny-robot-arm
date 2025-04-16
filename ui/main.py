@@ -19,12 +19,14 @@ sys.path.append(src_path)
 # Now you can import the cooling module
 import cooling
 
-
 # Start the cooling controller in its own thread.
 def start_cooling_thread():
+    print("starting cooling")
     controller = cooling.FanController(fan_pin=18, min_temp=20, max_temp=45)
     controller.run(verbal=False, interval=0.1)
+    print("started cooling")
 
+print("on own thread")
 cooling_thread = threading.Thread(target=start_cooling_thread, daemon=True)
 cooling_thread.start()
 
@@ -630,7 +632,7 @@ def manual_control():
           // Immediately send the command on press
           sendCommand(cmd);
           // Set an interval to repeatedly send the command (adjust interval as needed)
-          commandInterval = setInterval(() => sendCommand(cmd), 100);
+          commandInterval = setInterval(() => sendCommand(cmd), 250);
         }
         function stopCommandRepeat() {
           clearInterval(commandInterval);
