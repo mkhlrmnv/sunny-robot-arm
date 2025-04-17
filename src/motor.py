@@ -23,7 +23,13 @@ class Motor:
         
         self.pulse = DigitalOutputDevice(pulse_pin)
         self.direction = DigitalOutputDevice(dir_pin)
-        self.limit_switch = Button(limit_pin, pull_up=True, bounce_time=0.02)
+
+        self.limit_switch = Button(limit_pin, pull_up=True, bounce_time=0.0001)
+        self.limit_switch.when_pressed = lambda: (print("Button held"), 
+                                                setattr(self, 'stop', True))
+        self.limit_switch.when_released = lambda: (print("released"), 
+                                                    setattr(self, 'stop', False))
+
         self.steps = 0
         self.angle = 0
         self.step_per_rev = step_per_rev
@@ -31,13 +37,7 @@ class Motor:
         self.max_delay = max_delay
         self.gear_ratio = gear_ratio
 
-    def is_limit_pressed(self, samples=5, delay=0.01):
-        readings = []
-        for _ in range(samples):
-            readings.append(self.limit_switch.is_pressed)
-            time.sleep(delay)
-        # Return True only if all samples agree
-        return all(readings)
+        self.stop = False
 
     def calc_delay(self, speed_percent):
         if not (0 <= speed_percent <= 1):
@@ -45,12 +45,14 @@ class Motor:
         return self.min_delay + (self.max_delay - self.min_delay) * (1 - speed_percent)
     
     def init_motor(self, direction=1):
-        while not self.is_limit_pressed():
-            self.step(direction=direction, speed=1)
+        while not self.stop:
+            self.step(direction=direction, speed=0.5)
+        self.move_by_angle(90 * (direction * -1), speed=0.5, ignore_limit=True)
         self.reset_position()
+        print(f"Motor initialized, stop state {self.stop}")
 
-    def step(self, direction=1, speed=0.5):
-        if self.is_limit_pressed():
+    def step(self, direction=1, speed=0.5, ignore_limit=False):
+        if self.stop and not ignore_limit:
             print("Limit switch is pressed. Cannot move motor.")
             return
 
@@ -70,16 +72,16 @@ class Motor:
         self.angle += direction * (360 / (self.step_per_rev * self.gear_ratio))
         self.angle = round(self.angle, 3)
 
-    def move_by_angle(self, angle, speed=0.5):
-        if abs(angle) > 360:
-            raise ValueError("Angle must be between -360 and 360 degrees.")
+    def move_by_angle(self, angle, speed=0.5, ignore_limit=False):
+        # if abs(angle) > 360:
+        #    raise ValueError("Angle must be between -360 and 360 degrees.")
 
         angle_per_step = 360 / (self.step_per_rev * self.gear_ratio)
         steps = int(angle / angle_per_step)
         direction = 1 if angle > 0 else -1
 
         for _ in range(abs(steps)):
-            self.step(direction=direction, speed=speed)
+            self.step(direction=direction, speed=speed, ignore_limit=ignore_limit)
 
     def move_to_angle(self, target_angle, speed=0.5):
         if abs(target_angle) > 360:
@@ -98,7 +100,16 @@ class Motor:
         self.steps = 0
         self.angle = 0
 
+    def button_held(self):
+        print("Button held")
+        self.stop = True
+
+    def button_release(self):
+        print("released")
+        self.stop = False
+
 
 if __name__ == "__main__":
-    motor = Motor(pulse_pin=20, dir_pin=19, limit_pin=12, gear_ratio=5)
-    motor.move_by_angle(180, speed=1)
+    motor = Motor(pulse_pin=27, dir_pin=4, limit_pin=23, gear_ratio=1)
+    # motor.move_by_angle(-720*6, speed=0.5)
+    motor.init_motor(direction=1)
