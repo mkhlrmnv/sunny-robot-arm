@@ -1,4 +1,4 @@
-from motor import Motor
+from src.linear_rail import LinearRail
 import time
 import sys
 import termios
@@ -23,9 +23,9 @@ def getch():
 
 def main():
     # Instantiate three Motor objects with example GPIO pin assignments.
-    motor2 = Motor(pulse_pin=13, dir_pin=26, limit_pin=22, gear_ratio=5)
-    motor3 = Motor(pulse_pin=27, dir_pin=4, limit_pin=23, gear_ratio=1)
-    motor1 = Motor(pulse_pin=20, dir_pin=19, limit_pin=12, gear_ratio=5)
+    motor2 = LinearRail(pulse_pin=13, dir_pin=26, limit_pin=22, gear_ratio=5)
+    motor3 = LinearRail(pulse_pin=27, dir_pin=4, limit_pin=23, gear_ratio=1)
+    motor1 = LinearRail(pulse_pin=20, dir_pin=19, limit_pin=12, gear_ratio=5)
 
     angles_per_key = 1
     
@@ -84,9 +84,9 @@ def main():
             print("Unrecognized key.")
     
     print("Exiting... Cleaning up.")
-    motor1.cleanup()
-    motor2.cleanup()
-    motor3.cleanup()
+    # motor1.cleanup()
+    # motor2.cleanup()
+    # motor3.cleanup()
 
 if __name__ == "__main__":
     main()
