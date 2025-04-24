@@ -3,7 +3,7 @@ import time
 from gpiozero import Button
 from signal import pause
 
-class Motor:
+class LinearRail:
     def __init__(self, pulse_pin, dir_pin, limit_pin, step_per_rev=1600, gear_ratio=5, min_delay=1e-4, max_delay=1e-3):
         """
         Initialize the stepper motor with the given GPIO pins.
@@ -110,6 +110,6 @@ class Motor:
 
 
 if __name__ == "__main__":
-    motor = Motor(pulse_pin=27, dir_pin=4, limit_pin=23, gear_ratio=1)
+    motor = LinearRail(pulse_pin=27, dir_pin=4, limit_pin=23, gear_ratio=1)
     # motor.move_by_angle(-720*6, speed=0.5)
     motor.init_motor(direction=1)
