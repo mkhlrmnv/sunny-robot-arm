@@ -4,7 +4,7 @@ from gpiozero import Button
 from signal import pause
 
 class SpinningJoints:
-    def __init__(self, pulse_pin, dir_pin, limit_pin, step_per_rev=1600, gear_ratio=5, min_delay=1e-4, max_delay=1e-3):
+    def __init__(self, pulse_pin, dir_pin, limit_pin, step_per_rev=1600, gear_ratio=5, min_delay=1e-4, max_delay=1e-3, angle_limit=360):
         """
         Initialize the stepper motor with the given GPIO pins.
 
@@ -30,6 +30,7 @@ class SpinningJoints:
         self.limit_switch.when_released = lambda: (print("released"), 
                                                     setattr(self, 'init_pos', False))
 
+        self.angle_limit = angle_limit
         self.steps = 0
         self.angle = 0
         self.step_per_rev = step_per_rev
@@ -51,7 +52,10 @@ class SpinningJoints:
         print(f"Motor initialized, stop state {self.stop}")
 
     def step(self, direction=1, speed=0.5):
-
+        
+        if abs(direction * (360 / (self.step_per_rev * self.gear_ratio)) > self.angle_limit):
+            raise ValueError("Angle exceeded the limit.")
+        
         if direction not in [-1, 1]:
             raise ValueError("Direction must be 1 (forward) or -1 (backward).")
 
@@ -67,7 +71,7 @@ class SpinningJoints:
         self.angle = round(self.angle, 3)
 
     def move_by_angle(self, angle, speed=0.5):
-        if abs(angle) > 360:
+        if abs(angle) > self.angle_limit:
            raise ValueError("Angle must be between -360 and 360 degrees.")
 
         angle_per_step = 360 / (self.step_per_rev * self.gear_ratio)
@@ -78,7 +82,7 @@ class SpinningJoints:
             self.step(direction=direction, speed=speed)
 
     def move_to_angle(self, target_angle, speed=0.5):
-        if abs(target_angle) > 360:
+        if abs(target_angle) > self.angle_limit:
             raise ValueError("Target angle must be between -360 and 360 degrees.")
 
         angle_diff = target_angle - self.angle
