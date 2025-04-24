@@ -1,4 +1,5 @@
 from src.linear_rail import LinearRail
+from src.spinning_joints import SpinningJoints
 import time
 import sys
 import termios
@@ -23,9 +24,9 @@ def getch():
 
 def main():
     # Instantiate three Motor objects with example GPIO pin assignments.
-    motor2 = LinearRail(pulse_pin=13, dir_pin=26, limit_pin=22, gear_ratio=5)
-    motor3 = LinearRail(pulse_pin=27, dir_pin=4, limit_pin=23, gear_ratio=1)
-    motor1 = LinearRail(pulse_pin=20, dir_pin=19, limit_pin=12, gear_ratio=5)
+    motor1 = SpinningJoints(pulse_pin=20, dir_pin=19, limit_pin=12, gear_ratio=5, angle_limit=360)
+    motor2 = SpinningJoints(pulse_pin=13, dir_pin=26, limit_pin=22, gear_ratio=5, angle_limit=360) 
+    motor3 = LinearRail(pulse_pin=27, dir_pin=4, limit_pin=23, gear_ratio=1)   # <- linear rail
 
     angles_per_key = 1
     
