@@ -1,7 +1,9 @@
 # src/__init__.py
 
 # Explicitly expose modules for easier imports
-from .motor import Motor
+from .linear_rail import LinearRail
+from .spinning_joints import SpinningJoints
+from .cooling import FanController
 from .arm import Arm
 from .vector import Vector, Joints
 
