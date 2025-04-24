@@ -1,10 +1,10 @@
-from motor import Motor
+from src.linear_rail import LinearRail
 
 def main():
     # Instantiate three motors with example GPIO pin assignments.
-    motor2 = Motor(pulse_pin=13, dir_pin=26, limit_pin=23, gear_ratio=5)
-    motor3 = Motor(pulse_pin=27, dir_pin=4, limit_pin=22, gear_ratio=1)
-    motor1 = Motor(pulse_pin=20, dir_pin=19, limit_pin=12, gear_ratio=5)
+    motor2 = LinearRail(pulse_pin=13, dir_pin=26, limit_pin=23, gear_ratio=5)
+    motor3 = LinearRail(pulse_pin=27, dir_pin=4, limit_pin=22, gear_ratio=1)
+    motor1 = LinearRail(pulse_pin=20, dir_pin=19, limit_pin=12, gear_ratio=5)
     
     motors = {1: motor1, 2: motor2, 3: motor3}
     
@@ -86,8 +86,6 @@ def main():
                 print("An error occurred:", e)
     
     print("\nCleaning up motors...")
-    for m in motors.values():
-        m.cleanup()
     print("Exiting program.")
 
 if __name__ == "__main__":
