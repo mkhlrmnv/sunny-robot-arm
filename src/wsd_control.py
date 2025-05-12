@@ -1,5 +1,5 @@
-from src.linear_rail import LinearRail
-from src.spinning_joints import SpinningJoints
+from linear_rail import LinearRail
+from spinning_joints import SpinningJoints
 import time
 import sys
 import termios
