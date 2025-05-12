@@ -4,6 +4,9 @@ from vector import Vector, Joints
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
+from linear_rail import LinearRail
+from spinning_joints import SpinningJoints
+
 class Arm:
     def __init__(self, base_pos: Vector, tip_pos: Vector, arm1_length=80, arm2_length=50):
         """
@@ -155,11 +158,23 @@ class Arm:
 
 # Example usage
 if __name__ == "__main__":
-    base_pos = Vector(0, 0, 0)
-    tip_pos = Vector(0, 80, 50)
-    arm = Arm(base_pos, tip_pos)
+    # base_pos = Vector(0, 0, 0)
+    # tip_pos = Vector(0, 80, 50)
+    # arm = Arm(base_pos, tip_pos)
+# 
+    # target_pos = Vector(63.64, 63.64, 48.9898)
+    # angles = arm.calc_join_angles(target_pos)
+    # arm.set_joint_angles(angles)
+    # arm.plot()
 
-    target_pos = Vector(63.64, 63.64, 48.9898)
-    angles = arm.calc_join_angles(target_pos)
-    arm.set_joint_angles(angles)
-    arm.plot()
+    # Init motors
+    motor_paaty = SpinningJoints(pulse_pin=20, dir_pin=19, limit_pin=23, gear_ratio=1)
+    motor_paaty.init_motor(direction=-1)
+
+    motor_pontto = SpinningJoints(pulse_pin=13, dir_pin=26, limit_pin=22, gear_ratio=1)
+    motor_pontto.init_motor(direction=1)
+    
+    motor_rail = LinearRail(pulse_pin=27, dir_pin=4, limit_pin=24, gear_ratio=1)
+    motor_rail.init_motor(direction=1)
+
+    
