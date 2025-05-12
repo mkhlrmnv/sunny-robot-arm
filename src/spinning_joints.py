@@ -24,10 +24,10 @@ class SpinningJoints:
         self.pulse = DigitalOutputDevice(pulse_pin)
         self.direction = DigitalOutputDevice(dir_pin)
 
-        self.limit_switch = Button(limit_pin, pull_up=True, bounce_time=0.0001)
-        self.limit_switch.when_pressed = lambda: (print("Button held"), 
+        self.limit_switch = Button(limit_pin, pull_up=True, bounce_time=0.00001)
+        self.limit_switch.when_pressed = lambda: (print("Metal detected"), 
                                                 setattr(self, 'init_pos', True))
-        self.limit_switch.when_released = lambda: (print("released"), 
+        self.limit_switch.when_released = lambda: (print("No metal anymore"), 
                                                     setattr(self, 'init_pos', False))
 
         self.angle_limit = angle_limit
@@ -49,7 +49,7 @@ class SpinningJoints:
         while not self.init_pos:
             self.step(direction=direction, speed=0.5)
         self.reset_position()
-        print(f"Motor initialized, stop state {self.stop}")
+        print(f"Motor initialized")
 
     def step(self, direction=1, speed=0.5):
         
@@ -108,6 +108,8 @@ class SpinningJoints:
 
 
 if __name__ == "__main__":
-    motor = SpinningJoints(pulse_pin=27, dir_pin=4, limit_pin=23, gear_ratio=1)
+    motor_paaty = SpinningJoints(pulse_pin=20, dir_pin=19, limit_pin=23, gear_ratio=1)
+    motor_pontto = SpinningJoints(pulse_pin=13, dir_pin=26, limit_pin=22, gear_ratio=1)
     # motor.move_by_angle(-720*6, speed=0.5)
-    motor.init_motor(direction=1)
+    motor_paaty.init_motor(direction=-1)
+    motor_pontto.init_motor(direction=1)
