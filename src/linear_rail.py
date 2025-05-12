@@ -110,6 +110,6 @@ class LinearRail:
 
 
 if __name__ == "__main__":
-    motor = LinearRail(pulse_pin=27, dir_pin=4, limit_pin=23, gear_ratio=1)
+    motor = LinearRail(pulse_pin=27, dir_pin=4, limit_pin=24, gear_ratio=1)
     # motor.move_by_angle(-720*6, speed=0.5)
-    motor.init_motor(direction=1)
+    motor.init_motor(direction=-1)
