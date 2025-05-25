@@ -1,5 +1,6 @@
 documents/
 sunny/
+raspi_backup/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
