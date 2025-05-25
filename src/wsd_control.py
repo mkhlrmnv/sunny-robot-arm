@@ -24,9 +24,9 @@ def getch():
 
 def main():
     # Instantiate three Motor objects with example GPIO pin assignments.
-    motor1 = SpinningJoints(pulse_pin=20, dir_pin=19, limit_pin=12, gear_ratio=5, angle_limit=360)
-    motor2 = SpinningJoints(pulse_pin=13, dir_pin=26, limit_pin=22, gear_ratio=5, angle_limit=360) 
-    motor3 = LinearRail(pulse_pin=27, dir_pin=4, limit_pin=23, gear_ratio=1)   # <- linear rail
+    motor1 = SpinningJoints(pulse_pin=20, dir_pin=19, limit_pin=12, gear_ratio=5, angle_limit=360) # <- pidemmällä olevat
+    motor2 = SpinningJoints(pulse_pin=13, dir_pin=26, limit_pin=22, gear_ratio=5*32/10, angle_limit=360) 
+    motor3 = LinearRail(pulse_pin=27, dir_pin=4, limit_pin=23, gear_ratio=1, pitch=10)   # <- linear rail
 
     angles_per_key = 1
     
@@ -61,10 +61,10 @@ def main():
             print("Motor 2: stepped counter-clockwise.")
 
         elif key == 'j':
-            motor3.move_by_angle(angle=angles_per_key, speed=speed)
+            motor3.move_by_distance(angle=angles_per_key, speed=speed)
             print("Motor 3: stepped clockwise.")
         elif key == 'k':
-            motor3.move_by_angle(angle=-angles_per_key, speed=speed)
+            motor3.move_by_distance(angle=-angles_per_key, speed=speed)
             print("Motor 3: stepped counter-clockwise.")
             
         elif key == 'p':

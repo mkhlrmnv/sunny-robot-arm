@@ -4,7 +4,7 @@ from gpiozero import Button
 from signal import pause
 
 class LinearRail:
-    def __init__(self, pulse_pin, dir_pin, limit_pin, step_per_rev=1600, gear_ratio=5, min_delay=1e-4, max_delay=1e-3):
+    def __init__(self, pulse_pin, dir_pin, limit_pin, step_per_rev=1600, gear_ratio=5, pitch=10, min_delay=1e-4, max_delay=1e-3):
         """
         Initialize the stepper motor with the given GPIO pins.
 
@@ -32,6 +32,7 @@ class LinearRail:
 
         self.steps = 0
         self.angle = 0
+        self.pitch = pitch  # Pitch of the linear rail in mm
         self.step_per_rev = step_per_rev
         self.min_delay = min_delay
         self.max_delay = max_delay
@@ -89,6 +90,39 @@ class LinearRail:
 
         angle_diff = target_angle - self.angle
         self.move_by_angle(angle_diff, speed=speed)
+
+    def move_by_distance(self, distance, speed=0.5):
+        #TODO: TEST!
+        """
+        Move the linear rail by a specified distance in mm.
+
+        :param distance: Distance to move in mm.
+        :param speed: Speed of movement as a percentage (0 to 1).
+        """
+        if distance == 0:
+            return
+
+        steps_per_mm = self.step_per_rev / self.pitch
+        steps = int(distance * steps_per_mm)
+        direction = 1 if distance > 0 else -1
+
+        for _ in range(abs(steps)):
+            self.step(direction=direction, speed=speed)
+    
+    def move_to_distance(self, target_distance, speed=0.5):
+        #TODO: TEST!
+        """
+        Move the linear rail to a specified distance in mm.
+
+        :param target_distance: Target distance in mm.
+        :param speed: Speed of movement as a percentage (0 to 1).
+        """
+        if target_distance < 0:
+            raise ValueError("Target distance must be non-negative.")
+
+        current_distance = self.steps * (self.pitch / self.step_per_rev)
+        distance_diff = target_distance - current_distance
+        self.move_by_distance(distance_diff, speed=speed)
 
     def get_steps(self):
         return self.steps
