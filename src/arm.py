@@ -1,6 +1,6 @@
 import time
 import numpy as np
-from vector import Vector, Joints
+from helper import Vector, Joints
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 

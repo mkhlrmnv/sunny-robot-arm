@@ -5,7 +5,7 @@ from .linear_rail import LinearRail
 from .spinning_joints import SpinningJoints
 from .cooling import FanController
 from .arm import Arm
-from .vector import Vector, Joints
+from .helper import Vector, Joints, forward_kinematics, inverse_kinematics
 
 # Optional: Define package metadata
 __version__ = "1.0"

@@ -1,6 +1,6 @@
 from src.linear_rail import Motor
 # from arm import Arm
-# from vector import Vector, Joints
+from helper import Vector, Joints
 from cooling import FanController
 import threading
 
