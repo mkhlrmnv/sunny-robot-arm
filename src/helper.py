@@ -35,43 +35,45 @@ class Joints:
 
 # helper function to compute inverse kinematics
 def inverse_kinematics(x, y, z,
-                       link_rise=100,    # first 100 mm up in Z
-                       dx=57.5+107,      # total X before pitch joint
-                       dy0=830,          # total Y before pitch joint
-                       link_length=950,  # final link length
+                       T_base=[[1, 0, 0, 925.39], [0, 1, 0, -219.38], [0, 0, 1, 0], [0, 0, 0, 1]],
+                       link_rise=100,
+                       dx1=57.5,
+                       dx2=107,
+                       dy0=830,
+                       link_length=950,
                        eps=1e-6):
     """
-    Returns (theta1_deg, theta2_deg) to reach (x,y,z).
-    Raises ValueError if the point is out of reach.
+    Computes (theta1_deg, theta2_deg) to reach (x, y, z) in world coordinates,
+    using a simplified robot model with fixed base and no rail motion.
     """
-    # 1) Undo the base Z translation
-    d_z = z - link_rise
-    if abs(d_z) > link_length + eps:
-        raise ValueError(f"Target out of vertical reach: |z-100| = {abs(d_z):.3f} > 950")
+    # 1. Transform target point to local robot frame
+    T_inv = np.linalg.inv(T_base)
+    target_world = np.array([x, y, z, 1])
+    target_local = T_inv @ target_world
+    x_l, y_l, z_l = target_local[:3]
 
-    theta2 = np.arcsin(d_z / link_length)  # principal solution in [–90°, +90°]
+    # 2. Adjust for Z offset (link_rise)
+    z_eff = z_l - link_rise
+    if abs(z_eff) > link_length + eps:
+        raise ValueError(f"Target Z offset {z_eff:.2f} exceeds link length {link_length}")
 
-    # 2) Compute the “effective Y” for Pivot+end in the XY-plane:
-    #      R_proj = dy0 + link_length * cos(θ₂)
-    R_proj = dy0 + link_length * np.cos(theta2)
+    # 3. Compute theta2 from Z component
+    theta2_rad = np.arcsin(z_eff / link_length)
 
-    #    Pivot’s local bearing (in joint-2 frame) is:
-    #      γ = atan2(R_proj, dx)
-    gamma = np.arctan2(R_proj, dx)
+    # 4. Compute horizontal projection to base of pitch joint
+    R_proj = dy0 + link_length * np.cos(theta2_rad)
+    gamma = np.arctan2(R_proj, dx1 + dx2)
+    alpha = np.arctan2(y_l, x_l)
+    theta1_rad = alpha - gamma
 
-    #    World bearing of the end-point is:
-    #      α = atan2(y, x).
-    alpha = np.arctan2(y, x)
+    # 5. Convert to degrees
+    theta1_deg = (np.degrees(theta1_rad) + 360) % 360
+    theta2_deg = np.degrees(theta2_rad)
 
-    #    So θ₁ = α - γ:
-    theta1 = alpha - gamma
-
-    # 3) Convert both to degrees, and wrap θ₁ into [0,360) if you prefer:
-    theta1_deg = (np.degrees(theta1) + 360) % 360
-    theta2_deg = np.degrees(theta2)
     return theta1_deg, theta2_deg
 
-def forward_kinematics(theta1_deg, theta2_deg,
+def forward_kinematics(theta1_deg, theta2_deg, delta_r, 
+                       theta_r=137.9,      # angle of the rails
                        link_rise=100,      # first Z offset (mm)
                        dx1=57.5,           # first X offset (mm)
                        dx2=107,            # second X offset (mm)
@@ -84,40 +86,54 @@ def forward_kinematics(theta1_deg, theta2_deg,
     Returns a length-3 numpy array [x, y, z] in mm.
     """
 
-    # 1) Build T0_1 = translate +link_rise along Z
+    T_base = np.eye(4)
+    T_base[0, 3] = 925.39
+    T_base[1, 3] = -219.38
+
     T0_1 = np.eye(4)
-    T0_1[2, 3] = link_rise
+    T0_1[:3, :3] = R.from_euler('z', theta_r, degrees=True).as_matrix()
 
-    # 2) Build T1_2 = rotate about Z by theta1
     T1_2 = np.eye(4)
-    T1_2[:3, :3] = R.from_euler('z', theta1_deg, degrees=True).as_matrix()
+    T1_2[1, 3] = delta_r 
 
-    # 3) Build T2_3 = translate +dx1 along X
+    # 0 -> 1
     T2_3 = np.eye(4)
-    T2_3[0, 3] = dx1
+    T2_3[2, 3] = link_rise
 
-    # 4) Build T3_4 = translate +dx2 along X, +dy0 along Y
+    # 1 -> 2
     T3_4 = np.eye(4)
-    T3_4[0, 3] = dx2
-    T3_4[1, 3] = dy0
+    T3_4[:3, :3] = R.from_euler('z', theta1_deg-theta_r, degrees=True).as_matrix()
 
-    # 5) Build T4_5 = rotate about X by theta2
+    # 2 -> 3
     T4_5 = np.eye(4)
-    T4_5[:3, :3] = R.from_euler('x', theta2_deg, degrees=True).as_matrix()
+    T4_5[0, 3] = dx1
 
-    # 6) Build T5_6 = translate +link_length along Y
+    # 3 -> 4
     T5_6 = np.eye(4)
-    T5_6[1, 3] = link_length
+    T5_6[1, 3] = dy0
 
-    # 7) Accumulate all transforms
-    transforms = [T0_1, T1_2, T2_3, T3_4, T4_5, T5_6]
+    T6_7 = np.eye(4)
+    T6_7[0, 3] = dx2
+
+    T7_8 = np.eye(4)
+    T7_8[:3, :3] = R.from_euler('x', theta2_deg, degrees=True).as_matrix()
+
+    T8_9 = np.eye(4)
+    T8_9[1, 3] = link_length
+
+    transforms = [T_base, T0_1, T1_2, T2_3, T3_4, T4_5, T5_6, T6_7, T7_8, T8_9]
+
+    # 3) Accumulate and collect points
     T_cum = np.eye(4)
+    points = [T_cum @ np.array([0,0,0,1])]
     for T in transforms:
         T_cum = T_cum @ T
+        points.append(T_cum @ np.array([0,0,0,1]))
 
-    # 8) Apply to the origin [0,0,0,1]^T
-    end_homog = T_cum @ np.array([0.0, 0.0, 0.0, 1.0])
-    return end_homog[:3]   # only x, y, z
+    # strip off the homogeneous 1’s
+    points = np.array(points)[:,:3]
+
+    return points[1:]
 
 # Example usage:
 if __name__ == "__main__":
