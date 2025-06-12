@@ -66,7 +66,7 @@ def inverse_kinematics(x, y, z,
     if abs(z_eff) > link_length + eps:
         raise ValueError(f"Z offset {z_eff:.2f} exceeds vertical reach {link_length}")
 
-    theta2_rad = np.arcsin(z_eff / link_length)
+    theta2_rad = np.arcsin(z_eff / link_length)  # <- this caps at 90 deg TODO: FIX IT to cap at 180 or 360
     arm_reach_y = dy0 + link_length * np.cos(theta2_rad)   # horizontal reach
     arm_reach_x = dx1 + dx2
 
@@ -109,22 +109,25 @@ def inverse_kinematics(x, y, z,
     R_proj = dy0 + link_length * np.cos(theta2_rad)
     gamma = np.arctan2(R_proj, dx1 + dx2)
 
-    theta1_rad = alpha - gamma
+    theta1_rad = alpha - gamma   # <- breaks around 58 / 59 deg TODO: FIX IT
 
     # Step 6: Convert to degrees
     theta1_deg = (np.degrees(theta1_rad) + 360 + theta_r) % 360
     theta2_deg = np.degrees(theta2_rad)
 
     if verbal:
-        print("Inverse Kinematics Debug Info:")
+        print("\nInverse Kinematics Debug Info:")
         print("\tx, y, z:", x, y, z)
         print("\tarm_reach", arm_reach)
         print("\tcx, cy", cx, cy)
         print("\tarm reach", arm_reach)
         print("\ty_candidades", y_candidates)
         print("\ty_candidates after filtering", y_candidates[0])
+        print("\tproposed delta_r ", wrist_y)
+        print("\tproposed theta_1 ", theta1_deg)
+        print("\tproposed theta_2 ", theta2_deg)
 
-    return theta1_deg, theta2_deg, delta_r
+    return theta1_deg, theta2_deg, wrist_y
 
 def forward_kinematics(theta1_deg, theta2_deg, delta_r, 
                        theta_r=137.9,      # angle of the rails
