@@ -102,7 +102,7 @@ ax.add_collection3d(box)
 
 
 def inverse_kinematics(x, y, z,
-                    T_base=np.eye(4),
+                    T_base=[[1, 0, 0, 925.39], [0, 1, 0, -219.38], [0, 0, 1, 0], [0, 0, 0, 1]],
                     theta_r=137.9,     # rail orientation angle (deg)
                     link_rise=100,
                     rail_limits=(0, 2000),
@@ -110,8 +110,12 @@ def inverse_kinematics(x, y, z,
                     dx2=107,
                     dy0=830,
                     link_length=950,
-                    eps=1e-6):
-    print("x, y, z:", x, y, z)
+                    eps=1e-6, 
+                    verbal=False):
+    """
+    Compute the inverse kinematics for a robotic arm to reach a point (x, y, z).
+    Returns the joint angles (theta1, theta2) in degrees and the delta_r for the rail.
+    """
 
     # Step 1: Bring world point into robot base frame
     T_inv = np.linalg.inv(T_base)
@@ -134,17 +138,13 @@ def inverse_kinematics(x, y, z,
     arm_reach_x = dx1 + dx2
 
     arm_reach = np.sqrt(arm_reach_x**2 + arm_reach_y**2)
-    print("arm_reach", arm_reach)
-
+    
     # Step 4: Arm base must lie on a circle of radius `arm_reach` centered at (x_r, y_r)
     # We intersect this circle with the rail line (x=0, y varies)
 
     # Circle center
     cx, cy = x_r, y_r
     r = arm_reach
-
-    print("cx, cy", cx, cy)
-    print("arm reach", arm_reach)
 
     # Intersect circle (x - cx)^2 + (y - cy)^2 = r^2
     # with line x = 0
@@ -156,14 +156,12 @@ def inverse_kinematics(x, y, z,
         raise ValueError("No real intersection — point unreachable horizontally.")
 
     y_candidates = [cy + np.sqrt(rhs), cy - np.sqrt(rhs)]
-    print("y_candidades", y_candidates)
-
+    
     # Filter candidates to be within rail limits
     y_candidates = [y for y in y_candidates if rail_limits[0] <= y <= rail_limits[1]]
     if not y_candidates:
         raise ValueError("No valid rail intersection within limits.")
-    print("y_candidates after filtering", y_candidates[0])
-
+    
     # now we need to compute theta 1 => from which we can get how much delta_y i caused
     # by arm and how much is by rail 
 
@@ -184,11 +182,20 @@ def inverse_kinematics(x, y, z,
     theta1_deg = (np.degrees(theta1_rad) + 360 + theta_r) % 360
     theta2_deg = np.degrees(theta2_rad)
 
-    return theta1_deg, theta2_deg, delta_r
+    if verbal:
+        print("Inverse Kinematics Debug Info:")
+        print("\tx, y, z:", x, y, z)
+        print("\tarm_reach", arm_reach)
+        print("\tcx, cy", cx, cy)
+        print("\tarm reach", arm_reach)
+        print("\ty_candidades", y_candidates)
+        print("\ty_candidates after filtering", y_candidates[0])
+
+    return theta1_deg, theta2_deg, wrist_y
 
 # --- Example usage ---
 try:
-    th1, th2, dt_r = inverse_kinematics(points[-1, 0], points[-1, 1], points[-1, 2], T_base=T_base)
+    th1, th2, dt_r = inverse_kinematics(points[-1, 0], points[-1, 1], points[-1, 2])
     print(f"θ₁ = {th1:.1f}°, θ₂ = {th2:.1f}°, dr_r = {dt_r:.1f} mm")
 
     # Define the initial position (in homogeneous coordinates)
