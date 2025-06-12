@@ -35,42 +35,96 @@ class Joints:
 
 # helper function to compute inverse kinematics
 def inverse_kinematics(x, y, z,
-                       T_base=[[1, 0, 0, 925.39], [0, 1, 0, -219.38], [0, 0, 1, 0], [0, 0, 0, 1]],
-                       link_rise=100,
-                       dx1=57.5,
-                       dx2=107,
-                       dy0=830,
-                       link_length=950,
-                       eps=1e-6):
+                    T_base=[[1, 0, 0, 925.39], [0, 1, 0, -219.38], [0, 0, 1, 0], [0, 0, 0, 1]],
+                    theta_r=137.9,     # rail orientation angle (deg)
+                    link_rise=100,
+                    rail_limits=(0, 2000),
+                    dx1=57.5,
+                    dx2=107,
+                    dy0=830,
+                    link_length=950,
+                    eps=1e-6, 
+                    verbal=False):
     """
-    Computes (theta1_deg, theta2_deg) to reach (x, y, z) in world coordinates,
-    using a simplified robot model with fixed base and no rail motion.
+    Compute the inverse kinematics for a robotic arm to reach a point (x, y, z).
+    Returns the joint angles (theta1, theta2) in degrees and the delta_r for the rail.
     """
-    # 1. Transform target point to local robot frame
+
+    # Step 1: Bring world point into robot base frame
     T_inv = np.linalg.inv(T_base)
-    target_world = np.array([x, y, z, 1])
-    target_local = T_inv @ target_world
-    x_l, y_l, z_l = target_local[:3]
+    p_world = np.array([x, y, z, 1])
+    p_local = T_inv @ p_world
+    x_l, y_l, z_l = p_local[:3]
 
-    # 2. Adjust for Z offset (link_rise)
-    z_eff = z_l - link_rise
+    # Step 2: Rotate point into rail frame (rail lies along +Y direction)
+    Rz = R.from_euler('z', theta_r, degrees=True).as_matrix()
+    p_rail = Rz.T @ np.array([x_l, y_l, z_l])
+    x_r, y_r, z_r = p_rail
+
+    # Step 3: From z_r, solve for theta2
+    z_eff = z_r - link_rise
     if abs(z_eff) > link_length + eps:
-        raise ValueError(f"Target Z offset {z_eff:.2f} exceeds link length {link_length}")
+        raise ValueError(f"Z offset {z_eff:.2f} exceeds vertical reach {link_length}")
 
-    # 3. Compute theta2 from Z component
     theta2_rad = np.arcsin(z_eff / link_length)
+    arm_reach_y = dy0 + link_length * np.cos(theta2_rad)   # horizontal reach
+    arm_reach_x = dx1 + dx2
 
-    # 4. Compute horizontal projection to base of pitch joint
+    arm_reach = np.sqrt(arm_reach_x**2 + arm_reach_y**2)
+    
+    # Step 4: Arm base must lie on a circle of radius `arm_reach` centered at (x_r, y_r)
+    # We intersect this circle with the rail line (x=0, y varies)
+
+    # Circle center
+    cx, cy = x_r, y_r
+    r = arm_reach
+
+    # Intersect circle (x - cx)^2 + (y - cy)^2 = r^2
+    # with line x = 0
+    # → (0 - cx)^2 + (y - cy)^2 = r^2w
+    # → cx^2 + (y - cy)^2 = r^2
+    # → (y - cy)^2 = r^2 - cx^2
+    rhs = r**2 - cx**2
+    if rhs < 0:
+        raise ValueError("No real intersection — point unreachable horizontally.")
+
+    y_candidates = [cy + np.sqrt(rhs), cy - np.sqrt(rhs)]
+    
+    # Filter candidates to be within rail limits
+    y_candidates = [y for y in y_candidates if rail_limits[0] <= y <= rail_limits[1]]
+    if not y_candidates:
+        raise ValueError("No valid rail intersection within limits.")
+    
+    # now we need to compute theta 1 => from which we can get how much delta_y i caused
+    # by arm and how much is by rail 
+
+    # Step 5: Now compute wrist point (arm base) in rail frame
+    wrist_x = 0
+    wrist_y = y_candidates[0]
+
+    dx = x_r - wrist_x
+    dy = y_r - wrist_y
+    alpha = np.arctan2(dy, dx)
+
     R_proj = dy0 + link_length * np.cos(theta2_rad)
     gamma = np.arctan2(R_proj, dx1 + dx2)
-    alpha = np.arctan2(y_l, x_l)
+
     theta1_rad = alpha - gamma
 
-    # 5. Convert to degrees
-    theta1_deg = (np.degrees(theta1_rad) + 360) % 360
+    # Step 6: Convert to degrees
+    theta1_deg = (np.degrees(theta1_rad) + 360 + theta_r) % 360
     theta2_deg = np.degrees(theta2_rad)
 
-    return theta1_deg, theta2_deg
+    if verbal:
+        print("Inverse Kinematics Debug Info:")
+        print("\tx, y, z:", x, y, z)
+        print("\tarm_reach", arm_reach)
+        print("\tcx, cy", cx, cy)
+        print("\tarm reach", arm_reach)
+        print("\ty_candidades", y_candidates)
+        print("\ty_candidates after filtering", y_candidates[0])
+
+    return theta1_deg, theta2_deg, delta_r
 
 def forward_kinematics(theta1_deg, theta2_deg, delta_r, 
                        theta_r=137.9,      # angle of the rails
