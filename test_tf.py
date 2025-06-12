@@ -7,13 +7,13 @@ verbal = False
 
 # Define the initial position (in homogeneous coordinates)
 delta_r = 300
-theta_r = 0
+theta_r = 137.9
 theta_1= 40
 theta_2 = -45 # TODO: correct this
 
 T_base = np.eye(4)
-T_base[0, 3] = 0 # 925.39
-T_base[1, 3] = 0 # -219.38
+T_base[0, 3] = 925.39
+T_base[1, 3] = -219.38
 
 T0_1 = np.eye(4)
 T0_1[:3, :3] = R.from_euler('z', theta_r, degrees=True).as_matrix()
@@ -103,7 +103,7 @@ ax.add_collection3d(box)
 
 def inverse_kinematics(x, y, z,
                     T_base=np.eye(4),
-                    theta_r=0,     # rail orientation angle (deg)
+                    theta_r=137.9,     # rail orientation angle (deg)
                     link_rise=100,
                     rail_limits=(0, 2000),
                     dx1=57.5,
@@ -152,26 +152,36 @@ def inverse_kinematics(x, y, z,
     # → cx^2 + (y - cy)^2 = r^2
     # → (y - cy)^2 = r^2 - cx^2
     rhs = r**2 - cx**2
-    # if rhs < 0:
-    #     raise ValueError("No real intersection — point unreachable horizontally.")
+    if rhs < 0:
+        raise ValueError("No real intersection — point unreachable horizontally.")
 
-    y_candidates = [(2*cy+np.sqrt(4*cy**2-4*(cy**2-rhs))/2), (2*cy-np.sqrt(4*cy**2-4*(cy**2-rhs))/2)]
+    y_candidates = [cy + np.sqrt(rhs), cy - np.sqrt(rhs)]
     print("y_candidades", y_candidates)
 
+    # Filter candidates to be within rail limits
+    y_candidates = [y for y in y_candidates if rail_limits[0] <= y <= rail_limits[1]]
+    if not y_candidates:
+        raise ValueError("No valid rail intersection within limits.")
+    print("y_candidates after filtering", y_candidates[0])
 
     # now we need to compute theta 1 => from which we can get how much delta_y i caused
     # by arm and how much is by rail 
 
     # Step 5: Now compute wrist point (arm base) in rail frame
     wrist_x = 0
-    wrist_y = delta_r
+    wrist_y = y_candidates[0]
 
     dx = x_r - wrist_x
     dy = y_r - wrist_y
-    theta1_rad = np.arctan2(dy, dx)
+    alpha = np.arctan2(dy, dx)
+
+    R_proj = dy0 + link_length * np.cos(theta2_rad)
+    gamma = np.arctan2(R_proj, dx1 + dx2)
+
+    theta1_rad = alpha - gamma
 
     # Step 6: Convert to degrees
-    theta1_deg = (np.degrees(theta1_rad) + 360) % 360
+    theta1_deg = (np.degrees(theta1_rad) + 360 + theta_r) % 360
     theta2_deg = np.degrees(theta2_rad)
 
     return theta1_deg, theta2_deg, delta_r
@@ -179,17 +189,17 @@ def inverse_kinematics(x, y, z,
 # --- Example usage ---
 try:
     th1, th2, dt_r = inverse_kinematics(points[-1, 0], points[-1, 1], points[-1, 2], T_base=T_base)
-    print(f"θ₁ = {th1:.1f}°, θ₂ = {th2:.1f}°")
+    print(f"θ₁ = {th1:.1f}°, θ₂ = {th2:.1f}°, dr_r = {dt_r:.1f} mm")
 
     # Define the initial position (in homogeneous coordinates)
     delta_r = dt_r
-    theta_r = 137.9
+    # theta_r = 137.9
     theta_1= th1
     theta_2 = th2 # TODO: correct this
 
-    # T_base = np.eye(4)
-    # T_base[0, 3] = 925.39
-    # T_base[1, 3] = -219.38
+    T_base = np.eye(4)
+    T_base[0, 3] = 925.39
+    T_base[1, 3] = -219.38
 
     T0_1 = np.eye(4)
     T0_1[:3, :3] = R.from_euler('z', theta_r, degrees=True).as_matrix()
