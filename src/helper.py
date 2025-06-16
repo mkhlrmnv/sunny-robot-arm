@@ -84,9 +84,6 @@ def inverse_kinematics(x, y, z,
         arm_reach_y = dy0 + link_length * np.cos(theta_2)
         r = np.hypot(arm_reach_x, arm_reach_y)
 
-        print("\tarm reach y ", arm_reach_y)
-        print("\tr", r)
-
         rhs = r**2 - cx**2
         if rhs < 0: 
             continue
@@ -103,17 +100,9 @@ def inverse_kinematics(x, y, z,
             gamma = np.arctan2(arm_reach_y, dx1 + dx2)
             theta_1 = alpha - gamma
 
-            print("\tdelta r", y_wrist)
-            print("\talpha", alpha)
-            print("\tgamma", gamma)
-
             # wrap into [-180,180]
             theta_1_deg = (((np.degrees(theta_1) + theta_r) + 180) % 360) - 180
             theta_2_deg = ((np.degrees(theta_2) + 180) % 360) - 180
-
-            print("\ttheta 1 deg", theta_1_deg + theta_r)
-            print("\ttheta 2", theta_2_deg)
-            print("\n")
 
             solutions.append((theta_1_deg, theta_2_deg, y_wrist))
 
