@@ -66,68 +66,68 @@ def inverse_kinematics(x, y, z,
     if abs(z_eff) > link_length + eps:
         raise ValueError(f"Z offset {z_eff:.2f} exceeds vertical reach {link_length}")
 
-    theta2_rad = np.arcsin(z_eff / link_length)  # <- this caps at 90 deg TODO: FIX IT to cap at 180 or 360
-    arm_reach_y = dy0 + link_length * np.cos(theta2_rad)   # horizontal reach
+    horiz = np.sqrt(max(link_length**2 - z_eff**2, 0.0))
+
+    # theta2_rad = np.arcsin(z_eff / link_length)  # <- this caps at 90 deg TODO: FIX IT to cap at 180 or 360
+    
+    # solving two possible theta2 angles (a and b)
+    theta_2a_rad = np.arctan2(z_eff,  horiz)
+    theta_2b_rad = np.arctan2( z_eff, -horiz)   # elbow-up
+
+    solutions = []
+
+    cx, cy = x_r, y_r
     arm_reach_x = dx1 + dx2
 
-    arm_reach = np.sqrt(arm_reach_x**2 + arm_reach_y**2)
-    
-    # Step 4: Arm base must lie on a circle of radius `arm_reach` centered at (x_r, y_r)
-    # We intersect this circle with the rail line (x=0, y varies)
+    for theta_2 in (theta_2a_rad, theta_2b_rad):
 
-    # Circle center
-    cx, cy = x_r, y_r
-    r = arm_reach
+        arm_reach_y = dy0 + link_length * np.cos(theta_2)
+        r = np.hypot(arm_reach_x, arm_reach_y)
 
-    # Intersect circle (x - cx)^2 + (y - cy)^2 = r^2
-    # with line x = 0
-    # → (0 - cx)^2 + (y - cy)^2 = r^2w
-    # → cx^2 + (y - cy)^2 = r^2
-    # → (y - cy)^2 = r^2 - cx^2
-    rhs = r**2 - cx**2
-    if rhs < 0:
-        raise ValueError("No real intersection — point unreachable horizontally.")
+        print("\tarm reach y ", arm_reach_y)
+        print("\tr", r)
 
-    y_candidates = [cy + np.sqrt(rhs), cy - np.sqrt(rhs)]
-    
-    # Filter candidates to be within rail limits
-    y_candidates = [y for y in y_candidates if rail_limits[0] <= y <= rail_limits[1]]
-    if not y_candidates:
-        raise ValueError("No valid rail intersection within limits.")
-    
-    # now we need to compute theta 1 => from which we can get how much delta_y i caused
-    # by arm and how much is by rail 
+        rhs = r**2 - cx**2
+        if rhs < 0: 
+            continue
 
-    # Step 5: Now compute wrist point (arm base) in rail frame
-    wrist_x = 0
-    wrist_y = y_candidates[0]
+        for sign in (+1, -1):
+            y_wrist = cy + sign * np.sqrt(rhs)
 
-    dx = x_r - wrist_x
-    dy = y_r - wrist_y
-    alpha = np.arctan2(dy, dx)
+            if not (rail_limits[0] <= y_wrist <= rail_limits[1]):
+                continue
 
-    R_proj = dy0 + link_length * np.cos(theta2_rad)
-    gamma = np.arctan2(R_proj, dx1 + dx2)
+            dx = x_r - 0
+            dy = y_r - y_wrist
+            alpha = np.arctan2(dy, dx)
+            gamma = np.arctan2(arm_reach_y, dx1 + dx2)
+            theta_1 = alpha - gamma
 
-    theta1_rad = alpha - gamma   # <- breaks around 58 / 59 deg TODO: FIX IT
+            print("\tdelta r", y_wrist)
+            print("\talpha", alpha)
+            print("\tgamma", gamma)
 
-    # Step 6: Convert to degrees
-    theta1_deg = (np.degrees(theta1_rad) + 360 + theta_r) % 360
-    theta2_deg = np.degrees(theta2_rad)
+            # wrap into [-180,180]
+            theta_1_deg = (((np.degrees(theta_1) + theta_r) + 180) % 360) - 180
+            theta_2_deg = ((np.degrees(theta_2) + 180) % 360) - 180
+
+            print("\ttheta 1 deg", theta_1_deg + theta_r)
+            print("\ttheta 2", theta_2_deg)
+            print("\n")
+
+            solutions.append((theta_1_deg, theta_2_deg, y_wrist))
+
+    if not solutions:
+        raise ValueError("No valid IK solution within limits")
 
     if verbal:
         print("\nInverse Kinematics Debug Info:")
-        print("\tx, y, z:", x, y, z)
-        print("\tarm_reach", arm_reach)
-        print("\tcx, cy", cx, cy)
-        print("\tarm reach", arm_reach)
-        print("\ty_candidades", y_candidates)
-        print("\ty_candidates after filtering", y_candidates[0])
-        print("\tproposed delta_r ", wrist_y)
-        print("\tproposed theta_1 ", theta1_deg)
-        print("\tproposed theta_2 ", theta2_deg)
+        print("\tx, y, z: ", x, y, z)
+        print("\tcx, cy ", cx, cy)
+        print("\ttheta 2a deg: ", np.degrees(theta_2a_rad))
+        print("\ttheta 2b deg: ", np.degrees(theta_2b_rad))
 
-    return theta1_deg, theta2_deg, wrist_y
+    return solutions
 
 def forward_kinematics(theta1_deg, theta2_deg, delta_r, 
                        theta_r=137.9,      # angle of the rails
