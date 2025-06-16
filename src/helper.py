@@ -1,5 +1,7 @@
 import numpy as np
 from scipy.spatial.transform import Rotation as R
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d.art3d import Line3DCollection
 
 class Vector:
     def __init__(self, x, y, z):
@@ -181,9 +183,93 @@ def forward_kinematics(theta1_deg, theta2_deg, delta_r,
 
     return points[1:]
 
+kontti_box_corners = np.array([
+    [0, 0, -1],
+    [1820, 0, -1],
+    [0, -1680, -1],
+    [1820, -1680, -1],
+    [0, 0, -1000],
+    [1820, 0, -1000],
+    [0, -1680, -1000],
+    [1820, -1680, -1000]
+])
+
+# Safety Box 1
+safety_box_1_corners = np.array([
+    [-2000, 1000, -1000],
+    [-2000, 2000, -1000],
+    [1820, 1000, -1000],
+    [1820, 2000, -1000],
+    [-2000, 1000, 1000],
+    [-2000, 2000, 1000],
+    [1820, 1000, 1000],
+    [1820, 2000, 1000]
+])
+
+# Safety Box 2
+safety_box_2_corners = np.array([
+    [-2000, 1000, -1000],
+    [-1000, 1000, -1000],
+    [-2000, -1680, -1000],
+    [-1000, -1680, -1000],
+    [-2000, 1000, 1000],
+    [-1000, 1000, 1000],
+    [-2000, -1680, 1000],
+    [-1000, -1680, 1000]
+])
+
+    # Define edges by listing pairs of points (12 box edges total)
+edges = [
+    (0, 1), (1, 3), (3, 2), (2, 0),  # bottom face
+    (4, 5), (5, 7), (7, 6), (6, 4),  # top face
+    (0, 4), (1, 5), (2, 6), (3, 7)   # vertical edges
+]
+
+def draw_box(box_corners, edges, ax, color='b', linestyle='dashed', linewidth=1.5):
+    lines = [(box_corners[start], box_corners[end]) for start, end in edges]
+    line_collection = Line3DCollection(lines, colors=color, linewidths=linewidth, linestyles=linestyle)
+    ax.add_collection3d(line_collection)
+
+
+def draw_all_safety_boxes(ax):
+    draw_box(kontti_box_corners, edges=edges, ax=ax,  color='b')
+
+    for box in (safety_box_1_corners, safety_box_2_corners):
+        draw_box(box, edges=edges, ax=ax, color='r')
+
+def draw_robot(ax, points, color='g'):
+    ax.plot(points[:,0], points[:,1], points[:,2], f'{color}-o')
+
+def point_in_box(points, box):
+    """
+    Check if a point lies within a given box.
+    
+    Args:
+        points (np.array): An array of 3D points [x, y, z].
+        box (np.array): An array of 8 points representing the vertices of the box.
+        
+    Returns:
+        bool: True if the point is inside the box, False otherwise.
+    """
+
+    return np.any(np.all(points[:, np.newaxis] >= box.min(axis=0), axis=-1) & 
+                 np.all(points[:, np.newaxis] <= box.max(axis=0), axis=-1))
+
+# TODO: Make function to check if any edges between points goes through a box
+
 # Example usage:
 if __name__ == "__main__":
-    th1, th2 = inverse_kinematics(100, 100, 100)
-    print(f"θ₁ = {th1:.1f}°, θ₂ = {th2:.1f}°")
-    position = forward_kinematics(th1, th2)
-    print(f"End-effector position: {position}")
+
+    points = forward_kinematics(20, 20, 700)
+
+    all_boxes = [kontti_box_corners, safety_box_1_corners, safety_box_2_corners]
+
+    for box in all_boxes:
+        if point_in_box(points=points, box=box):
+            print("POINTS IS IN THE BOOOOOOX")
+
+    fig = plt.figure(figsize=(8,6))
+    ax = fig.add_subplot(111, projection='3d')
+    draw_all_safety_boxes(ax)
+    draw_robot(ax, points=points)
+    plt.show()

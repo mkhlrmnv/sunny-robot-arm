@@ -65,7 +65,7 @@ print(points)
 # 4) Plot
 fig = plt.figure(figsize=(8,6))
 ax  = fig.add_subplot(121, projection='3d')
-ax.plot(points[:,0], points[:,1], points[:,2], 'r-o')
+ax.plot(points[:,0], points[:,1], points[:,2], 'g-o')
 ax.set_xlabel('X'); ax.set_ylabel('Y'); ax.set_zlabel('Z')
 ax.set_title('Robot Arm Forward Kinematics')
 ax.set_xlim([-1600, 1600])
@@ -75,7 +75,7 @@ ax.set_zlim([-1600, 1600])
 from itertools import combinations
 
 # Define the 8 corners of the box
-box_corners = np.array([
+kontti_box_corners = np.array([
     [0, 0, 0],
     [1820, 0, 0],
     [0, -1680, 0],
@@ -86,6 +86,28 @@ box_corners = np.array([
     [1820, -1680, -1000]
 ])
 
+safety_box_1_corners = np.array([
+    [-2000, 1000, -1000],
+    [-2000, 2000, -1000],
+    [1820, 1000, -1000],
+    [1820, 2000, -1000],
+    [-2000, 1000, 1000],
+    [-2000, 2000, 1000],
+    [1820, 1000, 1000],
+    [1820, 2000, 1000]
+])
+
+safety_box_2_corners = np.array([
+    [-2000, 1000, -1000],
+    [-1000, 1000, -1000],
+    [-2000, -1680, -1000],
+    [-1000, -1680, -1000],
+    [-2000, 1000, 1000],
+    [-1000, 1000, 1000],
+    [-2000, -1680, 1000],
+    [-1000, -1680, 1000]
+])
+
 # Define edges by listing pairs of points (12 box edges total)
 edges = [
     (0, 1), (1, 3), (3, 2), (2, 0),  # bottom face
@@ -94,10 +116,18 @@ edges = [
 ]
 
 # Create line segments
-lines = [(box_corners[start], box_corners[end]) for start, end in edges]
-box = Line3DCollection(lines, colors='b', linewidths=1.5, linestyles='dashed')
-ax.add_collection3d(box)
+kontti_lines = [(kontti_box_corners[start], kontti_box_corners[end]) for start, end in edges]
+kontti_box = Line3DCollection(kontti_lines, colors='b', linewidths=1.5, linestyles='dashed')
+ax.add_collection3d(kontti_box)
  
+safety_box_1_lines = [(safety_box_1_corners[start], safety_box_1_corners[end]) for start, end in edges]
+safety_box_1_box = Line3DCollection(safety_box_1_lines, colors='r', linewidths=1.5, linestyles='dashed')
+ax.add_collection3d(safety_box_1_box)
+
+safety_box_2_lines = [(safety_box_2_corners[start], safety_box_2_corners[end]) for start, end in edges]
+safety_box_2_box = Line3DCollection(safety_box_2_lines, colors='r', linewidths=1.5, linestyles='dashed')
+ax.add_collection3d(safety_box_2_box)
+
 # plt.show()
 
 
@@ -258,7 +288,7 @@ try:
     # 4) Plot
     # fig = plt.figure(figsize=(8,6))
     ax  = fig.add_subplot(122, projection='3d')
-    ax.plot(points[:,0], points[:,1], points[:,2], 'r-o')
+    ax.plot(points[:,0], points[:,1], points[:,2], 'g-o')
     ax.set_xlabel('X'); ax.set_ylabel('Y'); ax.set_zlabel('Z')
     ax.set_title('Robot Arm Forward Kinematics')
     ax.set_xlim([-1600, 1600])
