@@ -81,20 +81,38 @@ def inverse_kinematics(x, y, z,
     cx, cy = x_r, y_r
     arm_reach_x = dx1 + dx2
 
+    if verbal:
+        print("\n-- Inverse Kinematics Debug --")
+        print(f"\tInput target      : x={x}, y={y}, z={z}")
+        print(f"\tBase‐frame coords : x_l={x_l:.2f}, y_l={y_l:.2f}, z_l={z_l:.2f}")
+        print(f"\tRail‐frame coords : x_r={x_r:.2f}, y_r={y_r:.2f}, z_r={z_r:.2f}")
+        print(f"\tz_eff={z_eff:.2f}, horiz={horiz:.2f}")
+        print(f"\tθ2 candidates     : {np.degrees(theta_2a_rad):.2f}°, {np.degrees(theta_2b_rad):.2f}°")
+
     for theta_2 in (theta_2a_rad, theta_2b_rad):
 
         arm_reach_y = dy0 + link_length * np.cos(theta_2)
         r = np.hypot(arm_reach_x, arm_reach_y)
 
+        
         rhs = r**2 - cx**2
         if rhs < 0: 
             continue
 
+        if verbal:
+            print(f"\n\tTesting θ2 = {np.degrees(theta_2):.2f}°:")
+            print(f"\t  arm_reach_y={arm_reach_y:.2f}, r={r:.2f}, rhs={rhs:.2f}")
+        
         for sign in (+1, -1):
             y_wrist = cy + sign * np.sqrt(rhs)
 
+            if verbal:
+                print(f"\t  y_wrist[{sign:+}] = {y_wrist:.2f}", end="")
+
             if not (rail_limits[0] <= y_wrist <= rail_limits[1]):
                 continue
+
+            if verbal: print(" ✓ within limits")
 
             dx = x_r - 0
             dy = y_r - y_wrist
@@ -106,18 +124,21 @@ def inverse_kinematics(x, y, z,
             theta_1_deg = (((np.degrees(theta_1) + theta_r) + 180) % 360) - 180
             theta_2_deg = ((np.degrees(theta_2) + 180) % 360) - 180
 
+            if verbal:
+                print(f"\t    α={np.degrees(alpha):.2f}°, γ={np.degrees(gamma):.2f}°")
+                print(f"\t    raw θ1={np.degrees(theta_1):.2f}°, wrapped θ1={theta_1_deg:.2f}°")
+                print(f"\t    wrapped θ2={theta_2_deg:.2f}°, delta_r={y_wrist:.2f}")
+
             solutions.append((theta_1_deg, theta_2_deg, y_wrist))
 
     if not solutions:
         raise ValueError("No valid IK solution within limits")
-
+    
     if verbal:
-        print("\nInverse Kinematics Debug Info:")
-        print("\tx, y, z: ", x, y, z)
-        print("\tcx, cy ", cx, cy)
-        print("\ttheta 2a deg: ", np.degrees(theta_2a_rad))
-        print("\ttheta 2b deg: ", np.degrees(theta_2b_rad))
-
+        print("\n\tFinal IK Solutions (θ1°, θ2°, rail δ):")
+        for idx, (th1, th2, dr) in enumerate(solutions, start=1):
+            print(f"\t  #{idx}: θ1 = {th1:.2f}°, θ2 = {th2:.2f}°, δ = {dr:.2f}")
+    
     return solutions
 
 def forward_kinematics(theta1_deg, theta2_deg, delta_r, 
@@ -303,7 +324,7 @@ def edge_crosses_box(points, box_corners):
 # Example usage:
 if __name__ == "__main__":
 
-    points = forward_kinematics(-10, -40, 1200)
+    points = forward_kinematics(20, 20, 700)
 
     all_boxes = [kontti_box_corners, safety_box_1_corners, safety_box_2_corners]
 
