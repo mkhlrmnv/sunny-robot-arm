@@ -72,7 +72,7 @@ class TestHelper(unittest.TestCase):
         end_point = points[-1]
 
         solutions = helper.inverse_kinematics(end_point[0], end_point[1], end_point[2], 
-                                                     T_base=T_base, theta_r=theta_r, verbal=True)
+                                                     T_base=T_base, theta_r=theta_r, verbal=False)
 
         for sol in solutions:
             if np.isclose(sol[0], theta_1, atol=1e-2) and np.isclose(sol[1], theta_2, atol=1e-2) and np.isclose(sol[2], delta_r, atol=1e-2):
@@ -190,6 +190,65 @@ class TestHelper(unittest.TestCase):
 
         # Check if the computed position is close to the expected position
         np.testing.assert_allclose(end_effector_pos[-1], expected_pos, rtol=1e-5, atol=1e-5)
+
+    def test_segment_intercets_box(self):
+        # Define the segment endpoints
+        points_1 = helper.forward_kinematics(-10, -40, 1200)
+        points_2 = helper.forward_kinematics(20, 20, 300)
+        points_3 = helper.forward_kinematics(60, 20, 1200)
+        points_4 = helper.forward_kinematics(20, 20, 700)
+
+        safety_box_1_corners = np.array([
+            [-2000, 1000, -1000],
+            [-2000, 2000, -1000],
+            [1820, 1000, -1000],
+            [1820, 2000, -1000],
+            [-2000, 1000, 1000],
+            [-2000, 2000, 1000],
+            [1820, 1000, 1000],
+            [1820, 2000, 1000]
+        ])
+        
+        kontti_box_corners = np.array([
+            [0, 0, -1],
+            [1820, 0, -1],
+            [0, -1680, -1],
+            [1820, -1680, -1],
+            [0, 0, -1000],
+            [1820, 0, -1000],
+            [0, -1680, -1000],
+            [1820, -1680, -1000]
+        ])
+
+        safety_box_2_corners = np.array([
+            [-2000, 1000, -1000],
+            [-1000, 1000, -1000],
+            [-2000, -1680, -1000],
+            [-1000, -1680, -1000],
+            [-2000, 1000, 1000],
+            [-1000, 1000, 1000],
+            [-2000, -1680, 1000],
+            [-1000, -1680, 1000]
+        ])
+
+
+        # Assert that the segment does intersect the box
+        self.assertTrue(helper.edge_crosses_box(points_1, kontti_box_corners))
+        self.assertFalse(helper.edge_crosses_box(points_1, safety_box_1_corners))
+        self.assertFalse(helper.edge_crosses_box(points_1, safety_box_2_corners))
+
+        self.assertFalse(helper.edge_crosses_box(points_2, kontti_box_corners))
+        self.assertTrue(helper.edge_crosses_box(points_2, safety_box_1_corners))
+        self.assertFalse(helper.edge_crosses_box(points_2, safety_box_2_corners))
+
+        self.assertFalse(helper.edge_crosses_box(points_3, kontti_box_corners))
+        self.assertFalse(helper.edge_crosses_box(points_3, safety_box_1_corners))
+        self.assertTrue(helper.edge_crosses_box(points_3, safety_box_2_corners))
+
+        self.assertFalse(helper.edge_crosses_box(points_4, kontti_box_corners))
+        self.assertFalse(helper.edge_crosses_box(points_4, safety_box_1_corners))
+        self.assertFalse(helper.edge_crosses_box(points_4, safety_box_2_corners))
+
 
 if __name__ == '__main__':
     unittest.main()

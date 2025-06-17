@@ -255,17 +255,60 @@ def point_in_box(points, box):
     return np.any(np.all(points[:, np.newaxis] >= box.min(axis=0), axis=-1) & 
                  np.all(points[:, np.newaxis] <= box.max(axis=0), axis=-1))
 
-# TODO: Make function to check if any edges between points goes through a box
+def edge_crosses_box(points, box_corners):
+    """
+    Check if any segment between points crosses the safety box.
+    
+    Args:
+        points (np.array): Nx3 array of robot points.
+        box_corners (np.array): 8x3 array of safety box corner points.
+        
+    Returns:
+        bool: True if any edge crosses the box, False otherwise.
+    """
+
+    # Get box min/max bounds
+    min_corner = np.min(box_corners, axis=0)
+    max_corner = np.max(box_corners, axis=0)
+
+    def segment_intersects_box(p1, p2):
+        # Liang-Barsky algorithm for line-box intersection in 3D
+        d = p2 - p1
+        tmin = 0.0
+        tmax = 1.0
+
+        for i in range(3):  # x, y, z
+            if abs(d[i]) < 1e-8:
+                if p1[i] < min_corner[i] or p1[i] > max_corner[i]:
+                    return False  # Line parallel and outside slab
+            else:
+                ood = 1.0 / d[i]
+                t1 = (min_corner[i] - p1[i]) * ood
+                t2 = (max_corner[i] - p1[i]) * ood
+                if t1 > t2:
+                    t1, t2 = t2, t1
+                tmin = max(tmin, t1)
+                tmax = min(tmax, t2)
+                if tmin > tmax:
+                    return False  # No intersection
+        return True
+
+    # Check each edge of the robot arm
+    for i in range(len(points) - 1):
+        if segment_intersects_box(points[i], points[i + 1]):
+            return True
+
+    return False
 
 # Example usage:
 if __name__ == "__main__":
 
-    points = forward_kinematics(20, 20, 700)
+    points = forward_kinematics(-10, -40, 1200)
 
     all_boxes = [kontti_box_corners, safety_box_1_corners, safety_box_2_corners]
 
     for box in all_boxes:
-        if point_in_box(points=points, box=box):
+        if edge_crosses_box(points, box):
             print("POINTS IS IN THE BOOOOOOX")
 
     fig = plt.figure(figsize=(8,6))
