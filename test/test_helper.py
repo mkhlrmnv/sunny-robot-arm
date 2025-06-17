@@ -14,10 +14,6 @@ class TestHelper(unittest.TestCase):
         theta_1 = 24
         theta_2 = -41
 
-        print("delta_r", delta_r)
-        print("theta_1", theta_1)
-        print("theta_2", theta_2)
-
         # Define the initial position (in homogeneous coordinates)
         initial_position = np.array([0, 0, 0, 1]).T
         theta_r = 137.
@@ -82,20 +78,13 @@ class TestHelper(unittest.TestCase):
 
     def test_inverce_kinematics(self):
         num_of_iterations = 100
-        counter = 0
-        
+
         for _ in range(num_of_iterations):
-            counter += 1
-            print("\ncounter: ", counter)
 
             # Generate random delta_r, theta_1, and theta_2 values
             delta_r = np.random.uniform(0, 2000)  # Random value between -500 and 500
             theta_1 = np.random.uniform(-180, 180)     # Random angle in degrees (0 to 360)
             theta_2 = np.random.uniform(-180, 180)     # Random angle in degrees (0 to 360)
-
-            print("delta_r", delta_r)
-            print("theta_1", theta_1)
-            print("theta_2", theta_2)
 
             # Define the initial position (in homogeneous coordinates)
             initial_position = np.array([0, 0, 0, 1]).T
@@ -151,7 +140,7 @@ class TestHelper(unittest.TestCase):
             end_point = points[-1]
 
             solutions = helper.inverse_kinematics(end_point[0], end_point[1], end_point[2], 
-                                                     T_base=T_base, theta_r=theta_r, verbal=True)
+                                                     T_base=T_base, theta_r=theta_r, verbal=False)
 
             found_correct = False
 
@@ -160,21 +149,10 @@ class TestHelper(unittest.TestCase):
                 th2 = sol[1]
                 dr = sol[2]
 
-                print("th1 ", th1)
-                print("th2", th2)
-                print("dr", dr)
-
-
                 if np.isclose(th1, theta_1, atol=1e-2) and np.isclose(th2, theta_2, atol=1e-2) and np.isclose(dr, delta_r, atol=1e-2):
                     found_correct = True
 
-
             assert found_correct, f"Non of the solutions were correct"
-
-            # expected_theta1_global = theta_1
-            # assert np.isclose(th1, expected_theta1_global, atol=1e-2), f"Expected {expected_theta1_global}, got {th1}"
-            # assert np.isclose(th2, theta_2, atol=1e-2), f"Expected {theta_2}, got {th2}"
-            # assert np.isclose(dr, delta_r, atol=1e-2), f"Expected {delta_r}, got {dr}"
 
     def test_forward_kinematics(self):
         # Define the joint angles
