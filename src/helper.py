@@ -337,9 +337,7 @@ def edge_crosses_box(points, box_corners):
 
     return False
 
-def plot_sun(ax, 
-             R=1700,
-             draw_unreachable=False,
+def get_sun_path(R=1700,
              latitude=60.1699, 
              longitude=24.9384,
              timezone = 'Europe/Helsinki'):
@@ -414,9 +412,9 @@ def plot_sun(ax,
             for j in range(1000):
                 
                 # create new candidate with modified R
-                new_x = (R-j) * np.cos(np.radians(alt[i])) * np.sin(np.radians(az[i] + 135)) + (1820/2)
-                new_y = (R-j) * np.cos(np.radians(alt[i])) * np.cos(np.radians(az[i] + 135)) - (1680/2)
-                new_z = (R-j) * np.sin(np.radians(alt[i]))
+                new_x = (R-j) * np.cos(np.radians(alt.iloc[i])) * np.sin(np.radians(az.iloc[i] + 135)) + (1820/2)
+                new_y = (R-j) * np.cos(np.radians(alt.iloc[i])) * np.cos(np.radians(az.iloc[i] + 135)) - (1680/2)
+                new_z = (R-j) * np.sin(np.radians(alt.iloc[i]))
 
                 # Shift it
                 new_x += x_shift
@@ -452,16 +450,14 @@ def plot_sun(ax,
             sun_dirs[i][1] = 1000
 
     # if needed draw all unreachable
-    if draw_unreachable:
-        for p in unreachable_points:
-            ax.plot(p[0], p[1], p[2], marker='.', linestyle='-', color='r', label='unreachable points')
-    
-    # plot the result
-    ax.plot(sun_dirs[:, 0], sun_dirs[:, 1], sun_dirs[:, 2], marker='.', linestyle='-', color='blue', label='Sun path')
-    ax.set_xlabel('X (mm)'); ax.set_ylabel('Y (mm)'); ax.set_zlabel('Z (mm)')
-    ax.set_title('Sun Path — Helsinki, Finland (June 21, 2025)')
 
     return sun_dirs
+
+def plot_sun(ax, path):
+    # plot the result
+    ax.plot(path[:, 0], path[:, 1], path[:, 2], marker='.', linestyle='-', color='blue', label='Sun path')
+    ax.set_xlabel('X (mm)'); ax.set_ylabel('Y (mm)'); ax.set_zlabel('Z (mm)')
+    ax.set_title('Sun Path — Helsinki, Finland (June 21, 2025)')
 
 # Example usage:
 if __name__ == "__main__":
@@ -483,6 +479,13 @@ if __name__ == "__main__":
     fig = plt.figure(figsize=(8,6))
     ax_1 = fig.add_subplot(111, projection='3d')
     draw_all_safety_boxes(ax_1)
+    path = get_sun_path(R=1700)
+
+    sols = inverse_kinematics(*path[0])
+    
+    points = forward_kinematics(*sols[0])
+
     draw_robot(ax_1, points=points)
-    plot_sun(ax_1, R=1700, draw_unreachable=True)
+    
+
     plt.show()
