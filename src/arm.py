@@ -66,9 +66,10 @@ class Arm:
 
     def move(self):
         if (type(self.current_path) != None) and ((self.iteration - 1) < len(self.current_path)):
-            print()
-            
-            next_point = self.current_path[self.iteration]
+            next_point = self.current_path[self.iteration-1]
+        elif ((self.iteration - 1) >= len(self.current_path)):
+            print("Robot reached the end of the path")
+            return
         else:
             raise ValueError("Init path first")
         sols = inverse_kinematics(*next_point)
