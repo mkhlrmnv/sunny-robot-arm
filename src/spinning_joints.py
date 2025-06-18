@@ -47,6 +47,9 @@ class SpinningJoints:
     
     def init_motor(self, direction=1):
         while not self.init_pos:
+            if abs(self.angle) > 180:
+                raise TimeoutError("Motor didn't find init pos")
+
             self.step(direction=direction, speed=0.5)
         self.reset_position()
         print(f"Motor initialized")
