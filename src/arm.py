@@ -61,9 +61,8 @@ class Arm:
 
 
     def init_path(self):
-        self.current_path = get_sun_path()
+        self.current_path, _ = get_sun_path()
         
-
     def move(self):
         if (type(self.current_path) != None) and ((self.iteration - 1) < len(self.current_path)):
             next_point = self.current_path[self.iteration-1]
@@ -81,7 +80,7 @@ class Arm:
         self.move()
         draw_all_safety_boxes(ax)
         draw_robot(ax, points=forward_kinematics(self.theta_1, self.theta_2, self.delta_r))
-        plot_sun(ax, self.current_path)
+        plot_path(ax, self.current_path)
 
 
 # Example usage

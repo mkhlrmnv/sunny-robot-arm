@@ -449,15 +449,17 @@ def get_sun_path(R=1700,
         if sun_dirs[i][1] > 1000:
             sun_dirs[i][1] = 1000
 
-    # if needed draw all unreachable
+    return sun_dirs, unreachable_points
 
-    return sun_dirs
-
-def plot_sun(ax, path):
-    # plot the result
-    ax.plot(path[:, 0], path[:, 1], path[:, 2], marker='.', linestyle='-', color='blue', label='Sun path')
+def plot_path(ax, path,
+             color='blue',
+             marker='.',
+             linestyle='-',
+             label="Sun's path"):
+    
+    ax.plot(path[:, 0], path[:, 1], path[:, 2], marker=marker, linestyle=linestyle,
+             color=color, label=label)
     ax.set_xlabel('X (mm)'); ax.set_ylabel('Y (mm)'); ax.set_zlabel('Z (mm)')
-    ax.set_title('Sun Path — Helsinki, Finland (June 21, 2025)')
 
 # Example usage:
 if __name__ == "__main__":
@@ -479,9 +481,9 @@ if __name__ == "__main__":
     fig = plt.figure(figsize=(8,6))
     ax_1 = fig.add_subplot(111, projection='3d')
     draw_all_safety_boxes(ax_1)
-    path = get_sun_path(R=1700)
+    suns_path, _ = plot_path(R=1700)
 
-    sols = inverse_kinematics(*path[0])
+    sols = inverse_kinematics(*suns_path[0])
     
     points = forward_kinematics(*sols[0])
 
