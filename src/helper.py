@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
 import pvlib
 import pandas as pd
+from tqdm import tqdm   
 
 class Vector:
     def __init__(self, x, y, z):
@@ -42,12 +43,13 @@ def inverse_kinematics(x, y, z,
                     T_base=[[1, 0, 0, 925.39], [0, 1, 0, -219.38], [0, 0, 1, 0], [0, 0, 0, 1]],
                     theta_r=137.9,     # rail orientation angle (deg)
                     link_rise=100,
-                    rail_limits=(0, 2000),
+                    rail_limits=(0, 1000),
                     dx1=57.5,
                     dx2=107,
                     dy0=830,
                     link_length=950,
                     eps=1e-6, 
+                    check_reachability=True,
                     verbal=False):
     """
     Compute the inverse kinematics for a robotic arm to reach a point (x, y, z).
@@ -67,7 +69,8 @@ def inverse_kinematics(x, y, z,
 
     # Step 3: From z_r, solve for theta2
     z_eff = z_r - link_rise
-    if abs(z_eff) > link_length + eps:
+
+    if check_reachability and abs(z_eff) > link_length + eps:
         raise ValueError(f"Z offset {z_eff:.2f} exceeds vertical reach {link_length}")
 
     horiz = np.sqrt(max(link_length**2 - z_eff**2, 0.0))
@@ -86,10 +89,14 @@ def inverse_kinematics(x, y, z,
         print(f"\tInput target      : x={x}, y={y}, z={z}")
         print(f"\tBase‐frame coords : x_l={x_l:.2f}, y_l={y_l:.2f}, z_l={z_l:.2f}")
         print(f"\tRail‐frame coords : x_r={x_r:.2f}, y_r={y_r:.2f}, z_r={z_r:.2f}")
+        print(f"\tCircle center      : cx={cx:.2f}, cy={cy:.2f}")
         print(f"\tz_eff={z_eff:.2f}, horiz={horiz:.2f}")
         print(f"\tθ2 candidates     : {np.degrees(theta_2a_rad):.2f}°, {np.degrees(theta_2b_rad):.2f}°")
 
     for theta_2 in (theta_2a_rad, theta_2b_rad):
+
+        if verbal:
+            print(f"\n\tTesting θ2 = {np.degrees(theta_2):.2f}°:")
 
         arm_reach_y = dy0 + link_length * np.cos(theta_2)
         r = np.hypot(arm_reach_x, arm_reach_y)
@@ -100,7 +107,6 @@ def inverse_kinematics(x, y, z,
             continue
 
         if verbal:
-            print(f"\n\tTesting θ2 = {np.degrees(theta_2):.2f}°:")
             print(f"\t  arm_reach_y={arm_reach_y:.2f}, r={r:.2f}, rhs={rhs:.2f}")
         
         for sign in (+1, -1):
@@ -261,20 +267,30 @@ def draw_all_safety_boxes(ax):
 def draw_robot(ax, points, color='g'):
     ax.plot(points[:,0], points[:,1], points[:,2], f'{color}-o')
 
-def point_in_box(points, box):
+def point_in_box(point, box):
     """
-    Check if a point lies within a given box.
-    
-    Args:
-        points (np.array): An array of 3D points [x, y, z].
-        box (np.array): An array of 8 points representing the vertices of the box.
-        
-    Returns:
-        bool: True if the point is inside the box, False otherwise.
-    """
+    Returns True if a single 3-D point lies inside an axis-aligned box.
 
-    return np.any(np.all(points[:, np.newaxis] >= box.min(axis=0), axis=-1) & 
-                 np.all(points[:, np.newaxis] <= box.max(axis=0), axis=-1))
+    Parameters
+    ----------
+    point : array-like of shape (3,)
+        The candidate point [x, y, z].
+    box   : ndarray of shape (8, 3)
+        The eight corner vertices of the box.
+
+    Notes
+    -----
+    The function works for any ordering of the eight vertices; it
+    first finds the box’s component-wise min/max, then checks:
+
+        box_min <= point <= box_max   (element-wise)
+
+    """
+    point = np.asarray(point)
+    box_min = box.min(axis=0)
+    box_max = box.max(axis=0)
+
+    return np.all(point >= box_min) and np.all(point <= box_max)
 
 def edge_crosses_box(points, box_corners):
     """
@@ -321,7 +337,9 @@ def edge_crosses_box(points, box_corners):
 
     return False
 
-def plot_sun(ax, R=1000):
+def plot_sun(ax, 
+             R=1000,
+             draw_unreachable=False):
     latitude, longitude = 60.1699, 24.9384
     timezone = 'Europe/Helsinki'
 
@@ -345,39 +363,104 @@ def plot_sun(ax, R=1000):
 
     x = R * np.cos(np.radians(alt)) * np.sin(np.radians(az + 135)) + (1820/2)
     y = R * np.cos(np.radians(alt)) * np.cos(np.radians(az + 135)) - (1680/2)
-    z = R * np.sin(np.radians(alt)) - 500
+    z = R * np.sin(np.radians(alt))
 
     req_x = -800
     req_y = 800
+    req_z = -850
 
     x_shift = req_x - x.iloc[int(len(x)/2)]
     y_shift = req_y - y.iloc[int(len(y)/2)]
+    z_shift = req_z - np.min([z.iloc[0], z.iloc[len(z)-1]])
 
     x += x_shift
     y += y_shift
+    z += z_shift
 
-    for i in range(len(x)):
-        if x.iloc[i] < -1000:
-            x.iloc[i] = -1000
-        if x.iloc[i] > 1820:
-            x.iloc[i] = 1820
+    x_shift_2 = 0 - x.iloc[0]
+    y_shift_2 = 0 - y.iloc[-1]
 
-    for i in range(len(y)):
-        if y.iloc[i] < -1680:
-            y.iloc[i] = -1680
-        if y.iloc[i] > 1000:
-            y.iloc[i] = 1000
+    x += x_shift_2
+    y += y_shift_2
 
-    ax.plot(x, y, z, marker='.', linestyle='-')
-    ax.set_xlabel('East (X)')
-    ax.set_ylabel('North (Y)')
-    ax.set_zlabel('Up (Z)')
+    # breakpoint()
+
+    sun_dirs = np.stack((x, y, z), axis=1)
+
+    counter = 0
+    unreachable_points = []
+
+    for i in range(len(sun_dirs)):
+        try: 
+            inverse_kinematics(*sun_dirs[i], verbal=False)
+        except ValueError:
+
+            unreachable_points.append(sun_dirs[i].copy())
+            counter += 1
+
+            R_max = R + 1000
+            R_min = R - 1000
+
+            lo, hi = R_min, R
+            best   = None
+            # stop after ~10 iterations (1 mm resolution)
+            for j in range(1000):
+                mid = 0.5*(lo+hi)
+                
+                new_x = (R-j) * np.cos(np.radians(alt[i])) * np.sin(np.radians(az[i] + 135)) + (1820/2)
+                new_y = (R-j) * np.cos(np.radians(alt[i])) * np.cos(np.radians(az[i] + 135)) - (1680/2)
+                new_z = (R-j) * np.sin(np.radians(alt[i]))
+
+                new_x += x_shift
+                new_y += y_shift
+                new_z += z_shift
+
+                new_x += x_shift_2
+                new_y += y_shift_2
+
+                candidate = np.array([new_x, new_y, new_z])
+
+                # breakpoint()
+                try:
+                    inverse_kinematics(*candidate)
+                    sun_dirs[i] = candidate         # reachable → move outward
+                    break
+                except ValueError:
+                    continue                 # unreachable → move inward
+            if best is not None:
+                sun_dirs[i] = best
+            
+    # breakpoint()
+    print(f"{counter} points are unreachable out of {len(sun_dirs)}")
+
+    for i in range(len(sun_dirs)):
+        if sun_dirs[i][0] < -1000:
+            sun_dirs[i][0] = -1000
+        if sun_dirs[i][0] > 1820:
+            sun_dirs[i][0] = 1820
+        if sun_dirs[i][1] < -1680:
+            sun_dirs[i][1] = -1680
+        if sun_dirs[i][1] > 1000:
+            sun_dirs[i][1] = 1000
+    
+    if draw_unreachable:
+        for p in unreachable_points:
+            ax.plot(p[0], p[1], p[2], marker='.', linestyle='-', color='r', label='unreachable points')
+    
+    ax.plot(sun_dirs[:, 0], sun_dirs[:, 1], sun_dirs[:, 2], marker='.', linestyle='-', color='blue', label='Sun path')
+    ax.set_xlabel('X (mm)'); ax.set_ylabel('Y (mm)'); ax.set_zlabel('Z (mm)')
     ax.set_title('Sun Path — Helsinki, Finland (June 21, 2025)')
 
 # Example usage:
 if __name__ == "__main__":
 
-    points = forward_kinematics(20, 20, 0)
+    # sols = inverse_kinematics(48.90380303, -2467.93789029, -561.66937223)
+
+    th1, th2, dr = 160, -90, 0# sols[0]
+
+    points = forward_kinematics(th1, th2, dr)
+
+    print(f"Points: {points[-1]}")
 
     all_boxes = [kontti_box_corners, safety_box_1_corners, safety_box_2_corners]
 
@@ -386,8 +469,8 @@ if __name__ == "__main__":
             print("POINTS IS IN THE BOOOOOOX")
 
     fig = plt.figure(figsize=(8,6))
-    ax = fig.add_subplot(111, projection='3d')
-    draw_all_safety_boxes(ax)
-    draw_robot(ax, points=points)
-    plot_sun(ax, R=2000)
+    ax_1 = fig.add_subplot(111, projection='3d')
+    draw_all_safety_boxes(ax_1)
+    draw_robot(ax_1, points=points)
+    plot_sun(ax_1, R=1700, draw_unreachable=True)
     plt.show()
