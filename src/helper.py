@@ -2,6 +2,8 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
+import pvlib
+import pandas as pd
 
 class Vector:
     def __init__(self, x, y, z):
@@ -70,8 +72,6 @@ def inverse_kinematics(x, y, z,
 
     horiz = np.sqrt(max(link_length**2 - z_eff**2, 0.0))
 
-    # theta2_rad = np.arcsin(z_eff / link_length)  # <- this caps at 90 deg TODO: FIX IT to cap at 180 or 360
-    
     # solving two possible theta2 angles (a and b)
     theta_2a_rad = np.arctan2(z_eff,  horiz)
     theta_2b_rad = np.arctan2( z_eff, -horiz)   # elbow-up
@@ -253,7 +253,7 @@ def draw_box(box_corners, edges, ax, color='b', linestyle='dashed', linewidth=1.
 
 
 def draw_all_safety_boxes(ax):
-    draw_box(kontti_box_corners, edges=edges, ax=ax,  color='b')
+    draw_box(kontti_box_corners, edges=edges, ax=ax,  color='r')
 
     for box in (safety_box_1_corners, safety_box_2_corners):
         draw_box(box, edges=edges, ax=ax, color='r')
@@ -321,10 +321,63 @@ def edge_crosses_box(points, box_corners):
 
     return False
 
+def plot_sun(ax, R=1000):
+    latitude, longitude = 60.1699, 24.9384
+    timezone = 'Europe/Helsinki'
+
+    # 2) Timespan: June 21, 2025 from sunrise to sunset (or fixed window)
+    times = pd.date_range(
+        end  ='2025-06-21 23:59',   
+        start='2025-06-21 00:00',   
+        freq='10min',
+        tz=timezone
+    )
+
+    # 3) Compute solar position (altitude & azimuth)
+    location = pvlib.location.Location(latitude, longitude, timezone)
+    solpos = location.get_solarposition(times)
+    solpos = solpos.loc[solpos['apparent_elevation'] > 0, :]
+    alt = solpos['apparent_elevation']  # degrees above horizon
+    az  = solpos['azimuth']             # degrees clockwise from North
+
+    # 4) Convert to unit‐sphere Cartesian for 3D plotting
+    #    X axis → East, Y → North, Z → Up
+
+    x = R * np.cos(np.radians(alt)) * np.sin(np.radians(az + 135)) + (1820/2)
+    y = R * np.cos(np.radians(alt)) * np.cos(np.radians(az + 135)) - (1680/2)
+    z = R * np.sin(np.radians(alt)) - 500
+
+    req_x = -800
+    req_y = 800
+
+    x_shift = req_x - x.iloc[int(len(x)/2)]
+    y_shift = req_y - y.iloc[int(len(y)/2)]
+
+    x += x_shift
+    y += y_shift
+
+    for i in range(len(x)):
+        if x.iloc[i] < -1000:
+            x.iloc[i] = -1000
+        if x.iloc[i] > 1820:
+            x.iloc[i] = 1820
+
+    for i in range(len(y)):
+        if y.iloc[i] < -1680:
+            y.iloc[i] = -1680
+        if y.iloc[i] > 1000:
+            y.iloc[i] = 1000
+
+    ax.plot(x, y, z, marker='.', linestyle='-')
+    ax.set_xlabel('East (X)')
+    ax.set_ylabel('North (Y)')
+    ax.set_zlabel('Up (Z)')
+    ax.set_title('Sun Path — Helsinki, Finland (June 21, 2025)')
+
 # Example usage:
 if __name__ == "__main__":
 
-    points = forward_kinematics(20, 20, 700)
+    points = forward_kinematics(20, 20, 0)
 
     all_boxes = [kontti_box_corners, safety_box_1_corners, safety_box_2_corners]
 
@@ -336,4 +389,5 @@ if __name__ == "__main__":
     ax = fig.add_subplot(111, projection='3d')
     draw_all_safety_boxes(ax)
     draw_robot(ax, points=points)
+    plot_sun(ax, R=2000)
     plt.show()
