@@ -338,7 +338,7 @@ def edge_crosses_box(points, box_corners):
     return False
 
 def plot_sun(ax, 
-             R=1000,
+             R=1700,
              draw_unreachable=False,
              latitude=60.1699, 
              longitude=24.9384,
@@ -377,17 +377,17 @@ def plot_sun(ax,
     req_z = -850
 
     # Shift to the center
-    x_shift += req_x - x.iloc[int(len(x)/2)]
-    y_shift += req_y - y.iloc[int(len(y)/2)]
-    z_shift += req_z - np.min([z.iloc[0], z.iloc[len(z)-1]])
+    x_shift = req_x - x.iloc[int(len(x)/2)]
+    y_shift = req_y - y.iloc[int(len(y)/2)]
+    z_shift = req_z - np.min([z.iloc[0], z.iloc[len(z)-1]])
 
     x += x_shift
     y += y_shift
     z += z_shift
 
     # Shift to outside of the box
-    x_shift_2 += 0 - x.iloc[0]
-    y_shift_2 += 0 - y.iloc[-1]
+    x_shift_2 = 0 - x.iloc[0]
+    y_shift_2 = 0 - y.iloc[-1]
 
     x += x_shift_2
     y += y_shift_2
@@ -468,7 +468,7 @@ if __name__ == "__main__":
 
     # sols = inverse_kinematics(48.90380303, -2467.93789029, -561.66937223)
 
-    th1, th2, dr = 160, -90, 0# sols[0]
+    th1, th2, dr = 137.9, -90, 0# sols[0]
 
     points = forward_kinematics(th1, th2, dr)
 
