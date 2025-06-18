@@ -339,11 +339,14 @@ def edge_crosses_box(points, box_corners):
 
 def plot_sun(ax, 
              R=1000,
-             draw_unreachable=False):
-    latitude, longitude = 60.1699, 24.9384
-    timezone = 'Europe/Helsinki'
+             draw_unreachable=False,
+             latitude=60.1699, 
+             longitude=24.9384,
+             timezone = 'Europe/Helsinki'):
 
-    # 2) Timespan: June 21, 2025 from sunrise to sunset (or fixed window)
+    # 1) Define timespan
+    # Here we define from the day start to the end, cause we
+    # will get rid off the night time in step 2
     times = pd.date_range(
         end  ='2025-06-21 23:59',   
         start='2025-06-21 00:00',   
@@ -351,88 +354,93 @@ def plot_sun(ax,
         tz=timezone
     )
 
-    # 3) Compute solar position (altitude & azimuth)
+    # 2) Compute solar position (altitude & azimuth) and 
+    # remove the night time
     location = pvlib.location.Location(latitude, longitude, timezone)
     solpos = location.get_solarposition(times)
-    solpos = solpos.loc[solpos['apparent_elevation'] > 0, :]
+    solpos = solpos.loc[solpos['apparent_elevation'] > 0, :] #remove night time => remove all where altitude is below 0
     alt = solpos['apparent_elevation']  # degrees above horizon
     az  = solpos['azimuth']             # degrees clockwise from North
 
-    # 4) Convert to unit‐sphere Cartesian for 3D plotting
+    # 3) Convert to unit‐sphere Cartesian for 3D plotting
     #    X axis → East, Y → North, Z → Up
-
     x = R * np.cos(np.radians(alt)) * np.sin(np.radians(az + 135)) + (1820/2)
     y = R * np.cos(np.radians(alt)) * np.cos(np.radians(az + 135)) - (1680/2)
     z = R * np.sin(np.radians(alt))
+
+    # 4) Shift the path
+    # First shift it to start and end in the center of the box (kontti),
+    # then shift it so that none of the points are in the box
 
     req_x = -800
     req_y = 800
     req_z = -850
 
-    x_shift = req_x - x.iloc[int(len(x)/2)]
-    y_shift = req_y - y.iloc[int(len(y)/2)]
-    z_shift = req_z - np.min([z.iloc[0], z.iloc[len(z)-1]])
+    # Shift to the center
+    x_shift += req_x - x.iloc[int(len(x)/2)]
+    y_shift += req_y - y.iloc[int(len(y)/2)]
+    z_shift += req_z - np.min([z.iloc[0], z.iloc[len(z)-1]])
 
     x += x_shift
     y += y_shift
     z += z_shift
 
-    x_shift_2 = 0 - x.iloc[0]
-    y_shift_2 = 0 - y.iloc[-1]
+    # Shift to outside of the box
+    x_shift_2 += 0 - x.iloc[0]
+    y_shift_2 += 0 - y.iloc[-1]
 
     x += x_shift_2
     y += y_shift_2
 
-    # breakpoint()
-
+    # stack for future steps
     sun_dirs = np.stack((x, y, z), axis=1)
 
     counter = 0
     unreachable_points = []
 
+    # for loop through all the points
     for i in range(len(sun_dirs)):
+
+        # try if they are reachable
         try: 
             inverse_kinematics(*sun_dirs[i], verbal=False)
-        except ValueError:
 
+        # if not, bring point closer until it is reachable
+        except ValueError:
             unreachable_points.append(sun_dirs[i].copy())
             counter += 1
 
-            R_max = R + 1000
-            R_min = R - 1000
-
-            lo, hi = R_min, R
-            best   = None
-            # stop after ~10 iterations (1 mm resolution)
+            # loop at max 1000 times
             for j in range(1000):
-                mid = 0.5*(lo+hi)
                 
+                # create new candidate with modified R
                 new_x = (R-j) * np.cos(np.radians(alt[i])) * np.sin(np.radians(az[i] + 135)) + (1820/2)
                 new_y = (R-j) * np.cos(np.radians(alt[i])) * np.cos(np.radians(az[i] + 135)) - (1680/2)
                 new_z = (R-j) * np.sin(np.radians(alt[i]))
 
+                # Shift it
                 new_x += x_shift
                 new_y += y_shift
                 new_z += z_shift
-
                 new_x += x_shift_2
                 new_y += y_shift_2
 
                 candidate = np.array([new_x, new_y, new_z])
 
-                # breakpoint()
+                # Try if it is reachable
                 try:
                     inverse_kinematics(*candidate)
-                    sun_dirs[i] = candidate         # reachable → move outward
+                    sun_dirs[i] = candidate
                     break
+                
+                # if not continue looping until it is
                 except ValueError:
-                    continue                 # unreachable → move inward
-            if best is not None:
-                sun_dirs[i] = best
+                    continue 
             
     # breakpoint()
     print(f"{counter} points are unreachable out of {len(sun_dirs)}")
 
+    # making sure that none of the points are inside the safety boxes
     for i in range(len(sun_dirs)):
         if sun_dirs[i][0] < -1000:
             sun_dirs[i][0] = -1000
@@ -442,14 +450,18 @@ def plot_sun(ax,
             sun_dirs[i][1] = -1680
         if sun_dirs[i][1] > 1000:
             sun_dirs[i][1] = 1000
-    
+
+    # if needed draw all unreachable
     if draw_unreachable:
         for p in unreachable_points:
             ax.plot(p[0], p[1], p[2], marker='.', linestyle='-', color='r', label='unreachable points')
     
+    # plot the result
     ax.plot(sun_dirs[:, 0], sun_dirs[:, 1], sun_dirs[:, 2], marker='.', linestyle='-', color='blue', label='Sun path')
     ax.set_xlabel('X (mm)'); ax.set_ylabel('Y (mm)'); ax.set_zlabel('Z (mm)')
     ax.set_title('Sun Path — Helsinki, Finland (June 21, 2025)')
+
+    return sun_dirs
 
 # Example usage:
 if __name__ == "__main__":
