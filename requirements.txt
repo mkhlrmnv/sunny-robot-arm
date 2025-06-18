@@ -3,3 +3,6 @@ gpiozero
 numpy
 matplotlib
 flask
+pvlib
+pandas
+scipy
