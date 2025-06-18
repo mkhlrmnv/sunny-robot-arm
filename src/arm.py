@@ -36,9 +36,6 @@ class Arm:
         self.theta_2 = None
         self.delta_r = None
 
-        self.fig = None
-        self.ax = None
-
         self.iteration = 0
 
         # self.motor_paaty = SpinningJoints(pulse_pin=20, dir_pin=19, limit_pin=23, gear_ratio=1)
@@ -64,17 +61,13 @@ class Arm:
 
 
     def init_path(self):
-
-        self.fig = plt.figure(figsize=(8,6))
-        self.ax = self.fig.add_subplot(111, projection='3d')
-        
-        draw_all_safety_boxes(self.ax)
-
-        self.current_path = plot_sun(self.ax)
+        self.current_path = get_sun_path()
         
 
     def move(self):
-        if (type(self.current_path) != None) and self.iteration - 1 < len(self.current_path):
+        if (type(self.current_path) != None) and ((self.iteration - 1) < len(self.current_path)):
+            print()
+            
             next_point = self.current_path[self.iteration]
         else:
             raise ValueError("Init path first")
@@ -86,9 +79,8 @@ class Arm:
         ax.clear()
         self.move()
         draw_all_safety_boxes(ax)
-        draw_robot(ax, forward_kinematics(self.theta_1, self.theta_2, self.theta_r))
-        plot_sun(ax)
-
+        draw_robot(ax, points=forward_kinematics(self.theta_1, self.theta_2, self.delta_r))
+        plot_sun(ax, self.current_path)
 
 
 # Example usage
@@ -120,7 +112,7 @@ if __name__ == "__main__":
     fig = plt.figure(figsize=(18, 9))
     ax = fig.add_subplot(111, projection='3d')
 
-    ani = FuncAnimation(fig, arm.draw_all, frames=len(arm.current_path), fargs=(ax,), interval=50)
+    ani = FuncAnimation(fig, arm.draw_all, frames=len(arm.current_path), fargs=(ax,), interval=10)
     plt.show()
 
     
