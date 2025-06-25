@@ -50,6 +50,7 @@ def inverse_kinematics(x, y, z,
                     link_length=950,
                     eps=1e-6, 
                     check_reachability=True,
+                    check_safety=True,
                     verbal=False):
     """
     Compute the inverse kinematics for a robotic arm to reach a point (x, y, z).
@@ -137,12 +138,13 @@ def inverse_kinematics(x, y, z,
 
             sol = (theta_1_deg, theta_2_deg, y_wrist)
 
-            # solutions.append((theta_1_deg, theta_2_deg, y_wrist))
-
-            if check_solutions_safety(sol, all_boxes):
+            if check_safety:
+                if check_solutions_safety(sol, all_boxes):
+                    solutions.append((theta_1_deg, theta_2_deg, y_wrist))
+                    if verbal:
+                        print(f"\t    ✓ Valid solution: {sol}")
+            else:
                 solutions.append((theta_1_deg, theta_2_deg, y_wrist))
-                if verbal:
-                    print(f"\t    ✓ Valid solution: {sol}")
 
     if not solutions:
         raise ValueError("No valid IK solution within limits")
@@ -167,8 +169,7 @@ def check_solutions_safety(solutions, safety_boxes):
     Returns:
         bool: True if all solutions are safe, False otherwise.
     """
-    th1, th2, dr = solutions
-    points = forward_kinematics(th1, th2, dr)
+    points = forward_kinematics(*solutions)
     for box in safety_boxes:
         if edge_crosses_box(points, box):
             return False
