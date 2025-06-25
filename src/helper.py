@@ -135,7 +135,14 @@ def inverse_kinematics(x, y, z,
                 print(f"\t    raw θ1={np.degrees(theta_1):.2f}°, wrapped θ1={theta_1_deg:.2f}°")
                 print(f"\t    wrapped θ2={theta_2_deg:.2f}°, delta_r={y_wrist:.2f}")
 
-            solutions.append((theta_1_deg, theta_2_deg, y_wrist))
+            sol = (theta_1_deg, theta_2_deg, y_wrist)
+
+            # solutions.append((theta_1_deg, theta_2_deg, y_wrist))
+
+            if check_solutions_safety(sol, all_boxes):
+                solutions.append((theta_1_deg, theta_2_deg, y_wrist))
+                if verbal:
+                    print(f"\t    ✓ Valid solution: {sol}")
 
     if not solutions:
         raise ValueError("No valid IK solution within limits")
@@ -144,8 +151,28 @@ def inverse_kinematics(x, y, z,
         print("\n\tFinal IK Solutions (θ1°, θ2°, rail δ):")
         for idx, (th1, th2, dr) in enumerate(solutions, start=1):
             print(f"\t  #{idx}: θ1 = {th1:.2f}°, θ2 = {th2:.2f}°, δ = {dr:.2f}")
+
     
     return solutions
+
+def check_solutions_safety(solutions, safety_boxes):
+
+    """
+    Check if the given solutions are safe, i.e., they do not cross any safety boxes.
+    
+    Args:
+        solutions (list): List of tuples containing (theta1, theta2, delta_r).
+        safety_boxes (list): List of numpy arrays representing safety box corners.
+        
+    Returns:
+        bool: True if all solutions are safe, False otherwise.
+    """
+    th1, th2, dr = solutions
+    points = forward_kinematics(th1, th2, dr)
+    for box in safety_boxes:
+        if edge_crosses_box(points, box):
+            return False
+    return True
 
 def forward_kinematics(theta1_deg, theta2_deg, delta_r, 
                        theta_r=137.9,      # angle of the rails
@@ -244,6 +271,8 @@ safety_box_2_corners = np.array([
     [-2000, -1680, 1000],
     [-1000, -1680, 1000]
 ])
+
+all_boxes = [kontti_box_corners, safety_box_1_corners, safety_box_2_corners]
 
     # Define edges by listing pairs of points (12 box edges total)
 edges = [
@@ -466,13 +495,17 @@ if __name__ == "__main__":
 
     # sols = inverse_kinematics(48.90380303, -2467.93789029, -561.66937223)
 
-    th1, th2, dr = 137.9, -90, 0# sols[0]
+    suns_path, unreachable_points = get_sun_path(R=1700)
+
+    sols = inverse_kinematics(*suns_path[1], verbal=True)
+
+    print("len", len(sols))
+
+    th1, th2, dr = sols[0]
 
     points = forward_kinematics(th1, th2, dr)
 
     print(f"Points: {points[-1]}")
-
-    all_boxes = [kontti_box_corners, safety_box_1_corners, safety_box_2_corners]
 
     for box in all_boxes:
         if edge_crosses_box(points, box):
@@ -481,9 +514,7 @@ if __name__ == "__main__":
     fig = plt.figure(figsize=(8,6))
     ax_1 = fig.add_subplot(111, projection='3d')
     draw_all_safety_boxes(ax_1)
-    suns_path, _ = plot_path(R=1700)
-
-    sols = inverse_kinematics(*suns_path[0])
+    plot_path(ax_1, suns_path)
     
     points = forward_kinematics(*sols[0])
 
