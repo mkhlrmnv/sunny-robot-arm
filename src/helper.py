@@ -140,11 +140,11 @@ def inverse_kinematics(x, y, z,
 
             if check_safety:
                 if check_solutions_safety(sol, all_boxes):
-                    solutions.append((theta_1_deg, theta_2_deg, y_wrist))
+                    solutions.append(sol)
                     if verbal:
                         print(f"\t    ✓ Valid solution: {sol}")
             else:
-                solutions.append((theta_1_deg, theta_2_deg, y_wrist))
+                solutions.append(sol)
 
     if not solutions:
         raise ValueError("No valid IK solution within limits")
@@ -174,6 +174,28 @@ def check_solutions_safety(solutions, safety_boxes):
         if edge_crosses_box(points, box):
             return False
     return True
+
+def choose_solution(solutions, current_state):
+    # TODO: check if this works + make it cleaner
+    c_th1, c_th2, c_dr = current_state
+
+    best_sol = solutions[0]
+    best_distance = 1e10
+
+    if len(solutions) == 1:
+        return solutions[0]
+
+    for sol in solutions[0:]:
+        th1, th2, dr = sol
+
+        new_distance = (abs(th1) - abs(c_th1)) + (abs(th2) - abs(c_th2)) + (abs(dr) - abs(c_dr))
+
+        if new_distance < best_distance:
+            best_sol = sol
+
+    return best_sol
+
+
 
 def forward_kinematics(theta1_deg, theta2_deg, delta_r, 
                        theta_r=137.9,      # angle of the rails
@@ -368,6 +390,7 @@ def edge_crosses_box(points, box_corners):
     return False
 
 def get_sun_path(R=1700,
+             max_iteration=1000,
              latitude=60.1699, 
              longitude=24.9384,
              timezone = 'Europe/Helsinki'):
@@ -431,7 +454,7 @@ def get_sun_path(R=1700,
 
         # try if they are reachable
         try: 
-            inverse_kinematics(*sun_dirs[i], verbal=False)
+            inverse_kinematics(*sun_dirs[i], check_safety=False, verbal=False)
 
         # if not, bring point closer until it is reachable
         except ValueError:
@@ -439,7 +462,7 @@ def get_sun_path(R=1700,
             counter += 1
 
             # loop at max 1000 times
-            for j in range(1000):
+            for j in range(max_iteration):
                 
                 # create new candidate with modified R
                 new_x = (R-j) * np.cos(np.radians(alt.iloc[i])) * np.sin(np.radians(az.iloc[i] + 135)) + (1820/2)
@@ -457,7 +480,7 @@ def get_sun_path(R=1700,
 
                 # Try if it is reachable
                 try:
-                    inverse_kinematics(*candidate)
+                    inverse_kinematics(*candidate, check_safety=False, verbal=False)
                     sun_dirs[i] = candidate
                     break
                 
@@ -471,15 +494,15 @@ def get_sun_path(R=1700,
     # making sure that none of the points are inside the safety boxes
     for i in range(len(sun_dirs)):
         if sun_dirs[i][0] < -1000:
-            sun_dirs[i][0] = -1000
+            sun_dirs[i][0] = -999
         if sun_dirs[i][0] > 1820:
-            sun_dirs[i][0] = 1820
+            sun_dirs[i][0] = 1819
         if sun_dirs[i][1] < -1680:
-            sun_dirs[i][1] = -1680
+            sun_dirs[i][1] = -1679
         if sun_dirs[i][1] > 1000:
-            sun_dirs[i][1] = 1000
+            sun_dirs[i][1] = 999
 
-    return sun_dirs, unreachable_points
+    return sun_dirs, np.array(unreachable_points)
 
 def plot_path(ax, path,
              color='blue',
@@ -498,7 +521,9 @@ if __name__ == "__main__":
 
     suns_path, unreachable_points = get_sun_path(R=1700)
 
-    sols = inverse_kinematics(*suns_path[1], verbal=True)
+    sols = inverse_kinematics(*suns_path[int(len(suns_path)/2)], verbal=True)
+
+    print("safe", check_solutions_safety(sols[0], all_boxes))
 
     print("len", len(sols))
 
@@ -515,7 +540,9 @@ if __name__ == "__main__":
     fig = plt.figure(figsize=(8,6))
     ax_1 = fig.add_subplot(111, projection='3d')
     draw_all_safety_boxes(ax_1)
+
     plot_path(ax_1, suns_path)
+    plot_path(ax_1, unreachable_points, color='red', label='unreachable')
     
     points = forward_kinematics(*sols[0])
 

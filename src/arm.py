@@ -71,9 +71,15 @@ class Arm:
             return
         else:
             raise ValueError("Init path first")
-        sols = inverse_kinematics(*next_point)
-        self.theta_1, self.theta_2, self.delta_r = sols[0]
-        self.iteration += 1
+        
+        try:
+            sols = inverse_kinematics(*next_point)
+
+            self.theta_1, self.theta_2, self.delta_r = choose_solution(sols, (self.theta_1, self.theta_2, self.delta_r))
+            self.iteration += 1
+
+        except:
+            self.iteration += 1
 
     def draw_all(self, index, ax):
         ax.clear()
