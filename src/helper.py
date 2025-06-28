@@ -157,23 +157,7 @@ def inverse_kinematics(x, y, z,
     
     return solutions
 
-def check_solutions_safety(solutions, safety_boxes):
 
-    """
-    Check if the given solutions are safe, i.e., they do not cross any safety boxes.
-    
-    Args:
-        solutions (list): List of tuples containing (theta1, theta2, delta_r).
-        safety_boxes (list): List of numpy arrays representing safety box corners.
-        
-    Returns:
-        bool: True if all solutions are safe, False otherwise.
-    """
-    points = forward_kinematics(*solutions)
-    for box in safety_boxes:
-        if edge_crosses_box(points, box):
-            return False
-    return True
 
 def choose_solution(solutions, current_state):
     # TODO: check if this works + make it cleaner
@@ -295,7 +279,18 @@ safety_box_2_corners = np.array([
     [-1000, -1680, 1000]
 ])
 
-all_boxes = [kontti_box_corners, safety_box_1_corners, safety_box_2_corners]
+test_box = np.array([
+    [0, 0, -1000],
+    [0, 100, -1000],
+    [-100, 0, -1000],
+    [-100, 100, -1000],
+    [0, 0, 1000],
+    [0, 100, 1000],
+    [-100, 0, 1000],
+    [-100, 100, 1000]
+])
+
+all_boxes = [kontti_box_corners, safety_box_1_corners, safety_box_2_corners, test_box]
 
     # Define edges by listing pairs of points (12 box edges total)
 edges = [
@@ -303,6 +298,24 @@ edges = [
     (4, 5), (5, 7), (7, 6), (6, 4),  # top face
     (0, 4), (1, 5), (2, 6), (3, 7)   # vertical edges
 ]
+
+def check_solutions_safety(solutions, safety_boxes=all_boxes):
+
+    """
+    Check if the given solutions are safe, i.e., they do not cross any safety boxes.
+    
+    Args:
+        solutions (list): List of tuples containing (theta1, theta2, delta_r).
+        safety_boxes (list): List of numpy arrays representing safety box corners.
+        
+    Returns:
+        bool: True if all solutions are safe, False otherwise.
+    """
+    points = forward_kinematics(*solutions)
+    for box in safety_boxes:
+        if edge_crosses_box(points, box):
+            return False
+    return True
 
 def draw_box(box_corners, edges, ax, color='b', linestyle='dashed', linewidth=1.5):
     lines = [(box_corners[start], box_corners[end]) for start, end in edges]
@@ -313,7 +326,7 @@ def draw_box(box_corners, edges, ax, color='b', linestyle='dashed', linewidth=1.
 def draw_all_safety_boxes(ax):
     draw_box(kontti_box_corners, edges=edges, ax=ax,  color='r')
 
-    for box in (safety_box_1_corners, safety_box_2_corners):
+    for box in (safety_box_1_corners, safety_box_2_corners, test_box):
         draw_box(box, edges=edges, ax=ax, color='r')
 
 def draw_robot(ax, points, color='g'):
@@ -519,14 +532,17 @@ if __name__ == "__main__":
 
     # sols = inverse_kinematics(48.90380303, -2467.93789029, -561.66937223)
 
-    suns_path, unreachable_points = get_sun_path(R=1700)
+    # suns_path, unreachable_points = get_sun_path(R=1700)
+    # test_path = np.array([[-335.454, -195.317, 1000], [413.476, 497.258, 1000]])
+    test_path = np.load('paths/test_path.npy')
 
-    sols = inverse_kinematics(*suns_path[int(len(suns_path)/2)], verbal=True)
 
-    print("safe", check_solutions_safety(sols[0], all_boxes))
+    # sols = inverse_kinematics(*suns_path[int(len(suns_path)/2)], verbal=True)
+    sols = inverse_kinematics(*test_path[1], verbal=True)
 
-    print("len", len(sols))
+    # print("safe", check_solutions_safety(sols[0], all_boxes)
 
+    # th1, th2, dr = [45, 90, 500]
     th1, th2, dr = sols[0]
 
     points = forward_kinematics(th1, th2, dr)
@@ -541,12 +557,11 @@ if __name__ == "__main__":
     ax_1 = fig.add_subplot(111, projection='3d')
     draw_all_safety_boxes(ax_1)
 
-    plot_path(ax_1, suns_path)
-    plot_path(ax_1, unreachable_points, color='red', label='unreachable')
-    
-    points = forward_kinematics(*sols[0])
 
-    draw_robot(ax_1, points=points)
+    plot_path(ax_1, test_path, linestyle='None')
+    # plot_path(ax_1, suns_path)
+    # plot_path(ax_1, unreachable_points, color='red', label='unreachable')
     
+    draw_robot(ax_1, points=points)
 
     plt.show()
