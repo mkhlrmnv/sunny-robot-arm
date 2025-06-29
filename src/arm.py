@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.animation import FuncAnimation
 
-# from linear_rail import LinearRail
-# from spinning_joints import SpinningJoints
+from linear_rail import LinearRail
+from spinning_joints import SpinningJoints
 
 class Arm:
     def __init__(self,
@@ -78,7 +78,6 @@ class Arm:
 
             elif not self._step_towards('theta_1', self.required_theta_1):
                 self._check_if_new_is_safe()
-                # TODO: ADD ACTUAL MOTOR CONTROL HERE
                 pass  # Move theta_1
 
             elif not self._step_towards('delta_r', self.required_delta_r):
@@ -163,14 +162,14 @@ if __name__ == "__main__":
     # arm.plot()
 
     # Init motors
-    # motor_paaty = SpinningJoints(pulse_pin=20, dir_pin=19, limit_pin=23, gear_ratio=1)
-    # motor_paaty.init_motor(direction=-1)
+    motor_paaty = SpinningJoints(pulse_pin=20, dir_pin=19, limit_pin=23, gear_ratio=5)
+    motor_paaty.init_motor(direction=-1)
 
-    # motor_pontto = SpinningJoints(pulse_pin=13, dir_pin=26, limit_pin=22, gear_ratio=1)
-    # motor_pontto.init_motor(direction=1)
+    motor_pontto = SpinningJoints(pulse_pin=13, dir_pin=26, limit_pin=22, gear_ratio=5*32/10)
+    motor_pontto.init_motor(direction=1)
 
-    # motor_rail = LinearRail(pulse_pin=27, dir_pin=4, limit_pin=24, gear_ratio=1)
-    # motor_rail.init_motor(direction=1)
+    motor_rail = LinearRail(pulse_pin=27, dir_pin=4, limit_pin=24, gear_ratio=1)
+    motor_rail.init_motor(direction=1)
 
 
     arm = Arm()

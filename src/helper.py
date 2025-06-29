@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
 import pvlib
 import pandas as pd
-from tqdm import tqdm   
 
 class Vector:
     def __init__(self, x, y, z):

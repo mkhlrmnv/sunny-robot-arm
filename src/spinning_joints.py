@@ -15,7 +15,7 @@ class SpinningJoints:
         assert isinstance(pulse_pin, int), "Pulse pin must be an integer."
         assert isinstance(dir_pin, int), "Direction pin must be an integer."
         assert isinstance(step_per_rev, int), "Steps per revolution must be an integer."
-        assert isinstance(gear_ratio, int), "Gear ratio must be an integer."
+        assert isinstance(gear_ratio, (int, float)), "Gear ratio must be a number."
         assert isinstance(min_delay, (int, float)), "Minimum delay must be a number."
         assert isinstance(max_delay, (int, float)), "Maximum delay must be a number."
         assert min_delay >= 0, "Minimum delay must be non-negative."
@@ -111,8 +111,8 @@ class SpinningJoints:
 
 
 if __name__ == "__main__":
-    motor_paaty = SpinningJoints(pulse_pin=20, dir_pin=19, limit_pin=23, gear_ratio=1)
-    motor_pontto = SpinningJoints(pulse_pin=13, dir_pin=26, limit_pin=22, gear_ratio=1)
-    # motor.move_by_angle(-720*6, speed=0.5)
-    motor_paaty.init_motor(direction=-1)
-    motor_pontto.init_motor(direction=1)
+    motor_paaty = SpinningJoints(pulse_pin=20, dir_pin=19, limit_pin=23, gear_ratio=5)
+    motor_pontto = SpinningJoints(pulse_pin=13, dir_pin=26, limit_pin=22, gear_ratio=5*32/10)
+    motor_pontto.move_by_angle(-90, speed=0.5)
+    # motor_paaty.init_motor(direction=-1)
+    # motor_pontto.init_motor(direction=1)
