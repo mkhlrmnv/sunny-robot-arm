@@ -289,7 +289,7 @@ test_box = np.array([
     [-100, 100, 1000]
 ])
 
-all_boxes = [kontti_box_corners, safety_box_1_corners, safety_box_2_corners, test_box]
+all_boxes = [kontti_box_corners, safety_box_1_corners, safety_box_2_corners] #, test_box]
 
     # Define edges by listing pairs of points (12 box edges total)
 edges = [
