@@ -42,17 +42,17 @@ class Arm:
 
         self.iteration = 0
 
-        # self.motor_paaty = SpinningJoints(pulse_pin=20, dir_pin=19, limit_pin=23, gear_ratio=1)
-        # self.motor_pontto = SpinningJoints(pulse_pin=13, dir_pin=26, limit_pin=22, gear_ratio=1)
-        # self.motor_rail = LinearRail(pulse_pin=27, dir_pin=4, limit_pin=24, gear_ratio=1)
+        self.motor_paaty = SpinningJoints(pulse_pin=20, dir_pin=19, limit_pin=23, gear_ratio=5)
+        self.motor_pontto = SpinningJoints(pulse_pin=13, dir_pin=26, limit_pin=22, gear_ratio=5*32/10)
+        self.motor_rail = LinearRail(pulse_pin=27, dir_pin=4, limit_pin=24, gear_ratio=1)
 
 
     def init(self):
         try:
             print("Starting init")
-            # self.motor_paaty.init_motor(direction=-1)
-            # self.motor_pontto.init_motor(direction=1)
-            # self.motor_rail.init_motor(direction=1)
+            self.motor_paaty.init_motor(direction=-1)
+            self.motor_pontto.init_motor(direction=1, speed=0.2)
+            self.motor_rail.init_motor(direction=1)
         except TimeoutError:
             print("One of the motor couldn't init")
             return False
@@ -81,15 +81,15 @@ class Arm:
                 self._compute_next_target()
 
             elif not self._step_towards('theta_1', self.required_theta_1):
-                # TODO: Tähän tulee te actual motor control
+                self.motor_pontto.move_to_angle(self.required_theta_1, speed=0.1)
                 pass  # Move theta_1
 
             elif not self._step_towards('delta_r', self.required_delta_r):
-                # TODO: ADD ACTUAL MOTOR CONTROL HERE
+                # self.motor_rail.move_to_distance(self.required_delta_r, speed=0.5)
                 pass  # Move delta_r
 
             elif not self._step_towards('theta_2', self.required_theta_2):
-                # TODO: ADD ACTUAL MOTOR CONTROL HERE
+                self.motor_paaty.move_to_angle(self.required_theta_2, speed=0.5)
                 pass  # Move theta_2
 
             else:
@@ -202,24 +202,31 @@ if __name__ == "__main__":
     # arm.plot()
 
     # Init motors
-    motor_paaty = SpinningJoints(pulse_pin=20, dir_pin=19, limit_pin=23, gear_ratio=5)
-    motor_paaty.init_motor(direction=-1)
+    # motor_paaty = SpinningJoints(pulse_pin=20, dir_pin=19, limit_pin=23, gear_ratio=5)
+    # motor_paaty.move_by_angle(90, speed=0.5)
+    #motor_paaty.init_motor(direction=-1)
+    
 
-    motor_pontto = SpinningJoints(pulse_pin=13, dir_pin=26, limit_pin=22, gear_ratio=5*32/10)
-    motor_pontto.init_motor(direction=1)
+    # motor_pontto = SpinningJoints(pulse_pin=13, dir_pin=26, limit_pin=22, gear_ratio=5*32/10)
+    # motor_pontto.move_by_angle(-90, speed=0.5)
+    # motor_pontto.init_motor(direction=1, speed=0.2)
 
-    motor_rail = LinearRail(pulse_pin=27, dir_pin=4, limit_pin=24, gear_ratio=1)
-    motor_rail.init_motor(direction=1)
+    # motor_rail = LinearRail(pulse_pin=27, dir_pin=4, limit_pin=24, gear_ratio=1)
+    # motor_rail.init_motor(direction=1)
 
 
     arm = Arm()
     arm.init()
     arm.init_path()
 
-    fig = plt.figure(figsize=(18, 9))
-    ax = fig.add_subplot(111, projection='3d')
+    while True:
+        arm.move()
+        time.sleep(0.1)
 
-    ani = FuncAnimation(fig, arm.draw_all, frames=len(arm.current_path), fargs=(ax,), interval=10)
-    plt.show()
+    # fig = plt.figure(figsize=(18, 9))
+    # ax = fig.add_subplot(111, projection='3d')
+# 
+    # ani = FuncAnimation(fig, arm.draw_all, frames=len(arm.current_path), fargs=(ax,), interval=10)
+    # plt.show()
 
     
