@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <title>Manual Control - J&M Automation</title>
+      <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    </head>
+    <body>
+      <!-- LEFT PANEL: Cooling Info (desktop only) -->
+      <div class="left-panel">
+        <h2>Cooling Info</h2>
+        <div class="label">Temperature</div>
+        <div class="gauge" id="gaugeTemp" style="--percent: 0%;"></div>
+        <div class="label temp-value" id="tempValue">-- °C</div>
+        <div class="label">Fan Speed</div>
+        <div class="gauge" id="gaugeFan" style="--percent: 0%;"></div>
+        <div class="label" id="fanValue">-- %</div>
+      </div>
+      
+      <!-- CENTER PANEL: Manual Control UI -->
+      <div class="center-panel">
+        <div class="logo-container">
+          <img src="{{ url_for('static', filename='logo.png') }}" alt="J&M Automation Logo">
+        </div>
+        <h1>MANUAL CONTROL</h1>
+        <div class="motor-row">
+          <button class="arrow-button" 
+                  onmousedown="startCommandRepeat('w')" 
+                  onmouseup="stopCommandRepeat()" 
+                  onmouseleave="stopCommandRepeat()"
+                  ontouchstart="startCommandRepeat('w')" 
+                  ontouchend="stopCommandRepeat()">&larr;</button>
+          <div class="motor-info">
+            <div class="motor-name">MOTOR 1</div>
+          </div>
+          <button class="arrow-button" 
+                  onmousedown="startCommandRepeat('s')" 
+                  onmouseup="stopCommandRepeat()" 
+                  onmouseleave="stopCommandRepeat()"
+                  ontouchstart="startCommandRepeat('s')" 
+                  ontouchend="stopCommandRepeat()">&rarr;</button>
+        </div>
+        <div class="motor-row">
+          <button class="arrow-button" 
+                  onmousedown="startCommandRepeat('a')" 
+                  onmouseup="stopCommandRepeat()" 
+                  onmouseleave="stopCommandRepeat()"
+                  ontouchstart="startCommandRepeat('a')" 
+                  ontouchend="stopCommandRepeat()">&larr;</button>
+          <div class="motor-info">
+            <div class="motor-name">MOTOR 2</div>
+          </div>
+          <button class="arrow-button" 
+                  onmousedown="startCommandRepeat('d')" 
+                  onmouseup="stopCommandRepeat()" 
+                  onmouseleave="stopCommandRepeat()"
+                  ontouchstart="startCommandRepeat('d')" 
+                  ontouchend="stopCommandRepeat()">&rarr;</button>
+        </div>
+        <div class="motor-row">
+          <button class="arrow-button" 
+                  onmousedown="startCommandRepeat('j')" 
+                  onmouseup="stopCommandRepeat()" 
+                  onmouseleave="stopCommandRepeat()"
+                  ontouchstart="startCommandRepeat('j')" 
+                  ontouchend="stopCommandRepeat()">&larr;</button>
+          <div class="motor-info">
+            <div class="motor-name">MOTOR 3</div>
+          </div>
+          <button class="arrow-button" 
+                  onmousedown="startCommandRepeat('k')" 
+                  onmouseup="stopCommandRepeat()" 
+                  onmouseleave="stopCommandRepeat()"
+                  ontouchstart="startCommandRepeat('k')" 
+                  ontouchend="stopCommandRepeat()">&rarr;</button>
+        </div>
+        <div class="step-control">
+          <button class="small-button" onclick="sendCommand('o')">-</button>
+          <span id="step-size-text">Step Size: 1</span>
+          <button class="small-button" onclick="sendCommand('i')">+</button>
+        </div>
+        <button class="big-button" onclick="location.href='/'">BACK</button>
+      </div>
+      
+      <script>
+        // Only poll cooling info on desktop (left panel visible)
+        if (window.innerWidth > 768) {
+          function fetchCoolingInfo() {
+            fetch('/cooling_info')
+              .then(response => response.json())
+              .then(data => updateGauges(data))
+              .catch(err => console.error('Error fetching cooling info:', err));
+          }
+          function updateGauges(data) {
+            const maxTemp = 60.0;
+            let temperature = parseFloat(data.temperature);
+            let tempPercent = (temperature / maxTemp) * 100;
+            if (tempPercent > 100) tempPercent = 100;
+            document.getElementById('gaugeTemp').style.setProperty('--percent', tempPercent + '%');
+            document.getElementById('tempValue').innerText = temperature + " °C";
+            
+            let fanSpeed = parseFloat(data.fan_speed);
+            if (fanSpeed > 100) fanSpeed = 100;
+            document.getElementById('gaugeFan').style.setProperty('--percent', fanSpeed + '%');
+            document.getElementById('fanValue').innerText = fanSpeed + " %";
+          }
+          fetchCoolingInfo();
+          setInterval(fetchCoolingInfo, 1000);
+        }
+      </script>
+      
+      <!-- New script to enable press and hold functionality -->
+      <script>
+        var commandInterval;
+        function startCommandRepeat(cmd) {
+          // Immediately send the command on press
+          sendCommand(cmd);
+          // Set an interval to repeatedly send the command (adjust interval as needed)
+          commandInterval = setInterval(() => sendCommand(cmd), 250);
+        }
+        function stopCommandRepeat() {
+          clearInterval(commandInterval);
+        }
+      </script>
+      
+      <script>
+        function sendCommand(cmd) {
+          fetch('/send_char?cmd=' + cmd)
+            .then(response => response.text())
+            .then(data => {
+              console.log("Response:", data);
+              // If the command is for changing the step size, try to extract the new value.
+              if(cmd === 'i' || cmd === 'o' || cmd === 'increase_step' || cmd === 'decrease_step'){
+                // Example expected output: "Step per key increased to 3"
+                // Use a regex to extract the first number found:
+                const match = data.match(/(\\d+)/);
+                if (match && match[1]) {
+                  document.getElementById('step-size-text').innerText = "Step Size: " + match[1];
+                }
+              }
+            });
+        }
+      </script>
+    </body>
+    </html>

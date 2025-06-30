@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sensor Test - Unplug</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Sensor Test</h1>
+        <div class="image-box">
+            <img src="{{ url_for('static', filename='unplug.png') }}" alt="Unplug motors">
+        </div>
+        <div class="description">
+            Unplug two motor controllers power cords<br>
+            so that joints can freely spin
+        </div>
+        <a href="/unplug_done" class="button">NEXT</a>
+    </div>
+</body>
+</html>

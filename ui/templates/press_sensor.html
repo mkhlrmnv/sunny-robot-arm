@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sensor Test - Press Sensor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Sensor Test</h1>
+        <div class="image-box">
+            <img src="{{ url_for('static', filename='sensor.png') }}" alt="Limit Sensor">
+        </div>
+        <div class="description">
+            Press and hold rail limit sensor<br>
+            for at least three seconds
+        </div>
+        <div class="status" id="status">Waiting for button press...</div>
+    </div>
+
+    <script>
+        function checkSensor() {
+            fetch('/check_sensor')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.pressed) {
+                        document.getElementById('status').innerText = "Button pressed ✅";
+                        setTimeout(() => {
+                            window.location.href = "/done";
+                        }, 1500);
+                    } else {
+                        setTimeout(checkSensor, 500);
+                    }
+                })
+                .catch(err => {
+                    document.getElementById('status').innerText = "Error contacting server";
+                });
+        }
+        checkSensor();
+    </script>
+</body>
+</html>
