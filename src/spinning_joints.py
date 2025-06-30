@@ -38,19 +38,19 @@ class SpinningJoints:
         self.max_delay = max_delay
         self.gear_ratio = gear_ratio
 
-        self.init_pos = False
+        self.init_pos = self.limit_switch.is_pressed 
 
     def calc_delay(self, speed_percent):
         if not (0 <= speed_percent <= 1):
             raise ValueError("Speed percent must be between 0 and 1.")
         return self.min_delay + (self.max_delay - self.min_delay) * (1 - speed_percent)
     
-    def init_motor(self, direction=1):
+    def init_motor(self, direction=1, speed=0.5):
         while not self.init_pos:
             if abs(self.angle) > 180:
                 raise TimeoutError("Motor didn't find init pos")
 
-            self.step(direction=direction, speed=0.5)
+            self.step(direction=direction, speed=speed)
         self.reset_position()
         print(f"Motor initialized")
 
@@ -113,6 +113,9 @@ class SpinningJoints:
 if __name__ == "__main__":
     motor_paaty = SpinningJoints(pulse_pin=20, dir_pin=19, limit_pin=23, gear_ratio=5)
     motor_pontto = SpinningJoints(pulse_pin=13, dir_pin=26, limit_pin=22, gear_ratio=5*32/10)
-    motor_pontto.move_by_angle(-90, speed=0.5)
-    # motor_paaty.init_motor(direction=-1)
-    # motor_pontto.init_motor(direction=1)
+    
+    # motor_pontto.move_by_angle(-90, speed=0.5)
+    # motor_paaty.move_by_angle(90, speed=0.5)
+    
+    motor_paaty.init_motor(direction=-1)
+    motor_pontto.init_motor(direction=-1, speed=0.1)
