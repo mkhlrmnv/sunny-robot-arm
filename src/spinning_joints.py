@@ -69,8 +69,8 @@ class SpinningJoints:
         time.sleep(delay)
         self.pulse.off()
         time.sleep(delay)
-        self.steps += direction
-        self.angle += direction * (360 / (self.step_per_rev * self.gear_ratio))
+        self.steps -= direction
+        self.angle -= direction * (360 / (self.step_per_rev * self.gear_ratio))
         self.angle = round(self.angle, 3)
 
     def move_by_angle(self, angle, speed=0.5):
@@ -79,16 +79,21 @@ class SpinningJoints:
 
         angle_per_step = 360 / (self.step_per_rev * self.gear_ratio)
         steps = int(angle / angle_per_step)
-        direction = 1 if angle > 0 else -1
+        direction = 1 if angle < 0 else -1
 
         for _ in range(abs(steps)):
+            print("curr ", self.angle)
             self.step(direction=direction, speed=speed)
 
     def move_to_angle(self, target_angle, speed=0.5):
         if abs(target_angle) > self.angle_limit:
             raise ValueError("Target angle must be between -360 and 360 degrees.")
 
+        print("target", target_angle)
+
         angle_diff = target_angle - self.angle
+
+        print("diff", angle_diff)
         self.move_by_angle(angle_diff, speed=speed)
 
     def get_steps(self):
