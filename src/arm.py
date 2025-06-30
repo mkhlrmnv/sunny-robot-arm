@@ -51,14 +51,18 @@ class Arm:
         try:
             print("Starting init")
             self.motor_paaty.init_motor(direction=-1)
-            self.motor_pontto.init_motor(direction=1, speed=0.2)
+            self.motor_pontto.init_motor(direction=-1, speed=0.2)
             self.motor_rail.init_motor(direction=1)
         except TimeoutError:
             print("One of the motor couldn't init")
             return False
         
         self.theta_1 = 137.9
+        self.motor_pontto.angle = self.theta_1
+
         self.theta_2 = 135    # TODO: FIX THIS
+        self.motor_paaty.angle = self.theta_2
+
         self.delta_r = 0
 
         return True
@@ -67,6 +71,7 @@ class Arm:
     def init_path(self):
         # self.current_path, _ = get_sun_path()
         self.current_path = np.load("paths/test_path.npy")
+        # self.current_path = np.array([self.current_path[0]])
         
     def move(self):
         if self.current_path is None:
@@ -89,7 +94,7 @@ class Arm:
                 pass  # Move delta_r
 
             elif not self._step_towards('theta_2', self.required_theta_2):
-                self.motor_paaty.move_to_angle(self.required_theta_2, speed=0.5)
+                # self.motor_paaty.move_to_angle(self.required_theta_2, speed=0.5)
                 pass  # Move theta_2
 
             else:
@@ -121,6 +126,8 @@ class Arm:
         """
         current = getattr(self, attr)
         diff = target - current
+
+        print(attr, "diff", diff)
 
         if abs(diff) < 1e-6:  # Already at target (with tolerance)
             return True
