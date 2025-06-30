@@ -38,7 +38,7 @@ class LinearRail:
         self.max_delay = max_delay
         self.gear_ratio = gear_ratio
 
-        self.stop = False
+        self.stop = self.limit_switch.is_pressed
 
     def calc_delay(self, speed_percent):
         if not (0 <= speed_percent <= 1):
@@ -92,7 +92,6 @@ class LinearRail:
         self.move_by_angle(angle_diff, speed=speed)
 
     def move_by_distance(self, distance, speed=0.5):
-        #TODO: TEST!
         """
         Move the linear rail by a specified distance in mm.
 
@@ -104,13 +103,15 @@ class LinearRail:
 
         steps_per_mm = self.step_per_rev / self.pitch
         steps = int(distance * steps_per_mm)
-        direction = 1 if distance > 0 else -1
+        direction = 1 if distance < 0 else -1 
+        
+        # because now init point is on the wrong side our motor works in wrong direction
+        # so to get to use positive numbers when going right direction has to be flipped
 
         for _ in range(abs(steps)):
             self.step(direction=direction, speed=speed)
     
     def move_to_distance(self, target_distance, speed=0.5):
-        #TODO: TEST!
         """
         Move the linear rail to a specified distance in mm.
 
@@ -120,7 +121,10 @@ class LinearRail:
         if target_distance < 0:
             raise ValueError("Target distance must be non-negative.")
 
-        current_distance = self.steps * (self.pitch / self.step_per_rev)
+        # for same reason that direction is flipped in previous function here
+        # we need to input negative steps to get correctly current position
+
+        current_distance = - self.steps * (self.pitch / self.step_per_rev)
         distance_diff = target_distance - current_distance
         self.move_by_distance(distance_diff, speed=speed)
 
@@ -146,4 +150,21 @@ class LinearRail:
 if __name__ == "__main__":
     motor = LinearRail(pulse_pin=27, dir_pin=4, limit_pin=24, gear_ratio=1)
     # motor.move_by_angle(-720*6, speed=0.5)
-    motor.init_motor(direction=1)
+    # motor.init_motor(direction=1)
+    # motor.move_by_distance(-200, speed=1)
+    
+    motor.move_to_distance(10, speed=0.5)
+    print("moved")
+    print(motor.steps)
+    time.sleep(1)
+    motor.move_to_distance(40, speed=0.5)
+    print("moved")
+    print(motor.steps)
+    time.sleep(1)
+    motor.move_to_distance(30, speed=0.5)
+    print("moved")
+    print(motor.steps)
+    time.sleep(1)
+    motor.move_to_distance(50, speed=0.5)
+    print("moved")
+
