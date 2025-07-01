@@ -3,7 +3,7 @@
     <head>
       <meta charset="UTF-8" />
       <title>J&M Automation</title>
-      <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='index_style.css') }}">
     <body>
       <!-- LEFT PANEL: Cooling Info (visible on desktop) -->
       <div class="left-panel">
@@ -18,13 +18,14 @@
       
       <!-- CENTER PANEL: Logo and Main Buttons -->
       <div class="center-panel">
-        <div class="logo-container">
+        <!--<div class="logo-container">
           <img src="{{ url_for('static', filename='logo.png') }}" alt="J&M Automation Logo">
-        </div>
+        </div> -->
         <div class="button-container">
           <button class="big-button" onclick="location.href='/init'">INIT MOTORS</button>
           <button class="big-button" onclick="location.href='/play'">PLAY PATH</button>
           <button class="big-button" onclick="location.href='/manual'">MANUAL CONTROL</button>
+          <button class="big-button" onclick="location.href='/unplug'">SENSOR TEST</button>
         </div>
       </div>
       
