@@ -19,6 +19,7 @@ sys.path.append(src_path)
 # Now you can import the cooling module
 # import cooling
 
+
 # Start the cooling controller in its own thread.
 def start_cooling_thread():
     print("starting cooling")
@@ -29,6 +30,7 @@ def start_cooling_thread():
 print("on own thread")
 cooling_thread = threading.Thread(target=start_cooling_thread, daemon=True)
 cooling_thread.start()
+
 
 # Endpoint to serve the latest cooling reading as JSON.
 @app.route('/cooling_info')
@@ -43,6 +45,7 @@ def cooling_info():
         reading = {"temperature": "--", "fan_speed": "--"}
     print(reading)
     return jsonify(reading)
+
 
 def start_wsd_control():
     global global_wsd_proc
@@ -88,89 +91,21 @@ def run_non_interactive_command(cmd):
     result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
     return result.stdout, result.stderr
 
+
 @app.route('/')
 def index():
     return render_template('index.html')
 
+
 @app.route('/init')
 def init_motors():
-    template = '''
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Init Motors</title>
-      <style>
-        body {
-          font-family: Arial, sans-serif;
-          background-color: #f4f4f4;
-          margin: 0;
-          padding: 20px;
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          align-items: center;
-          height: 100vh;
-          text-align: center;
-        }
-        .button {
-          background-color: #4f4f4f;
-          border: none;
-          color: white;
-          padding: 15px 30px;
-          font-size: 24px;
-          border-radius: 50px;
-          cursor: pointer;
-          margin-top: 20px;
-        }
-      </style>
-    </head>
-    <body>
-      <h1>Nothing here yet</h1>
-      <button class="button" onclick="location.href='/'">Back</button>
-    </body>
-    </html>
-    '''
-    return render_template_string(template)
+    return render_template('init_motors.html')
+
 
 @app.route('/play')
 def play_path():
-    template = '''
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Play Path</title>
-      <style>
-        body {
-          font-family: Arial, sans-serif;
-          background-color: #f4f4f4;
-          margin: 0;
-          padding: 20px;
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          align-items: center;
-          height: 100vh;
-          text-align: center;
-        }
-        .button {
-          background-color: #4f4f4f;
-          border: none;
-          color: white;
-          padding: 15px 30px;
-          font-size: 24px;
-          border-radius: 50px;
-          cursor: pointer;
-          margin-top: 20px;
-        }
-      </style>
-    </head>
-    <body>
-      <h1>Nothing here yet</h1>
-      <button class="button" onclick="location.href='/'">Back</button>
-    </body>
-    </html>
-    '''
-    return render_template_string(template)
+    return render_template('play_path.html')
+
 
 @app.route('/manual')
 def manual_control():
@@ -191,21 +126,61 @@ def manual_control():
 def unplug_step():
     return render_template('unplug.html')
 
+
 @app.route('/unplug_done')
 def unplug_done():
-    return redirect(url_for('sensor_test'))
+    return redirect(url_for('right_sensor_test'))
 
-@app.route('/sensor_test')
-def sensor_test():
-    return render_template('press_sensor.html')
 
-@app.route('/check_sensor')
-def check_sensor():
-    limit_sensor = False
+@app.route('/right_sensor_test')
+def right_sensor_test():
+    return render_template('right_sensor_test.html')
+
+
+@app.route('/left_sensor_test')
+def left_sensor_test():
+    return render_template('left_sensor_test.html')
+
+
+@app.route('/pontto_induction_sensor_test')
+def pontto_induction_sensor_test():
+    return render_template('pontto_induction_sensor_test.html')
+
+
+@app.route('/paaty_induction_sensor_test')
+def paaty_induction_sensor_test():
+    return render_template('paaty_induction_sensor_test.html')
+
+
+@app.route('/check_limit_sensor')
+def check_limit_sensors():
+    limit_sensor = True
+    # TODO: putt actual sensor check here.
     if limit_sensor:
-        return jsonify({'pressed': True})
+        return jsonify({'limit_sensor_pressed': True})
     else:
-        return jsonify({'pressed': False})
+        return jsonify({'limit_sensor_pressed': False})
+
+
+@app.route('/check_pontto_induction_sensor')
+def check_pontto_induction_sensor():
+    limit_sensor = True
+    # TODO: putt actual sensor check here.
+    if limit_sensor:
+        return jsonify({'pontto_induction_sensor_pressed': True})
+    else:
+        return jsonify({'pontto_induction_sensor_pressed': False})
+
+
+@app.route('/check_paaty_induction_sensor')
+def check_paaty_induction_sensor():
+    limit_sensor = True
+    # TODO: putt actual sensor check here.
+    if limit_sensor:
+        return jsonify({'paaty_induction_sensor_pressed': True})
+    else:
+        return jsonify({'paaty_induction_sensor_pressed': False})
+
 
 @app.route('/done')
 def done():
@@ -243,6 +218,7 @@ def send_char():
         print("Process output:", output)
         return output
     return "No output from process"
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
