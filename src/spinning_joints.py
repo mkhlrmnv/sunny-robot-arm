@@ -140,6 +140,15 @@ class SpinningJoints:
         print("released")
         self.init_pos = False
 
+    def cleanup(self):
+        """
+        Cleanup method to release GPIO resources.
+        """
+        self.pulse.close()
+        self.direction.close()
+        self.limit_switch.close()
+        print(f"Motor {self.name} cleaned up")
+
 
 if __name__ == "__main__":
     motor_paaty = SpinningJoints(pulse_pin=20, dir_pin=19, limit_pin=23, name="paaty", gear_ratio=5)

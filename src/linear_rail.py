@@ -50,7 +50,7 @@ class LinearRail:
             self.step(direction=direction, speed=0.5)
         self.move_by_angle(90 * (direction * -1), speed=0.5, ignore_limit=True)
         self.reset_position()
-        print(f"Motor initialized, stop state {self.stop}")
+        print(f"Motor limit initialized, stop state {self.stop}")
 
     def step(self, direction=1, speed=0.5, ignore_limit=False):
         if self.stop and not ignore_limit:
@@ -145,6 +145,15 @@ class LinearRail:
     def button_release(self):
         print("released")
         self.stop = False
+
+    def cleanup(self):
+        """
+        Cleanup method to release GPIO resources.
+        """
+        self.pulse.close()
+        self.direction.close()
+        self.limit_switch.close()
+        print("Motor linear resources cleaned up.")
 
 
 if __name__ == "__main__":
