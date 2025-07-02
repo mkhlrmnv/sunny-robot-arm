@@ -7,6 +7,10 @@ import os
 import sys
 import threading
 
+from src.spinning_joints import SpinningJoints
+from src.linear_rail import LinearRail
+from src.arm import Arm
+
 app = Flask(__name__)
 
 # Global variable for the interactive (manual control) session.
@@ -92,35 +96,103 @@ def run_non_interactive_command(cmd):
     return result.stdout, result.stderr
 
 
+def cleanup_motors():
+    """Call .cleanup() on any motor instance that exists, then zero them out."""
+    global motor_paaty, motor_pontto, motor_rail
+
+    if motor_paaty is not None:
+        motor_paaty.cleanup()
+    if motor_pontto is not None:
+        motor_pontto.cleanup()
+    if motor_rail is not None:
+        motor_rail.cleanup()
+
+    motor_paaty = motor_pontto = motor_rail = None
+
+
 @app.route('/')
 def index():
+    global motor_paaty, motor_pontto, motor_rail
+    if motor_paaty is not None or motor_pontto is not None or motor_rail is not None:
+        cleanup_motors()
     return render_template('index.html')
 
 
 @app.route('/init')
 def init_motors():
-    return render_template('init_motors.html')
+    global motor_paaty, motor_pontto, motor_rail, angles_per_key
+    motor_paaty = SpinningJoints(pulse_pin=20, dir_pin=19, limit_pin=23, name="paaty", gear_ratio=5)
+    motor_pontto = SpinningJoints(pulse_pin=13, dir_pin=26, limit_pin=22, name="pontto", gear_ratio=5*32/10)
+    motor_rail = LinearRail(pulse_pin=27, dir_pin=4, limit_pin=24, gear_ratio=1)
 
+    motor_paaty.init_motor(direction=-1)
+    motor_pontto.init_motor(direction=1, speed=0.1)
+    motor_rail.init_motor(direction=1)
+
+    cleanup_motors()
 
 @app.route('/play')
 def play_path():
-    return render_template('play_path.html')
+    arm = Arm()
+    arm.init()
+    arm.init_path()
 
+    while True:
+        arm.move()
+        time.sleep(0.1)
+
+motor_paaty = None
+motor_pontto = None
+motor_rail = None
+angles_per_key = 1
+
+# You can also protect these with a threading.Lock if you worry about concurrent requests:
+motor_lock = threading.Lock()
 
 @app.route('/manual')
 def manual_control():
-    global global_wsd_proc
-    if global_wsd_proc is None or global_wsd_proc.poll() is not None:
-        start_wsd_control()
-        time.sleep(1)
-        # Flush any initial output from the process.
-        while True:
-            rlist, _, _ = select.select([global_wsd_proc.stdout], [], [], 0.1)
-            if not rlist:
-                break
-            dummy = global_wsd_proc.stdout.readline()
+    global motor_paaty, motor_pontto, motor_rail, angles_per_key
+    motor_paaty = SpinningJoints(pulse_pin=20, dir_pin=19, limit_pin=23, name="paaty", gear_ratio=5)
+    motor_pontto = SpinningJoints(pulse_pin=13, dir_pin=26, limit_pin=22, name="pontto", gear_ratio=5*32/10)
+    motor_rail = LinearRail(pulse_pin=27, dir_pin=4, limit_pin=24, gear_ratio=1)
+    angles_per_key = 1
     return render_template('manual_control.html')
 
+@app.route('/send_char')
+def send_char():
+    global motor_paaty, motor_pontto, motor_rail
+    cmd = request.args.get('cmd')
+    response = ""
+
+    with motor_lock:
+        if cmd == 'w':
+            motor_paaty.move_by_angle(angle=angles_per_key, speed=0.5)
+            response = "Motor 1 ⬅️"
+        elif cmd == 's':
+            motor_paaty.move_by_angle(angle=-angles_per_key, speed=0.5)
+            response = "Motor 1 ➡️"
+        elif cmd == 'a':
+            motor_pontto.move_by_angle(angle=angles_per_key, speed=0.5)
+            response = "Motor 2 ⬅️"
+        elif cmd == 'd':
+            motor_pontto.move_by_angle(angle=-angles_per_key, speed=0.5)
+            response = "Motor 2 ➡️"
+        elif cmd == 'j':
+            motor_rail.move_by_distance(distance=angles_per_key, speed=0.5)
+            response = "Motor 3 ⬅️"
+        elif cmd == 'k':
+            motor_rail.move_by_distance(distance=-angles_per_key, speed=0.5)
+            response = "Motor 3 ➡️"
+        elif cmd == 'i':
+            angles_per_key += 10
+            response = f"Step per key increased to {angles_per_key}"
+        elif cmd == 'o':
+            angles_per_key = max(1, angles_per_key - 10)
+            response = f"Step per key decreased to {angles_per_key}"
+        else:
+            response = "Unknown command"
+
+    return response
 
 @app.route('/unplug')
 def unplug_step():
@@ -186,38 +258,6 @@ def check_paaty_induction_sensor():
 def done():
     return render_template('done.html')
 
-
-@app.route('/send_char')
-def send_char():
-    global global_wsd_proc
-    cmd = request.args.get('cmd')
-    # If process isn't started or has terminated, restart it.
-    if global_wsd_proc is None or global_wsd_proc.poll() is not None:
-        print("Interactive process not active. Restarting...")
-        start_wsd_control()
-        time.sleep(1)
-    
-    try:
-        print("Sending command:", cmd)
-        global_wsd_proc.stdin.write(cmd)
-        global_wsd_proc.stdin.flush()
-    except BrokenPipeError:
-        print("Broken pipe detected. Restarting interactive process.")
-        start_wsd_control()
-        return "Interactive process restarted due to broken pipe."
-    
-    # Allow a brief moment for the process to respond.
-    time.sleep(0.1)
-    output = ""
-    # Use select to check if there's data to read.
-    rlist, _, _ = select.select([global_wsd_proc.stdout], [], [], 0.1)
-    if rlist:
-        # Read up to 1024 bytes to avoid blocking indefinitely.
-        output = global_wsd_proc.stdout.read(1024)
-    if output:
-        print("Process output:", output)
-        return output
-    return "No output from process"
 
 
 if __name__ == '__main__':
