@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 from flask import Flask, render_template_string, request, jsonify, redirect, url_for, render_template
+import plotly.graph_objs as go
+import plotly.io as pio
 import subprocess
 import time
 import select
@@ -116,6 +118,23 @@ def index():
     if motor_paaty is not None or motor_pontto is not None or motor_rail is not None:
         cleanup_motors()
     return render_template('index.html')
+
+# idea how to make robot plot in play
+# def index():
+#     # Generate a 3D scatter
+#     import numpy as np
+#     t = np.linspace(0, 4*np.pi, 100)
+#     fig = go.Figure(data=[go.Scatter3d(
+#         x=np.sin(t), y=np.cos(t), z=t,
+#         mode='markers+lines'
+#     )])
+#     # Get the HTML <div> for the plot
+#     plot_div = pio.to_html(fig, full_html=False)
+# 
+#     return render_template_string('''
+#       <h1>Interactive 3D Plot</h1>
+#       {{ plot_div|safe }}
+#     ''', plot_div=plot_div)
 
 
 @app.route('/init')
