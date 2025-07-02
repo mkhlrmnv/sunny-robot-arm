@@ -4,7 +4,7 @@ from gpiozero import Button
 from signal import pause
 
 class SpinningJoints:
-    def __init__(self, pulse_pin, dir_pin, limit_pin, step_per_rev=1600, gear_ratio=5, min_delay=1e-4, max_delay=1e-3, angle_limit=360):
+    def __init__(self, pulse_pin, dir_pin, name, limit_pin, step_per_rev=1600, gear_ratio=5, min_delay=1e-4, max_delay=1e-3, angle_limit=360):
         """
         Initialize the stepper motor with the given GPIO pins.
 
@@ -14,12 +14,15 @@ class SpinningJoints:
         # asserts:)
         assert isinstance(pulse_pin, int), "Pulse pin must be an integer."
         assert isinstance(dir_pin, int), "Direction pin must be an integer."
+        assert isinstance(name, str), "Name must be a string"
         assert isinstance(step_per_rev, int), "Steps per revolution must be an integer."
         assert isinstance(gear_ratio, (int, float)), "Gear ratio must be a number."
         assert isinstance(min_delay, (int, float)), "Minimum delay must be a number."
         assert isinstance(max_delay, (int, float)), "Maximum delay must be a number."
         assert min_delay >= 0, "Minimum delay must be non-negative."
         assert max_delay >= min_delay, "Maximum delay must be greater than or equal to minimum delay."
+
+        self.name = name
         
         self.pulse = DigitalOutputDevice(pulse_pin)
         self.direction = DigitalOutputDevice(dir_pin)
@@ -45,14 +48,37 @@ class SpinningJoints:
             raise ValueError("Speed percent must be between 0 and 1.")
         return self.min_delay + (self.max_delay - self.min_delay) * (1 - speed_percent)
     
-    def init_motor(self, direction=1, speed=0.5):
-        while not self.init_pos:
-            if abs(self.angle) > 180:
-                raise TimeoutError("Motor didn't find init pos")
+    def init_motor(self, direction=1, speed=0.5, pontto=False):
+        # pontto motor init is little bit more complicated to not get the 
+        # cabel tangled there for it has own init sequence
+        if self.name=="pontto":
+            print("initing pontto")
+            while not self.init_pos:
+                if abs(self.angle) > 360:
+                    raise TimeoutError("Motor didn't find init pos")
+                self.step(direction=direction, speed=speed)
 
+            print("angle after first init", self.angle)
+
+            if abs(self.angle) > 180:
+                time.sleep(1)
+                self.move_by_angle(10 * (direction), speed=speed)
+                while not self.init_pos:
+                    self.step(direction=-1*direction, speed=speed)
+            else: 
+                self.move_by_angle(10 * (-1*direction), speed=speed)
+                time.sleep(1)
+                while not self.init_pos:
+                    self.step(direction=-1*direction, speed=speed)
+
+        # this one is basic one, mainly used for paaty motor
+        while not self.init_pos:
+            if abs(self.angle) > 270:
+                raise TimeoutError("Motor didn't find init pos")
             self.step(direction=direction, speed=speed)
+
         self.reset_position()
-        print(f"Motor initialized")
+        print(f"Motor {self.name} initialized")
 
     def step(self, direction=1, speed=0.5):
         
@@ -82,7 +108,7 @@ class SpinningJoints:
         direction = 1 if angle < 0 else -1
 
         for _ in range(abs(steps)):
-            print("curr ", self.angle)
+            # print("curr ", self.angle)
             self.step(direction=direction, speed=speed)
 
     def move_to_angle(self, target_angle, speed=0.5):
@@ -116,11 +142,11 @@ class SpinningJoints:
 
 
 if __name__ == "__main__":
-    motor_paaty = SpinningJoints(pulse_pin=20, dir_pin=19, limit_pin=23, gear_ratio=5)
-    motor_pontto = SpinningJoints(pulse_pin=13, dir_pin=26, limit_pin=22, gear_ratio=5*32/10)
+    motor_paaty = SpinningJoints(pulse_pin=20, dir_pin=19, limit_pin=23, name="paaty", gear_ratio=5)
+    motor_pontto = SpinningJoints(pulse_pin=13, dir_pin=26, limit_pin=22, name="pontto", gear_ratio=5*32/10)
     
-    # motor_pontto.move_by_angle(-90, speed=0.5)
-    # motor_paaty.move_by_angle(90, speed=0.5)
-    
+    # motor_pontto.move_by_angle(-190, speed=0.1)
+    motor_paaty.move_by_angle(-90, speed=0.5)
+
     motor_paaty.init_motor(direction=-1)
-    motor_pontto.init_motor(direction=-1, speed=0.1)
+    motor_pontto.init_motor(direction=1, speed=0.1)
