@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Autonomous Mode</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 50px; }
+    #log { white-space: pre; text-align: left; width: 80%; margin: auto; height: 300px; overflow: auto;
+           border: 1px solid #ccc; padding: 10px; }
+    button { margin-top: 20px; padding: 10px 20px; font-size: 18px; }
+  </style>
+</head>
+<body>
+  <h1>🚀 Autonomous Mode</h1>
+  <div id="log">Starting…</div>
+  <button onclick="window.location='/'">Stop &amp; Exit</button>
+
+  <script>
+    const log = document.getElementById('log');
+    const evtSrc = new EventSource("/autonomy_stream");
+
+    evtSrc.onmessage = e => {
+      log.textContent += e.data + "\n";
+      log.scrollTop = log.scrollHeight;
+    };
+
+    evtSrc.onerror = () => {
+      log.textContent += "\n🛑 Connection closed.\n";
+      evtSrc.close();
+    };
+  </script>
+</body>
+</html>
