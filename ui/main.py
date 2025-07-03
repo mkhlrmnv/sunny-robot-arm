@@ -8,6 +8,7 @@ import select
 import os
 import sys
 import threading
+from multiprocessing import Process
 
 from spinning_joints import SpinningJoints
 from linear_rail import LinearRail
@@ -110,10 +111,40 @@ def index():
 #     ''', plot_div=plot_div)
 
 
-@app.route('/init')
-def init_motors():
-    global arm
-    arm.init()
+arm_process = None
+
+def start_arm():
+    global arm_process, arm
+    if arm_process is None or not arm_process.is_alive():
+        arm_process = Process(target=arm.init)
+        arm_process.start()
+
+
+def stop_arm():
+    global arm_process
+    print("Stopping arm process...")
+    if arm_process and arm_process.is_alive():
+        arm_process.terminate()
+        arm_process.join()
+        print("Arm process stopped.")
+        arm_process = None
+
+
+def is_arm_running():
+    return arm_process is not None and arm_process.is_alive()
+
+
+@app.route("/init")
+def init():
+    if not is_arm_running():
+        start_arm()
+    return render_template("init.html", running=is_arm_running())
+
+
+@app.route("/stop")
+def stop():
+    stop_arm()
+    return redirect(url_for("index"))
 
 @app.route('/play')
 def play_path():

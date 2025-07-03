@@ -53,7 +53,7 @@ class SpinningJoints:
         # cabel tangled there for it has own init sequence
         if self.name=="pontto":
             print("initing pontto")
-            while not self.init_pos:
+            while not self.limit_switch.is_pressed:
                 if abs(self.angle) > 360:
                     raise TimeoutError("Motor didn't find init pos")
                 self.step(direction=direction, speed=speed)
@@ -63,25 +63,25 @@ class SpinningJoints:
             if abs(self.angle) > 180:
                 time.sleep(1)
                 self.move_by_angle(10 * (direction), speed=speed)
-                while not self.init_pos:
+                while not self.limit_switch.is_pressed:
                     self.step(direction=-1*direction, speed=speed)
             else: 
                 self.move_by_angle(10 * (-1*direction), speed=speed)
                 time.sleep(1)
-                while not self.init_pos:
+                while not self.limit_switch.is_pressed:
                     self.step(direction=-1*direction, speed=speed)
 
-        # this one is basic one, mainly used for paaty motor
-        while not self.init_pos:
-            if abs(self.angle) > 270:
-                raise TimeoutError("Motor didn't find init pos")
-            self.step(direction=direction, speed=speed)
+        else:
+            # this one is basic one, mainly used for paaty motor
+            while not self.limit_switch.is_pressed:
+                if abs(self.angle) > 270:
+                    raise TimeoutError("Motor didn't find init pos")
+                self.step(direction=direction, speed=speed)
 
         self.reset_position()
         print(f"Motor {self.name} initialized")
 
     def step(self, direction=1, speed=0.5):
-        
         if abs(direction * (360 / (self.step_per_rev * self.gear_ratio)) > self.angle_limit):
             raise ValueError("Angle exceeded the limit.")
         

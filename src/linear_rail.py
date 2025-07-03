@@ -46,7 +46,7 @@ class LinearRail:
         return self.min_delay + (self.max_delay - self.min_delay) * (1 - speed_percent)
     
     def init_motor(self, direction=1):
-        while not self.stop:
+        while not self.limit_switch.is_pressed:
             self.step(direction=direction, speed=0.5)
         self.move_by_angle(90 * (direction * -1), speed=0.5, ignore_limit=True)
         self.reset_position()

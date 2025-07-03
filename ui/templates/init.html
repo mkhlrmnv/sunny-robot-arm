@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Moottorien alustus</title>
+</head>
+<body>
+<h1>Moottorien alustus</h1>
+
+{% if running %}
+  <p>Alustus käynnissä…</p>
+  <form action="{{ url_for('stop') }}" method="get">
+    <button type="submit">STOP</button>
+  </form>
+{% else %}
+  <p>Alustus ei ole käynnissä.</p>
+  <form action="{{ url_for('init') }}" method="get">
+    <button type="submit">Aloita alustus</button>
+  </form>
+{% endif %}
+
+</body>
+</html>

@@ -41,6 +41,7 @@ class Arm:
         self.required_delta_r = None
 
         self.iteration = 0
+        
 
         self.motor_paaty = SpinningJoints(pulse_pin=20, dir_pin=19, limit_pin=23, name="paaty", gear_ratio=5)
         self.motor_pontto = SpinningJoints(pulse_pin=13, dir_pin=26, limit_pin=22, name="pontto", gear_ratio=5*32/10)
