@@ -6,6 +6,7 @@ from .spinning_joints import SpinningJoints
 from .cooling import FanController
 from .arm import Arm
 from .helper import Vector, Joints, forward_kinematics, inverse_kinematics
+from .cooling import FanController
 
 # Optional: Define package metadata
 __version__ = "1.0"
