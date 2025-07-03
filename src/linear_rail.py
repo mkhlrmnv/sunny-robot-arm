@@ -32,6 +32,7 @@ class LinearRail:
 
         self.steps = 0
         self.angle = 0
+        self.distance = 0
         self.pitch = pitch  # Pitch of the linear rail in mm
         self.step_per_rev = step_per_rev
         self.min_delay = min_delay
@@ -72,6 +73,7 @@ class LinearRail:
         self.steps += direction
         self.angle += direction * (360 / (self.step_per_rev * self.gear_ratio))
         self.angle = round(self.angle, 3)
+        self.distance = - self.steps * (self.pitch / self.step_per_rev)  # negative because of the flipped direction
 
     def move_by_angle(self, angle, speed=0.5, ignore_limit=False):
         # if abs(angle) > 360:
