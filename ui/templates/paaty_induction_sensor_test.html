@@ -19,10 +19,10 @@
 
     <script>
         function checkSensor() {
-            fetch('/check_limit_sensor') 
+            fetch('/check_paaty_induction_sensor') 
                 .then(response => response.json())
                 .then(data => {
-                    if (data.limit_sensor_pressed) { // TODO: CORRECT IF STATEMENt
+                    if (data.paaty_induction_sensor_pressed) {
                         document.getElementById('status').innerText = "Button pressed ✅";
                         setTimeout(() => {
                             window.location.href = "/done";
