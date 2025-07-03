@@ -25,59 +25,59 @@
         <h1>MANUAL CONTROL</h1>
         <div class="motor-row">
           <button class="arrow-button" 
-                  onmousedown="startCommandRepeat('w')" 
+                  onmousedown="startCommandRepeat('motor_paaty_up')" 
                   onmouseup="stopCommandRepeat()" 
                   onmouseleave="stopCommandRepeat()"
-                  ontouchstart="startCommandRepeat('w')" 
-                  ontouchend="stopCommandRepeat()">&larr;</button>
+                  ontouchstart="startCommandRepeat('motor_paaty_up')" 
+                  ontouchend="stopCommandRepeat()">UP</button>
           <div class="motor-info">
-            <div class="motor-name">MOTOR 1</div>
+            <div class="motor-name">Paaty</div>
           </div>
           <button class="arrow-button" 
-                  onmousedown="startCommandRepeat('s')" 
+                  onmousedown="startCommandRepeat('motor_paaty_down')" 
                   onmouseup="stopCommandRepeat()" 
                   onmouseleave="stopCommandRepeat()"
-                  ontouchstart="startCommandRepeat('s')" 
-                  ontouchend="stopCommandRepeat()">&rarr;</button>
+                  ontouchstart="startCommandRepeat('motor_paaty_down')" 
+                  ontouchend="stopCommandRepeat()">Down</button>
         </div>
         <div class="motor-row">
           <button class="arrow-button" 
-                  onmousedown="startCommandRepeat('a')" 
+                  onmousedown="startCommandRepeat('motor_pontto_cw')" 
                   onmouseup="stopCommandRepeat()" 
                   onmouseleave="stopCommandRepeat()"
-                  ontouchstart="startCommandRepeat('a')" 
-                  ontouchend="stopCommandRepeat()">&larr;</button>
+                  ontouchstart="startCommandRepeat('motor_pontto_cw')" 
+                  ontouchend="stopCommandRepeat()">CW</button>
           <div class="motor-info">
-            <div class="motor-name">MOTOR 2</div>
+            <div class="motor-name">Pontto</div>
           </div>
           <button class="arrow-button" 
-                  onmousedown="startCommandRepeat('d')" 
+                  onmousedown="startCommandRepeat('motor_pontto_ccw')" 
                   onmouseup="stopCommandRepeat()" 
                   onmouseleave="stopCommandRepeat()"
-                  ontouchstart="startCommandRepeat('d')" 
-                  ontouchend="stopCommandRepeat()">&rarr;</button>
+                  ontouchstart="startCommandRepeat('motor_pontto_ccw')" 
+                  ontouchend="stopCommandRepeat()">CCW</button>
         </div>
         <div class="motor-row">
           <button class="arrow-button" 
-                  onmousedown="startCommandRepeat('j')" 
+                  onmousedown="startCommandRepeat('motor_rail_left')" 
                   onmouseup="stopCommandRepeat()" 
                   onmouseleave="stopCommandRepeat()"
-                  ontouchstart="startCommandRepeat('j')" 
+                  ontouchstart="startCommandRepeat('motor_rail_left')" 
                   ontouchend="stopCommandRepeat()">&larr;</button>
           <div class="motor-info">
-            <div class="motor-name">MOTOR 3</div>
+            <div class="motor-name">Linear Rail</div>
           </div>
           <button class="arrow-button" 
-                  onmousedown="startCommandRepeat('k')" 
+                  onmousedown="startCommandRepeat('motor_rail_right')" 
                   onmouseup="stopCommandRepeat()" 
                   onmouseleave="stopCommandRepeat()"
-                  ontouchstart="startCommandRepeat('k')" 
+                  ontouchstart="startCommandRepeat('motor_rail_right')" 
                   ontouchend="stopCommandRepeat()">&rarr;</button>
         </div>
         <div class="step-control">
-          <button class="small-button" onclick="sendCommand('o')">-</button>
+          <button class="small-button" onclick="sendCommand('+')">-</button>
           <span id="step-size-text">Step Size: 1</span>
-          <button class="small-button" onclick="sendCommand('i')">+</button>
+          <button class="small-button" onclick="sendCommand('-')">+</button>
         </div>
         <button class="big-button" onclick="location.href='/'">BACK</button>
       </div>
@@ -125,7 +125,7 @@
       
       <script>
         function sendCommand(cmd) {
-          fetch('/send_char?cmd=' + cmd)
+          fetch('/move_arm?cmd=' + cmd)
             .then(response => response.text())
             .then(data => {
               console.log("Response:", data);

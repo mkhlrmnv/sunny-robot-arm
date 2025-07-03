@@ -167,35 +167,35 @@ def manual_control():
     angles_per_key = 1
     return render_template('manual_control.html')
 
-@app.route('/send_char')
-def send_char():
+@app.route('/move_arm')
+def move_arm():
     global arm, angles_per_key, motor_lock
     cmd = request.args.get('cmd')
     response = ""
 
     with motor_lock:
-        if cmd == 'w':
+        if cmd == 'motor_paaty_up':
             arm.motor_paaty.move_by_angle(angle=angles_per_key, speed=0.5)
-            response = "Motor 1 ⬅️"
-        elif cmd == 's':
+            response = "Motor paaty moved up"
+        elif cmd == 'motor_paaty_down':
             arm.motor_paaty.move_by_angle(angle=-angles_per_key, speed=0.5)
-            response = "Motor 1 ➡️"
-        elif cmd == 'a':
+            response = "Motor paaty moved down"
+        elif cmd == 'motor_pontto_ccw':
             arm.motor_pontto.move_by_angle(angle=angles_per_key, speed=0.5)
-            response = "Motor 2 ⬅️"
-        elif cmd == 'd':
+            response = "Motor pontto moved ccw"
+        elif cmd == 'motor_pontto_cw':
             arm.motor_pontto.move_by_angle(angle=-angles_per_key, speed=0.5)
-            response = "Motor 2 ➡️"
-        elif cmd == 'j':
+            response = "Motor pontto moved cw"
+        elif cmd == 'motor_rail_right':
             arm.motor_rail.move_by_distance(distance=angles_per_key, speed=0.5)
-            response = "Motor 3 ⬅️"
-        elif cmd == 'k':
+            response = "Motor rail moved right"
+        elif cmd == 'motor_rail_left':
             arm.motor_rail.move_by_distance(distance=-angles_per_key, speed=0.5)
-            response = "Motor 3 ➡️"
-        elif cmd == 'i':
+            response = "Motor rail moved left"
+        elif cmd == '+':
             angles_per_key += 10
             response = f"Step per key increased to {angles_per_key}"
-        elif cmd == 'o':
+        elif cmd == '-':
             angles_per_key = max(1, angles_per_key - 10)
             response = f"Step per key decreased to {angles_per_key}"
         else:
@@ -266,6 +266,8 @@ def check_paaty_induction_sensor():
 @app.route('/done')
 def done():
     return render_template('done.html')
+
+
 
 
 if __name__ == '__main__':
