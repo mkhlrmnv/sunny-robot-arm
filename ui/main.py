@@ -172,6 +172,7 @@ def move_arm():
     global arm, angles_per_key, motor_lock
     cmd = request.args.get('cmd')
     response = ""
+    status = "ok"
 
     with motor_lock:
         if cmd == 'motor_paaty_up':
@@ -192,16 +193,26 @@ def move_arm():
         elif cmd == 'motor_rail_left':
             arm.motor_rail.move_by_distance(distance=-angles_per_key, speed=0.5)
             response = "Motor rail moved left"
-        elif cmd == '+':
+        elif cmd == 'pl':
             angles_per_key += 10
             response = f"Step per key increased to {angles_per_key}"
-        elif cmd == '-':
+        elif cmd == 'mn':
             angles_per_key = max(1, angles_per_key - 10)
             response = f"Step per key decreased to {angles_per_key}"
+        elif cmd == 'set_step_size':
+            try:
+                new_value = int(request.args.get('to'))
+                if new_value < 1:
+                    raise ValueError("Step size must be positive")
+                angles_per_key = new_value
+                response = f"Step size set to {angles_per_key}"
+            except Exception as e:
+                status = "error"
+                response = str(e)
         else:
+            status = "error"
             response = "Unknown command"
-
-    return response
+    return jsonify({"status": status, "message": response, "step_size": angles_per_key})
 
 @app.route('/unplug')
 def unplug_step():
@@ -271,4 +282,4 @@ def done():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000) #, debug=True, use_reloader=False)

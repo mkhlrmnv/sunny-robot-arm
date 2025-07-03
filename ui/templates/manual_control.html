@@ -75,9 +75,9 @@
                   ontouchend="stopCommandRepeat()">&rarr;</button>
         </div>
         <div class="step-control">
-          <button class="small-button" onclick="sendCommand('+')">-</button>
+          <button class="small-button" onclick="sendCommand('mn')">-</button>
           <span id="step-size-text">Step Size: 1</span>
-          <button class="small-button" onclick="sendCommand('-')">+</button>
+          <button class="small-button" onclick="sendCommand('pl')">+</button>
         </div>
         <button class="big-button" onclick="location.href='/'">BACK</button>
       </div>
@@ -124,19 +124,21 @@
       </script>
       
       <script>
-        function sendCommand(cmd) {
-          fetch('/move_arm?cmd=' + cmd)
-            .then(response => response.text())
+        function sendCommand(cmd, value=null) {
+          let url = '/move_arm?cmd=' + cmd;
+          if (value !== null) {
+            url += '&to=' + value;
+          }
+
+          fetch(url)
+            .then(r => r.json())
             .then(data => {
               console.log("Response:", data);
-              // If the command is for changing the step size, try to extract the new value.
-              if(cmd === 'i' || cmd === 'o' || cmd === 'increase_step' || cmd === 'decrease_step'){
-                // Example expected output: "Step per key increased to 3"
-                // Use a regex to extract the first number found:
-                const match = data.match(/(\\d+)/);
-                if (match && match[1]) {
-                  document.getElementById('step-size-text').innerText = "Step Size: " + match[1];
-                }
+              if (data.step_size) {
+                document.getElementById('step-size-text').innerText = "Step Size: " + data.step_size;
+              }
+              if (data.status !== "ok") {
+                alert("Error: " + data.message);
               }
             });
         }
