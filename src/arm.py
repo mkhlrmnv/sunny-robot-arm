@@ -63,7 +63,7 @@ class Arm:
         self.theta_1 = 137.9
         self.motor_pontto.angle = self.theta_1
 
-        self.theta_2 = 90+69.795    # TODO: FIX THIS
+        self.theta_2 = 90+69.795 
         self.motor_paaty.angle = self.theta_2
 
         self.delta_r = 0
@@ -167,6 +167,7 @@ class Arm:
         }
 
         current_state[attr] = value
+        print("current state", current_state)
 
         if not check_solutions_safety(
             (current_state['theta_1'], current_state['theta_2'], current_state['delta_r'])
