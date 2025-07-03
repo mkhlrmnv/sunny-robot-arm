@@ -117,7 +117,7 @@ arm_process = None
 def start_arm(func, args):
     global arm_process, arm
     if arm_process is None or not arm_process.is_alive():
-        arm_process = Process(target=func, args=(args,))
+        arm_process = Process(target=func, args=args)
         arm_process.start()
 
 
@@ -147,6 +147,7 @@ def stop():
     stop_arm()
     return redirect(url_for("index"))
 
+
 @app.route('/play')
 def play_path():
     global arm
@@ -157,10 +158,13 @@ def play_path():
         arm.move()
         time.sleep(0.1)
 
+
 # You can also protect these with a threading.Lock if you worry about concurrent requests:
 motor_lock = threading.Lock()
 
+
 angles_per_key = 1
+
 
 @app.route('/manual')
 def manual_control():
@@ -168,40 +172,37 @@ def manual_control():
     angles_per_key = 1
     return render_template('manual_control.html')
 
+
 @app.route('/move_arm')
 def move_arm():
     global arm, angles_per_key, motor_lock
+
     cmd = request.args.get('cmd')
     response = ""
     status = "ok"
 
     if is_arm_running():
-        arm.stop()
-        
-        
+        stop_arm()
+
     with motor_lock:
         if cmd == 'motor_paaty_up':
             start_arm(arm.motor_paaty.move_by_angle, (angles_per_key, 0.5))
-            # arm.motor_paaty.move_by_angle(angle=angles_per_key, speed=0.5)
-            response = "Motor paaty moved up"
+            response = "Motor paaty moving up"
         elif cmd == 'motor_paaty_down':
             start_arm(arm.motor_paaty.move_by_angle, (-angles_per_key, 0.5))
-            # arm.motor_paaty.move_by_angle(angle=-angles_per_key, speed=0.5)
-            response = "Motor paaty moved down"
+            response = "Motor paaty moving down"
         elif cmd == 'motor_pontto_ccw':
             start_arm(arm.motor_pontto.move_by_angle, (angles_per_key, 0.5))
-            # arm.motor_pontto.move_by_angle(angle=angles_per_key, speed=0.5)
-            response = "Motor pontto moved ccw"
+            response = "Motor pontto moving ccw"
         elif cmd == 'motor_pontto_cw':
             start_arm(arm.motor_pontto.move_by_angle, (-angles_per_key, 0.5))
-            # arm.motor_pontto.move_by_angle(angle=-angles_per_key, speed=0.5)
-            response = "Motor pontto moved cw"
+            response = "Motor pontto moving cw"
         elif cmd == 'motor_rail_right':
-            arm.motor_rail.move_by_distance(distance=angles_per_key, speed=0.5)
-            response = "Motor rail moved right"
+            start_arm(arm.motor_rail.move_by_distance, (angles_per_key, 0.5))
+            response = "Motor rail moving right"
         elif cmd == 'motor_rail_left':
-            arm.motor_rail.move_by_distance(distance=-angles_per_key, speed=0.5)
-            response = "Motor rail moved left"
+            start_arm(arm.motor_rail.move_by_distance, (-angles_per_key, 0.5))
+            response = "Motor rail moving left"
         elif cmd == 'pl':
             angles_per_key += 10
             response = f"Step per key increased to {angles_per_key}"
@@ -221,7 +222,14 @@ def move_arm():
         else:
             status = "error"
             response = "Unknown command"
-    return jsonify({"status": status, "message": response, "step_size": angles_per_key})
+
+    print(response)
+    return jsonify({
+        "status": status,
+        "message": response,
+        "step_size": angles_per_key
+    })
+
 
 @app.route('/unplug')
 def unplug_step():
