@@ -137,8 +137,9 @@ def is_arm_running():
 
 @app.route("/init")
 def init():
+    global arm
     if not is_arm_running():
-        start_arm()
+        start_arm(arm.init, ())
     return render_template("init.html", running=is_arm_running())
 
 
