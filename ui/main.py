@@ -78,6 +78,11 @@ def start_arm(func, args):
         arm_process = Process(target=func, args=args)
         arm_process.start()
 
+@app.route('/status')
+def status():
+    running = is_arm_running()
+    return jsonify({"running": running})
+
 
 def stop_arm():
     global arm_process
@@ -144,6 +149,7 @@ def move_arm():
         stop_arm()
 
     with motor_lock:
+        # Manual control stuff -> move up / down, etc.
         if cmd == 'motor_paaty_up':
             start_arm(arm.motor_paaty.move_by_angle, (angles_per_key, 0.5))
             response = "Motor paaty moving up"
@@ -178,6 +184,68 @@ def move_arm():
             except Exception as e:
                 status = "error"
                 response = str(e)
+
+        # Motor control API stuff to move by / to angles
+        elif cmd == 'by_angle':
+            motor = request.args.get('motor')
+            angle = float(request.args.get('angle'))
+            speed = float(request.args.get('speed', 0.5))
+            check = bool(int(request.args.get('check_safety', 1)))
+            m = getattr(arm, f"motor_{motor}")
+            start_arm(m.move_by_angle, (angle, speed))
+            print(arm.theta_2)
+            if check:
+                if m == "motor_paaty":
+                    arm._check_if_hypothetical_safe('theta_1', arm.theta_1 + angle)
+                elif m == "motor_pontto":
+                    arm._check_if_hypothetical_safe('theta_2', arm.theta_2 + angle)
+            response = f"{motor} moved by {angle}° at speed {speed} (safety={check})"
+
+        elif cmd == 'to_angle':
+            motor = request.args.get('motor')
+            angle = float(request.args.get('angle'))
+            speed = float(request.args.get('speed', 0.5))
+            check = bool(int(request.args.get('check_safety', 1)))
+            m = getattr(arm, f"motor_{motor}")
+            if check:
+                arm._check_if_hypothetical_safe(motor, angle)
+            start_arm(m.move_to_angle, (angle, speed, check))
+            response = f"{motor} moved to {angle}° at speed {speed} (safety={check})"
+
+        elif cmd == 'by_distance':
+            dist = float(request.args.get('dist'))
+            speed = float(request.args.get('speed', 0.5))
+            check = bool(int(request.args.get('check_safety', 1)))
+            start_arm(arm.motor_rail.move_by_distance, (dist, speed, check))
+            response = f"Rail moved by {dist} at speed {speed} (safety={check})"
+
+        elif cmd == 'to_distance':
+            dist = float(request.args.get('dist'))
+            speed = float(request.args.get('speed', 0.5))
+            check = bool(int(request.args.get('check_safety', 1)))
+            start_arm(arm.motor_rail.move_to_distance, (dist, speed, check))
+            response = f"Rail moved to {dist} at speed {speed} (safety={check})"
+
+        elif cmd == 'to_point':
+            x = float(request.args.get('x'))
+            y = float(request.args.get('y'))
+            z = float(request.args.get('z'))
+            check = bool(int(request.args.get('check_safety', 1)))
+            speed_rail = float(request.args.get('speed_rail', 0.5))
+            speed_joints = float(request.args.get('speed_joints', 0.5))
+            start_arm(arm.move_to_point, (x, y, z, check, speed_rail, speed_joints))
+            response = f"Moved to point ({x},{y},{z}) at speeds rail:{speed_rail}, joints:{speed_joints} (safety={check})"
+
+        elif cmd == 'to_angles':
+            theta_1 = float(request.args.get('theta_1'))
+            theta_2 = float(request.args.get('theta_2'))
+            delta_r = float(request.args.get('delta_r'))
+            check = bool(int(request.args.get('check_safety', 1)))
+            speed_rail = float(request.args.get('speed_rail', 0.5))
+            speed_joints = float(request.args.get('speed_joints', 0.5))
+            start_arm(arm.move_to_angles, (theta_1, theta_2, delta_r, check, speed_rail, speed_joints))
+            response = f"Moved to angles θ1:{theta_1}, θ2:{theta_2}, Δr:{delta_r} at speeds rail:{speed_rail}, joints:{speed_joints} (safety={check})"
+
         else:
             status = "error"
             response = "Unknown command"
