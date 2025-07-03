@@ -2,32 +2,74 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Autonomous Mode</title>
+  <title>🚀 Autonomous Mode</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='sensor_test_style.css') }}">
   <style>
-    body { font-family: sans-serif; text-align: center; padding: 50px; }
-    #log { white-space: pre; text-align: left; width: 80%; margin: auto; height: 300px; overflow: auto;
-           border: 1px solid #ccc; padding: 10px; }
+    body { font-family: sans-serif; text-align: center; padding: 30px; }
+    #log { white-space: pre; text-align: left; width: 80%; margin: auto; height: 200px; overflow: auto;
+           border: 1px solid #ccc; padding: 10px; margin-bottom: 20px; }
+    #plot { width: 80%; height: 500px; margin: auto; }
     button { margin-top: 20px; padding: 10px 20px; font-size: 18px; }
   </style>
+  <!-- Plotly.js CDN -->
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 <body>
   <h1>🚀 Autonomous Mode</h1>
+
+  <!-- Streaming log -->
   <div id="log">Starting…</div>
   <button onclick="window.location='/'">Stop &amp; Exit</button>
 
+  <!-- 3D plot placeholder -->
+  <div id="plot"></div>
+
   <script>
+    // ——— SSE log ———
     const log = document.getElementById('log');
     const evtSrc = new EventSource("/autonomy_stream");
-
     evtSrc.onmessage = e => {
       log.textContent += e.data + "\n";
       log.scrollTop = log.scrollHeight;
     };
-
     evtSrc.onerror = () => {
       log.textContent += "\n🛑 Connection closed.\n";
       evtSrc.close();
     };
+
+    // ——— 3D FK plot, polling every 1 s ———
+    const plotDiv = document.getElementById('plot');
+
+    async function fetchAndPlot() {
+      try {
+        const res = await fetch('/points');
+        const points = await res.json();
+        const x = points.map(p => p[0]);
+        const y = points.map(p => p[1]);
+        const z = points.map(p => p[2]);
+        const trace = {
+          x, y, z,
+          mode: 'markers+lines',
+          type: 'scatter3d',
+          marker: { size: 3 }
+        };
+        Plotly.react(plotDiv, [trace], {
+          margin: { l:0, r:0, b:0, t:0 },
+          scene: {
+            xaxis:{ title:'X (mm)' },
+            yaxis:{ title:'Y (mm)' },
+            zaxis:{ title:'Z (mm)' }
+          }
+        });
+      } catch (err) {
+        console.error("Failed to fetch /points:", err);
+      }
+    }
+
+    // initial draw
+    fetchAndPlot();
+    // update every 1 second
+    setInterval(fetchAndPlot, 1000);
   </script>
 </body>
 </html>
