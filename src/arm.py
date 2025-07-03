@@ -50,7 +50,7 @@ class Arm:
     def init(self):
         try:
             print("Starting init")
-            self.motor_paaty.init_motor(direction=-1)
+            self.motor_paaty.init_motor(direction=-1, speed=0.1)
             self.motor_pontto.init_motor(direction=1, speed=0.1)
             self.motor_rail.init_motor(direction=1)
 
