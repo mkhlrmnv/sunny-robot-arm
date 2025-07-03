@@ -3,17 +3,18 @@ from flask import Flask, render_template_string, request, jsonify, redirect, url
 import plotly.graph_objs as go
 import plotly.io as pio
 import subprocess
-import time
+import time, queue as _queue
 import select
 import os
 import sys
 import threading
-from multiprocessing import Process
+from multiprocessing import Process, Queue
 
 from spinning_joints import SpinningJoints
 from linear_rail import LinearRail
 from arm import Arm
 import cooling
+from helper import forward_kinematics
 
 app = Flask(__name__)
 
@@ -39,6 +40,10 @@ cooling_thread.start()
 @app.route('/cooling_info')
 def cooling_info():
     try:
+        reading = {
+                    "temperature": round(69, 2),
+                    "fan_speed": round(69 * 100, 0)
+                }
         reading = cooling.latest_reading
     except AttributeError:
         reading = {"temperature": "--", "fan_speed": "--"}
@@ -78,6 +83,15 @@ def start_arm(func, args):
         arm_process = Process(target=func, args=args)
         arm_process.start()
 
+
+def start_arm_and_wait(func, args):
+    global arm_process
+    if arm_process is None or not arm_process.is_alive():
+        arm_process = Process(target=func, args=args)
+        arm_process.start()
+        arm_process.join()
+
+
 @app.route('/status')
 def status():
     running = is_arm_running()
@@ -111,16 +125,35 @@ def stop():
     stop_arm()
     return redirect(url_for("index"))
 
+play_process = None
+message_queue = Queue()
 
+
+# ─── Routes ──────────────────────────────────────────────────────────────────
 @app.route('/play')
 def play_path():
     global arm
-    arm.init()
+    print("Starting play_path")
+    start_arm_and_wait(arm.init, ())
     arm.init_path()
+    start_arm(arm.move, ())
+    return render_template('play.html')  # your SSE+plot template
 
-    while True:
-        arm.move()
-        time.sleep(0.1)
+
+@app.route('/points')
+def points():
+    global arm
+    
+    # get your live joint values from arm
+    theta1 = arm.motor_pontto.angle
+    theta2 = arm.motor_paaty.angle
+    delta_r = arm.linear_rail.distance
+
+    print("theta1:", arm.theta_1, "theta2:", theta2, "delta_r:", delta_r)
+
+    pts = forward_kinematics(theta1, theta2, delta_r)
+    # pts is an (N×3) numpy array
+    return jsonify(pts.tolist())
 
 
 # You can also protect these with a threading.Lock if you worry about concurrent requests:
@@ -192,13 +225,13 @@ def move_arm():
             speed = float(request.args.get('speed', 0.5))
             check = bool(int(request.args.get('check_safety', 1)))
             m = getattr(arm, f"motor_{motor}")
-            start_arm(m.move_by_angle, (angle, speed))
-            print(arm.theta_2)
             if check:
                 if m == "motor_paaty":
                     arm._check_if_hypothetical_safe('theta_1', arm.theta_1 + angle)
                 elif m == "motor_pontto":
                     arm._check_if_hypothetical_safe('theta_2', arm.theta_2 + angle)
+            start_arm(m.move_by_angle, (angle, speed))
+            print(arm.theta_2)
             response = f"{motor} moved by {angle}° at speed {speed} (safety={check})"
 
         elif cmd == 'to_angle':
