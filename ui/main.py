@@ -9,44 +9,34 @@ import os
 import sys
 import threading
 
-from src.spinning_joints import SpinningJoints
-from src.linear_rail import LinearRail
-from src.arm import Arm
+from spinning_joints import SpinningJoints
+from linear_rail import LinearRail
+from arm import Arm
+import cooling
 
 app = Flask(__name__)
 
 # Global variable for the interactive (manual control) session.
 global_wsd_proc = None
 
-# Add the absolute path to the 'src' directory to sys.path
-src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
-sys.path.append(src_path)
-
-# Now you can import the cooling module
-# import cooling
-
+arm = Arm()
 
 # Start the cooling controller in its own thread.
 def start_cooling_thread():
     print("starting cooling")
-    # controller = cooling.FanController(fan_pin=18, min_temp=20, max_temp=45)
-    # controller.run(verbal=False, interval=0.1)
+    controller = cooling.FanController(fan_pin=18, min_temp=20, max_temp=45)
+    controller.run(verbal=False, interval=0.1)
     print("started cooling")
 
 print("on own thread")
 cooling_thread = threading.Thread(target=start_cooling_thread, daemon=True)
 cooling_thread.start()
 
-
 # Endpoint to serve the latest cooling reading as JSON.
 @app.route('/cooling_info')
 def cooling_info():
     try:
-        reading = {
-                    "temperature": 68,
-                    "fan_speed": 69
-                }
-        # reading = cooling.latest_reading
+        reading = cooling.latest_reading
     except AttributeError:
         reading = {"temperature": "--", "fan_speed": "--"}
     print(reading)
@@ -98,25 +88,8 @@ def run_non_interactive_command(cmd):
     return result.stdout, result.stderr
 
 
-def cleanup_motors():
-    """Call .cleanup() on any motor instance that exists, then zero them out."""
-    global motor_paaty, motor_pontto, motor_rail
-
-    if motor_paaty is not None:
-        motor_paaty.cleanup()
-    if motor_pontto is not None:
-        motor_pontto.cleanup()
-    if motor_rail is not None:
-        motor_rail.cleanup()
-
-    motor_paaty = motor_pontto = motor_rail = None
-
-
 @app.route('/')
 def index():
-    global motor_paaty, motor_pontto, motor_rail
-    if motor_paaty is not None or motor_pontto is not None or motor_rail is not None:
-        cleanup_motors()
     return render_template('index.html')
 
 # idea how to make robot plot in play
@@ -139,20 +112,12 @@ def index():
 
 @app.route('/init')
 def init_motors():
-    global motor_paaty, motor_pontto, motor_rail, angles_per_key
-    motor_paaty = SpinningJoints(pulse_pin=20, dir_pin=19, limit_pin=23, name="paaty", gear_ratio=5)
-    motor_pontto = SpinningJoints(pulse_pin=13, dir_pin=26, limit_pin=22, name="pontto", gear_ratio=5*32/10)
-    motor_rail = LinearRail(pulse_pin=27, dir_pin=4, limit_pin=24, gear_ratio=1)
-
-    motor_paaty.init_motor(direction=-1)
-    motor_pontto.init_motor(direction=1, speed=0.1)
-    motor_rail.init_motor(direction=1)
-
-    cleanup_motors()
+    global arm
+    arm.init()
 
 @app.route('/play')
 def play_path():
-    arm = Arm()
+    global arm
     arm.init()
     arm.init_path()
 
@@ -160,47 +125,41 @@ def play_path():
         arm.move()
         time.sleep(0.1)
 
-motor_paaty = None
-motor_pontto = None
-motor_rail = None
-angles_per_key = 1
-
 # You can also protect these with a threading.Lock if you worry about concurrent requests:
 motor_lock = threading.Lock()
 
+angles_per_key = 1
+
 @app.route('/manual')
 def manual_control():
-    global motor_paaty, motor_pontto, motor_rail, angles_per_key
-    motor_paaty = SpinningJoints(pulse_pin=20, dir_pin=19, limit_pin=23, name="paaty", gear_ratio=5)
-    motor_pontto = SpinningJoints(pulse_pin=13, dir_pin=26, limit_pin=22, name="pontto", gear_ratio=5*32/10)
-    motor_rail = LinearRail(pulse_pin=27, dir_pin=4, limit_pin=24, gear_ratio=1)
+    global angles_per_key
     angles_per_key = 1
     return render_template('manual_control.html')
 
 @app.route('/send_char')
 def send_char():
-    global motor_paaty, motor_pontto, motor_rail
+    global arm, angles_per_key, motor_lock
     cmd = request.args.get('cmd')
     response = ""
 
     with motor_lock:
         if cmd == 'w':
-            motor_paaty.move_by_angle(angle=angles_per_key, speed=0.5)
+            arm.motor_paaty.move_by_angle(angle=angles_per_key, speed=0.5)
             response = "Motor 1 ⬅️"
         elif cmd == 's':
-            motor_paaty.move_by_angle(angle=-angles_per_key, speed=0.5)
+            arm.motor_paaty.move_by_angle(angle=-angles_per_key, speed=0.5)
             response = "Motor 1 ➡️"
         elif cmd == 'a':
-            motor_pontto.move_by_angle(angle=angles_per_key, speed=0.5)
+            arm.motor_pontto.move_by_angle(angle=angles_per_key, speed=0.5)
             response = "Motor 2 ⬅️"
         elif cmd == 'd':
-            motor_pontto.move_by_angle(angle=-angles_per_key, speed=0.5)
+            arm.motor_pontto.move_by_angle(angle=-angles_per_key, speed=0.5)
             response = "Motor 2 ➡️"
         elif cmd == 'j':
-            motor_rail.move_by_distance(distance=angles_per_key, speed=0.5)
+            arm.motor_rail.move_by_distance(distance=angles_per_key, speed=0.5)
             response = "Motor 3 ⬅️"
         elif cmd == 'k':
-            motor_rail.move_by_distance(distance=-angles_per_key, speed=0.5)
+            arm.motor_rail.move_by_distance(distance=-angles_per_key, speed=0.5)
             response = "Motor 3 ➡️"
         elif cmd == 'i':
             angles_per_key += 10
@@ -245,8 +204,8 @@ def paaty_induction_sensor_test():
 
 @app.route('/check_limit_sensor')
 def check_limit_sensors():
-    limit_sensor = True
-    # TODO: putt actual sensor check here.
+    global arm
+    limit_sensor = arm.motor_rail.limit_switch.is_pressed
     if limit_sensor:
         return jsonify({'limit_sensor_pressed': True})
     else:
@@ -255,8 +214,8 @@ def check_limit_sensors():
 
 @app.route('/check_pontto_induction_sensor')
 def check_pontto_induction_sensor():
-    limit_sensor = True
-    # TODO: putt actual sensor check here.
+    global arm
+    limit_sensor = arm.motor_pontto.limit_switch.is_pressed
     if limit_sensor:
         return jsonify({'pontto_induction_sensor_pressed': True})
     else:
@@ -265,8 +224,8 @@ def check_pontto_induction_sensor():
 
 @app.route('/check_paaty_induction_sensor')
 def check_paaty_induction_sensor():
-    limit_sensor = True
-    # TODO: putt actual sensor check here.
+    global arm
+    limit_sensor = arm.motor_paaty.limit_switch.is_pressed
     if limit_sensor:
         return jsonify({'paaty_induction_sensor_pressed': True})
     else:
@@ -276,7 +235,6 @@ def check_paaty_induction_sensor():
 @app.route('/done')
 def done():
     return render_template('done.html')
-
 
 
 if __name__ == '__main__':
