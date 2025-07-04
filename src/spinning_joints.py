@@ -3,6 +3,8 @@ import time
 from gpiozero import Button
 from signal import pause
 
+from multiprocessing import Event
+
 class SpinningJoints:
     def __init__(self, pulse_pin, dir_pin, name, limit_pin, step_per_rev=1600, gear_ratio=5, min_delay=1e-4, max_delay=1e-3, angle_limit=360):
         """
@@ -27,11 +29,13 @@ class SpinningJoints:
         self.pulse = DigitalOutputDevice(pulse_pin)
         self.direction = DigitalOutputDevice(dir_pin)
 
+        self.limit_event = Event()
+
         self.limit_switch = Button(limit_pin, pull_up=True, bounce_time=0.00001)
         self.limit_switch.when_pressed = lambda: (print("Metal detected"), 
-                                                setattr(self, 'init_pos', True))
+                                                self.limit_event.set())
         self.limit_switch.when_released = lambda: (print("No metal anymore"), 
-                                                    setattr(self, 'init_pos', False))
+                                                    self.limit_event.clear())
 
         self.angle_limit = angle_limit
         self.steps = 0
@@ -41,7 +45,6 @@ class SpinningJoints:
         self.max_delay = max_delay
         self.gear_ratio = gear_ratio
 
-        self.init_pos = self.limit_switch.is_pressed 
 
     def calc_delay(self, speed_percent):
         if not (0 <= speed_percent <= 1):
@@ -52,28 +55,26 @@ class SpinningJoints:
         # pontto motor init is little bit more complicated to not get the 
         # cabel tangled there for it has own init sequence
         if self.name=="pontto":
+            direction_change = False
             print("initing pontto")
-            while not self.limit_switch.is_pressed:
-                if abs(self.angle) > 360:
-                    raise TimeoutError("Motor didn't find init pos")
+            while not self.limit_event.is_set():
+                if abs(self.angle) > 90:
+                    if not direction_change: 
+                        direction = -1 * direction
+                        direction_change = True
+                    else:  
+                        raise TimeoutError("Motor didn't find init pos")
                 self.step(direction=direction, speed=speed)
 
-            print("angle after first init", self.angle)
-
-            if abs(self.angle) > 180:
+            if not direction_change:
                 time.sleep(1)
-                self.move_by_angle(10 * (direction), speed=speed)
-                while not self.limit_switch.is_pressed:
-                    self.step(direction=-1*direction, speed=speed)
-            else: 
-                self.move_by_angle(10 * (-1*direction), speed=speed)
-                time.sleep(1)
-                while not self.limit_switch.is_pressed:
+                self.move_by_angle(-10 * (direction), speed=speed)
+                while not self.limit_event.is_set():
                     self.step(direction=-1*direction, speed=speed)
 
         else:
             # this one is basic one, mainly used for paaty motor
-            while not self.limit_switch.is_pressed:
+            while not self.limit_event.is_set():
                 if abs(self.angle) > 270:
                     raise TimeoutError("Motor didn't find init pos")
                 self.step(direction=direction, speed=speed)
@@ -131,14 +132,6 @@ class SpinningJoints:
     def reset_position(self):
         self.steps = 0
         self.angle = 0
-
-    def button_held(self):
-        print("Button held")
-        self.init_pos = True
-
-    def button_release(self):
-        print("released")
-        self.init_pos = False
 
     def cleanup(self):
         """
