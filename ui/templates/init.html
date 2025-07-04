@@ -10,7 +10,7 @@
         <div class="description" id="description">
             The system is currently initializing. This may take a moment.
         </div>
-        <a href="/" class="button" id="back-button" style="display:none;">Back to Home</a>
+        <a href="/" class="button" id="back-button" style="display:inline-block;">STOP</a>
     </div>
 
 <script>
@@ -21,9 +21,9 @@ function checkStatus() {
             if (!data.running) {
                 document.getElementById("status-text").innerText = "✅ Initialization Completed";
                 document.getElementById("description").innerText = "The system was successfully initialized.";
-                document.getElementById("back-button").style.display = "inline-block";
+                document.getElementById("back-button").innerText = "Back Home";
             } else {
-                setTimeout(checkStatus, 500);
+                setTimeout(checkStatus, 100);
             }
         });
 }
