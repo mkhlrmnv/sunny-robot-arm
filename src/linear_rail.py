@@ -7,7 +7,7 @@ from multiprocessing import Event
 
 
 class LinearRail:
-    def __init__(self, pulse_pin, dir_pin, limit_pin, step_per_rev=1600, gear_ratio=5, pitch=10, min_delay=1e-4, max_delay=1e-3):
+    def __init__(self, shared, pulse_pin, dir_pin, limit_pin, step_per_rev=1600, gear_ratio=5, pitch=10, min_delay=1e-4, max_delay=1e-3):
         """
         Initialize the stepper motor with the given GPIO pins.
 
@@ -24,6 +24,8 @@ class LinearRail:
         assert min_delay >= 0, "Minimum delay must be non-negative."
         assert max_delay >= min_delay, "Maximum delay must be greater than or equal to minimum delay."
         
+        self.shared = shared
+
         self.pulse = DigitalOutputDevice(pulse_pin)
         self.direction = DigitalOutputDevice(dir_pin)
 
@@ -80,6 +82,8 @@ class LinearRail:
         self.angle += direction * (360 / (self.step_per_rev * self.gear_ratio))
         self.angle = round(self.angle, 3)
         self.distance = - self.steps * (self.pitch / self.step_per_rev)  # negative because of the flipped direction
+
+        self.shared.delta_r = self.distance
 
     def move_by_angle(self, angle, speed=0.5, ignore_limit=False):
         # if abs(angle) > 360:

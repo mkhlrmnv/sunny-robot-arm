@@ -10,6 +10,7 @@ from spinning_joints import SpinningJoints
 
 class Arm:
     def __init__(self,
+                 shared,
                  init_pos=[925.39, -219.38, 0],
                  dz1=100,
                  dx1=57.5,
@@ -41,11 +42,10 @@ class Arm:
         self.required_delta_r = None
 
         self.iteration = 0
-        
 
-        self.motor_paaty = SpinningJoints(pulse_pin=20, dir_pin=19, limit_pin=23, name="paaty", gear_ratio=5)
-        self.motor_pontto = SpinningJoints(pulse_pin=13, dir_pin=26, limit_pin=22, name="pontto", gear_ratio=5*32/10)
-        self.motor_rail = LinearRail(pulse_pin=27, dir_pin=4, limit_pin=24, gear_ratio=1)
+        self.motor_paaty = SpinningJoints(shared, pulse_pin=20, dir_pin=19, limit_pin=23, name="paaty", gear_ratio=5)
+        self.motor_pontto = SpinningJoints(shared, pulse_pin=13, dir_pin=26, limit_pin=22, name="pontto", gear_ratio=5*32/10)
+        self.motor_rail = LinearRail(shared, pulse_pin=27, dir_pin=4, limit_pin=24, gear_ratio=1)
 
 
     def init(self):
@@ -60,23 +60,33 @@ class Arm:
             print("One of the motor couldn't init")
             return False
         
-        self.theta_1 = 137.9
-        self.motor_pontto.angle = self.theta_1
+        self.motor_pontto.shared.theta_1 = self.motor_pontto.angle = self.theta_1 = 137.9
 
-        self.theta_2 = 90+69.795 
-        self.motor_paaty.angle = self.theta_2
+        self.motor_paaty.shared.theta_2 = self.motor_paaty.angle = self.theta_2 = 90+69.795 
 
-        self.delta_r = 0
+        self.motor_rail.shared.delta_r = self.motor_rail.distance = self.delta_r = 0
 
         return True
 
+    def set_from_shared(self, shared):
+        """
+        Set the arm's joint angles and rail position from shared namespace.
+        """
+        self.theta_1 = shared.theta_1
+        self.theta_2 = shared.theta_2
+        self.delta_r = shared.delta_r
 
-    def init_path(self):
+        self.motor_pontto.angle = self.theta_1
+        self.motor_paaty.angle = self.theta_2
+
+
+    def init_path(self, path):
         # self.current_path, _ = get_sun_path()
-        self.current_path = np.load("paths/test_path.npy")
+        # self.current_path = np.load("paths/test_path.npy")
         # self.current_path = np.array([self.current_path[0]])
-        
-    def move(self):
+        self.current_path = path
+
+    def move(self, shared=None):
         if self.current_path is None:
             raise ValueError("Initialize path first")
 
@@ -84,31 +94,31 @@ class Arm:
             print("Robot has already reached the end of the path")
             return
 
+        self.motor_pontto.angle = self.theta_1
+        self.motor_paaty.angle = self.theta_2
+        self.motor_rail.distance = self.delta_r
+
         try:
             if self._target_not_set():
+                print("setting target")
                 self._compute_next_target()
 
-            elif not self._step_towards('theta_1', self.required_theta_1):
+            if not self._step_towards('theta_1', self.required_theta_1):
                 self.motor_pontto.move_to_angle(self.required_theta_1, speed=0.1)
-                pass  # Move theta_1
+                # pass  # Move theta_1
 
-            elif not self._step_towards('delta_r', self.required_delta_r):
+            if not self._step_towards('delta_r', self.required_delta_r):
                 self.motor_rail.move_to_distance(self.required_delta_r, speed=0.5)
-                pass  # Move delta_r
+                # pass  # Move delta_r
 
-            elif not self._step_towards('theta_2', self.required_theta_2):
+            if not self._step_towards('theta_2', self.required_theta_2):
+                print("Moving theta_2 to", self.required_theta_2)
                 self.motor_paaty.move_to_angle(self.required_theta_2, speed=0.5)
-                pass  # Move theta_2
+                # pass  # Move theta_2
 
-            else:
-                self.iteration += 1
-                self._clear_target()
+            self._clear_target()
 
-                if self.iteration >= len(self.current_path):
-                    print("Robot reached the end of the path")
-                    return
-
-                self._compute_next_target()
+            return False
         
         except ValueError as e:
             print(f"Error: {e}")

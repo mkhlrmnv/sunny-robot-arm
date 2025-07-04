@@ -6,7 +6,7 @@ from signal import pause
 from multiprocessing import Event
 
 class SpinningJoints:
-    def __init__(self, pulse_pin, dir_pin, name, limit_pin, step_per_rev=1600, gear_ratio=5, min_delay=1e-4, max_delay=1e-3, angle_limit=360):
+    def __init__(self, shared, pulse_pin, dir_pin, name, limit_pin, step_per_rev=1600, gear_ratio=5, min_delay=1e-4, max_delay=1e-3, angle_limit=360):
         """
         Initialize the stepper motor with the given GPIO pins.
 
@@ -24,6 +24,8 @@ class SpinningJoints:
         assert min_delay >= 0, "Minimum delay must be non-negative."
         assert max_delay >= min_delay, "Maximum delay must be greater than or equal to minimum delay."
 
+        self.shared = shared
+
         self.name = name
         
         self.pulse = DigitalOutputDevice(pulse_pin)
@@ -39,7 +41,7 @@ class SpinningJoints:
 
         self.angle_limit = angle_limit
         self.steps = 0
-        self.angle = 0
+        self.angle = 0 
         self.step_per_rev = step_per_rev
         self.min_delay = min_delay
         self.max_delay = max_delay
@@ -99,6 +101,11 @@ class SpinningJoints:
         self.steps -= direction
         self.angle -= direction * (360 / (self.step_per_rev * self.gear_ratio))
         self.angle = round(self.angle, 3)
+
+        if self.name=="pontto":
+            self.shared.theta_1 = self.angle
+        elif self.name=="paaty":
+            self.shared.theta_2 = self.angle
 
     def move_by_angle(self, angle, speed=0.5):
         if abs(angle) > self.angle_limit:

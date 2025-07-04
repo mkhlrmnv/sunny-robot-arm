@@ -8,20 +8,28 @@ import select
 import os
 import sys
 import threading
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Queue, Manager
+import numpy as np
 
 from spinning_joints import SpinningJoints
 from linear_rail import LinearRail
 from arm import Arm
 import cooling
-from helper import forward_kinematics
+from helper import forward_kinematics, check_solutions_safety
 
 app = Flask(__name__)
 
 # Global variable for the interactive (manual control) session.
 global_wsd_proc = None
 
-arm = Arm()
+manager = Manager()
+shared = manager.Namespace()
+
+shared.theta_1 = 0
+shared.theta_2 = 0
+shared.delta_r = 0
+
+arm = Arm(shared)
 
 # Start the cooling controller in its own thread.
 def start_cooling_thread():
@@ -225,14 +233,37 @@ def move_arm():
             speed = float(request.args.get('speed', 0.5))
             check = bool(int(request.args.get('check_safety', 1)))
             m = getattr(arm, f"motor_{motor}")
+
+            print(f"s_th1 {shared.theta_1}, s_th2 {shared.theta_2}, dr {shared.delta_r}")
+
             if check:
-                if m == "motor_paaty":
-                    arm._check_if_hypothetical_safe('theta_1', arm.theta_1 + angle)
-                elif m == "motor_pontto":
-                    arm._check_if_hypothetical_safe('theta_2', arm.theta_2 + angle)
-            start_arm(m.move_by_angle, (angle, speed))
-            print(arm.theta_2)
-            response = f"{motor} moved by {angle}° at speed {speed} (safety={check})"
+                
+                arm.theta_1 = shared.theta_1
+                arm.theta_2 = shared.theta_2
+                arm.delta_r = shared.delta_r
+
+                print(f"s_th1 {shared.theta_1}, s_th2 {shared.theta_2}, dr {shared.delta_r}")
+
+                if motor == 'pontto':
+                    print(f"th1 {shared.theta_1 + angle}, th2 {shared.theta_2}, dr {shared.delta_r}")
+                    end_point = forward_kinematics(shared.theta_1 + angle, shared.theta_2, shared.delta_r)[-1]
+                elif motor == 'paaty':
+                    print(f"th1 {shared.theta_1}, th2 {shared.theta_2 + angle}, dr {shared.delta_r}")
+                    end_point = forward_kinematics(shared.theta_1, shared.theta_2 + angle, shared.delta_r)[-1]
+                else:
+                    response = "motor specified incorrectly"
+
+                print("end_point", end_point)
+
+                arm.init_path(np.array([end_point]))
+                start_arm_and_wait(arm.move, ())
+
+                shared.theta_1 = arm.theta_1
+                shared.theta_2 = arm.theta_2
+                shared.delta_r = arm.delta_r
+
+            else:
+                start_arm_and_wait(m.move_by_angle, (angle, speed))
 
         elif cmd == 'to_angle':
             motor = request.args.get('motor')
