@@ -39,7 +39,7 @@ class LinearRail:
         self.max_delay = max_delay
         self.gear_ratio = gear_ratio
 
-        self.stop = self.limit_switch.is_pressed
+        self.stop = False
 
     def calc_delay(self, speed_percent):
         if not (0 <= speed_percent <= 1):
@@ -47,8 +47,8 @@ class LinearRail:
         return self.min_delay + (self.max_delay - self.min_delay) * (1 - speed_percent)
     
     def init_motor(self, direction=1):
-        while not self.limit_switch.is_pressed:
-            self.step(direction=direction, speed=0.5)
+        while not self.stop:
+            self.step(direction=direction, speed=0.1)
         self.move_by_angle(90 * (direction * -1), speed=0.5, ignore_limit=True)
         self.reset_position()
         print(f"Motor limit initialized, stop state {self.stop}")
@@ -161,7 +161,7 @@ class LinearRail:
 if __name__ == "__main__":
     motor = LinearRail(pulse_pin=27, dir_pin=4, limit_pin=24, gear_ratio=1)
     # motor.move_by_angle(-720*6, speed=0.5)
-    # motor.init_motor(direction=1)
+    motor.init_motor(direction=1)
     # motor.move_by_distance(-200, speed=1)
     
     motor.move_to_distance(10, speed=0.5)
