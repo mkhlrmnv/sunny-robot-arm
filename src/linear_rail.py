@@ -3,6 +3,9 @@ import time
 from gpiozero import Button
 from signal import pause
 
+from multiprocessing import Event
+
+
 class LinearRail:
     def __init__(self, pulse_pin, dir_pin, limit_pin, step_per_rev=1600, gear_ratio=5, pitch=10, min_delay=1e-4, max_delay=1e-3):
         """
@@ -24,11 +27,14 @@ class LinearRail:
         self.pulse = DigitalOutputDevice(pulse_pin)
         self.direction = DigitalOutputDevice(dir_pin)
 
+        self.limit_event = Event()
+
         self.limit_switch = Button(limit_pin, pull_up=True, bounce_time=0.0001)
-        self.limit_switch.when_pressed = lambda: (print("Button held"), 
-                                                setattr(self, 'stop', True))
-        self.limit_switch.when_released = lambda: (print("released"), 
-                                                    setattr(self, 'stop', False))
+        self.limit_switch.when_held = lambda: (print("Limit switch is pressed"), self.limit_event.set())
+        self.limit_switch.when_released = lambda: (print("Limit switch is released"), self.limit_event.clear())
+        
+        self.limit_switch.hold_time = 0.1
+        self.limit_switch.hold_repeat = True
 
         self.steps = 0
         self.angle = 0
@@ -39,7 +45,7 @@ class LinearRail:
         self.max_delay = max_delay
         self.gear_ratio = gear_ratio
 
-        self.stop = False
+        self.stop = self.limit_event.is_set()  # Initialize stop state based on limit switch
 
     def calc_delay(self, speed_percent):
         if not (0 <= speed_percent <= 1):
@@ -47,14 +53,14 @@ class LinearRail:
         return self.min_delay + (self.max_delay - self.min_delay) * (1 - speed_percent)
     
     def init_motor(self, direction=1):
-        while not self.stop:
+        while not self.limit_event.is_set():
             self.step(direction=direction, speed=0.1)
         self.move_by_angle(90 * (direction * -1), speed=0.5, ignore_limit=True)
         self.reset_position()
         print(f"Motor limit initialized, stop state {self.stop}")
 
     def step(self, direction=1, speed=0.5, ignore_limit=False):
-        if self.stop and not ignore_limit:
+        if self.limit_event.is_set() and not ignore_limit:
             print("Limit switch is pressed. Cannot move motor.")
             return
 
