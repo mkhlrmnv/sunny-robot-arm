@@ -334,7 +334,7 @@ def check_limit_sensors():
 @app.route('/check_pontto_induction_sensor')
 def check_pontto_induction_sensor():
     global arm
-    limit_sensor = arm.motor_pontto.limit_switch.is_pressed
+    limit_sensor = arm.motor_pontto.limit_event.is_set()
     if limit_sensor:
         return jsonify({'pontto_induction_sensor_pressed': True})
     else:
@@ -344,7 +344,7 @@ def check_pontto_induction_sensor():
 @app.route('/check_paaty_induction_sensor')
 def check_paaty_induction_sensor():
     global arm
-    limit_sensor = arm.motor_paaty.limit_switch.is_pressed
+    limit_sensor = arm.motor_paaty.limit_event.is_set()
     if limit_sensor:
         return jsonify({'paaty_induction_sensor_pressed': True})
     else:
