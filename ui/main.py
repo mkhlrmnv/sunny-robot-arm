@@ -324,7 +324,7 @@ def paaty_induction_sensor_test():
 @app.route('/check_limit_sensor')
 def check_limit_sensors():
     global arm
-    limit_sensor = arm.motor_rail.limit_switch.is_pressed
+    limit_sensor = arm.motor_rail.limit_event.is_set()
     if limit_sensor:
         return jsonify({'limit_sensor_pressed': True})
     else:
