@@ -103,7 +103,7 @@ class LinearRail:
         angle_diff = target_angle - self.angle
         self.move_by_angle(angle_diff, speed=speed)
 
-    def move_by_distance(self, distance, speed=0.5):
+    def move_by_distance(self, distance, speed=0.5, shared=None):
         """
         Move the linear rail by a specified distance in mm.
 
@@ -122,8 +122,11 @@ class LinearRail:
 
         for _ in range(abs(steps)):
             self.step(direction=direction, speed=speed)
+
+        if shared is not None:
+            shared.delta_r = self.distance
     
-    def move_to_distance(self, target_distance, speed=0.5):
+    def move_to_distance(self, target_distance, speed=0.5, shared=None):
         """
         Move the linear rail to a specified distance in mm.
 
@@ -138,7 +141,7 @@ class LinearRail:
 
         current_distance = - self.steps * (self.pitch / self.step_per_rev)
         distance_diff = target_distance - current_distance
-        self.move_by_distance(distance_diff, speed=speed)
+        self.move_by_distance(distance_diff, speed=speed, shared=shared)
 
     def get_steps(self):
         return self.steps
