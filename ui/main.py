@@ -15,7 +15,7 @@ from spinning_joints import SpinningJoints
 from linear_rail import LinearRail
 from arm import Arm
 import cooling
-from helper import forward_kinematics, check_solutions_safety
+from helper import forward_kinematics, check_solutions_safety, inverse_kinematics, choose_solution
 
 app = Flask(__name__)
 
@@ -98,16 +98,7 @@ def start_arm_and_wait(func, args):
         arm_process = Process(target=func, args=args)
         arm_process.start()
         arm_process.join()
-        if arm_process.exitcode == 68:
-            print("Arm process exited with error code 68, indicating the end of the path.")
-            return False
-        if arm_process.exitcode == 69:
-            print("Arm process exited with error code 69, indicating a ValueError.")
-            return False
-        else: 
-            print("Arm process completed successfully.") 
-            return True
-
+        return arm_process.exitcode
 
 @app.route('/status')
 def status():
@@ -253,22 +244,41 @@ def move_arm():
                     if motor == 'pontto':
                         target = shared.theta_1 + angle
                         end_point = forward_kinematics(target, shared.theta_2, shared.delta_r)[-1]
+                        try:
+                            sols = inverse_kinematics(*end_point, verbal=False)
+                        except ValueError as e:
+                            status, response = "error", f"Inverse kinematics failed: {e}"
+                            return jsonify({"status": status, "message": response})
+                        _, c_th2, c_dr = choose_solution(sols, (shared.theta_1, shared.theta_2, shared.delta_r))
+                        if round(c_th2, 1) != round(shared.theta_2, 2) or round(c_dr, 1) != round(shared.delta_r, 1):
+                            status, response = "error", "Safety check failed: safe movement will require movement of other motors"
+                            return jsonify({"status": status, "message": response})
                     elif motor == 'paaty':
                         target = shared.theta_2 + angle
                         end_point = forward_kinematics(shared.theta_1, target, shared.delta_r)[-1]
+                        try:
+                            sols = inverse_kinematics(*end_point, verbal=False)
+                        except ValueError as e:
+                            status, response = "error", f"Inverse kinematics failed: {e}"
+                            return jsonify({"status": status, "message": response})
+                        c_th1, _, c_dr = choose_solution(sols, (shared.theta_1, shared.theta_2, shared.delta_r))
+                        if round(c_th1, 1) != round(shared.theta_1, 1) or round(c_dr, 1) != round(shared.delta_r, 1):
+                            status, response = "error", "Safety check failed: safe movement will require movement of other motors"
+                            return jsonify({"status": status, "message": response})
                     else:
                         status, response = "error", f"Invalid motor: {motor}"
-                        return jsonify(status=status, response=response)
+                        return jsonify({"status": status, "message": response})
 
                     arm.init_path(np.array([end_point]))
-                    if start_arm_and_wait(arm.move, (shared,)):
-                        response = f"Motor {motor} moved by {angle}° to {target}(with safety check)"
+                    return_code = start_arm_and_wait(arm.move, (shared,))
+                    if return_code == 0:
+                        response = f"Motor {motor} moved by {angle}° to {target} (with safety check)"
                     else:
-                        status, response = "error", "Movement not safe, check angles and try again"
+                        status, response = "error", f"Function returned with exit code {return_code}"
 
                 else:
                     m.angle = getattr(shared, f"theta_{1 if motor == 'pontto' else 2}")
-                    if start_arm_and_wait(m.move_by_angle, (angle, speed, shared)):
+                    if start_arm_and_wait(m.move_by_angle, (angle, speed, shared)) == 0:
                         index = 1 if motor == 'pontto' else 2
                         response = f"Motor {motor} moved by {angle}° to new angle: {getattr(shared, f'theta_{index}')}"
                     else:
@@ -279,11 +289,56 @@ def move_arm():
             angle = float(request.args.get('angle'))
             speed = float(request.args.get('speed', 0.5))
             check = bool(int(request.args.get('check_safety', 1)))
-            m = getattr(arm, f"motor_{motor}")
-            if check:
-                arm._check_if_hypothetical_safe(motor, angle)
-            start_arm(m.move_to_angle, (angle, speed, check))
-            response = f"{motor} moved to {angle}° at speed {speed} (safety={check})"
+
+            m = getattr(arm, f"motor_{motor}", None)
+            if m is None:
+                status, response = "error", f"Invalid motor: {motor}"
+            else:
+                arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
+                if check:
+                    if motor == 'pontto':
+                        origin = shared.theta_1
+                        end_point = forward_kinematics(angle, shared.theta_2, shared.delta_r)[-1]
+                        try:
+                            sols = inverse_kinematics(*end_point, verbal=False)
+                        except ValueError as e:
+                            status, response = "error", f"Inverse kinematics failed: {e}"
+                            return jsonify({"status": status, "message": response})
+                        _, c_th2, c_dr = choose_solution(sols, (shared.theta_1, shared.theta_2, shared.delta_r))
+                        if round(c_th2, 1) != round(shared.theta_2, 2) or round(c_dr, 1) != round(shared.delta_r, 1):
+                            status, response = "error", "Safety check failed: safe movement will require movement of other motors"
+                            return jsonify({"status": status, "message": response})
+                    elif motor == 'paaty':
+                        origin = shared.theta_2
+                        end_point = forward_kinematics(shared.theta_1, angle, shared.delta_r)[-1]
+                        try:
+                            sols = inverse_kinematics(*end_point, verbal=False)
+                        except ValueError as e:
+                            status, response = "error", f"Inverse kinematics failed: {e}"
+                            return jsonify({"status": status, "message": response})
+                        c_th1, _, c_dr = choose_solution(sols, (shared.theta_1, shared.theta_2, shared.delta_r))
+                        if round(c_th1, 1) != round(shared.theta_1, 1) or round(c_dr, 1) != round(shared.delta_r, 1):
+                            status, response = "error", "Safety check failed: safe movement will require movement of other motors"
+                            return jsonify({"status": status, "message": response})
+                    else:
+                        status, response = "error", f"Invalid motor: {motor}"
+                        return jsonify(status=status, response=response)
+
+                    arm.init_path(np.array([end_point]))
+                    return_code = start_arm_and_wait(arm.move, (shared,))
+                    if return_code == 0:
+                        response = f"Motor {motor} moved from {origin} to {angle} (with safety check)"
+                    else:
+                        status, response = "error", f"Function returned with code {return_code}"
+                        
+                else:
+                    origin = m.angle = getattr(shared, f"theta_{1 if motor == 'pontto' else 2}")
+                    if start_arm_and_wait(m.move_to_angle, (angle, speed, shared)) == 0:
+                        index = 1 if motor == 'pontto' else 2
+                        response = f"Motor {motor} moved from {origin}° to new angle: {getattr(shared, f'theta_{index}')}"
+                    else:
+                        status, response = "error", "Movement didn’t complete"
+
 
         elif cmd == 'by_distance':
             dist = float(request.args.get('dist'))
