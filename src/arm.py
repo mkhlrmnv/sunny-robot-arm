@@ -112,24 +112,27 @@ class Arm:
             print(f"Moving to target: theta_1={self.required_theta_1}, "
                   f"theta_2={self.required_theta_2}, delta_r={self.required_delta_r}")
 
-            if not self._step_towards('theta_1', self.required_theta_1):
+            if not self._step_towards('theta_1', self.required_theta_1, check_safety=check_safety):
                 self.motor_pontto.move_to_angle(self.required_theta_1, speed=speed_joint)
                 # pass  # Move theta_1
 
-            if not self._step_towards('delta_r', self.required_delta_r):
+            shared.theta_1 = self.theta_1
+
+            if not self._step_towards('delta_r', self.required_delta_r, check_safety=check_safety):
+                print("Moving delta_r to", self.required_delta_r)
                 self.motor_rail.move_to_distance(self.required_delta_r, speed=speed_rail)
                 # pass  # Move delta_r
 
-            if not self._step_towards('theta_2', self.required_theta_2):
+            shared.delta_r = self.delta_r
+
+            if not self._step_towards('theta_2', self.required_theta_2, check_safety=check_safety):
                 print("Moving theta_2 to", self.required_theta_2)
                 self.motor_paaty.move_to_angle(self.required_theta_2, speed=speed_joint)
                 # pass  # Move theta_2
 
-            self._clear_target()
-
-            shared.theta_1 = self.theta_1
             shared.theta_2 = self.theta_2
-            shared.delta_r = self.delta_r
+
+            self._clear_target()
 
             return False
         
@@ -143,7 +146,7 @@ class Arm:
         return any(v is None for v in (self.required_theta_1, self.required_theta_2, self.required_delta_r))
 
 
-    def _step_towards(self, attr, target, step_size=1):
+    def _step_towards(self, attr, target, step_size=1, check_safety=True):
         """
         Check if moving 'attr' from current to 'target' in steps is safe.
         If yes, set to target immediately (since we know the whole path is safe) and return True.
@@ -163,12 +166,14 @@ class Arm:
         # Simulate all steps
         for i in range(steps):
             intermediate = current + direction * step_size * (i + 1)
-            self._check_if_hypothetical_safe(attr, intermediate)
+            if check_safety:
+                self._check_if_hypothetical_safe(attr, intermediate)
 
         # Check the remainder step (final position)
         if remainder > 0:
             final = current + direction * (steps * step_size + remainder)
-            self._check_if_hypothetical_safe(attr, final)
+            if check_safety:
+                self._check_if_hypothetical_safe(attr, final)
 
         # If all steps are safe, perform the final move
         setattr(self, attr, target)

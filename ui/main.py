@@ -421,8 +421,7 @@ def move_arm():
                 response = f"Rail moved to {dist} from {origin} (with safety {check})"
             else:
                 status, response = "error", f"Function returned with exit code {return_code}"
-
-            
+ 
         elif cmd == 'to_angles':
             theta_1 = float(request.args.get('theta_1'))
             theta_2 = float(request.args.get('theta_2'))
@@ -442,7 +441,6 @@ def move_arm():
             else:
                 status, response = "error", f"Function returned with exit code {return_code}"
             
-
         else:
             status = "error"
             response = "Unknown command"
