@@ -124,8 +124,6 @@ class SpinningJoints:
             if self.name == "pontto":
                 shared.theta_1 = self.angle
             elif self.name == "paaty":
-                print("shared theta_2", shared.theta_2)
-                print("angle", self.angle)
                 shared.theta_2 = self.angle
 
     def move_to_angle(self, target_angle, speed=0.5, shared=None):
