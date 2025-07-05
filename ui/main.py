@@ -241,47 +241,38 @@ def move_arm():
             angle = float(request.args.get('angle'))
             speed = float(request.args.get('speed', 0.5))
             check = bool(int(request.args.get('check_safety', 1)))
-            m = getattr(arm, f"motor_{motor}")
 
-            if check:
-                
-                arm.theta_1 = shared.theta_1
-                arm.theta_2 = shared.theta_2
-                arm.delta_r = shared.delta_r
-
-                if motor == 'pontto':
-                    print(f"th1 {shared.theta_1 + angle}, th2 {shared.theta_2}, dr {shared.delta_r}")
-                    end_point = forward_kinematics(shared.theta_1 + angle, shared.theta_2, shared.delta_r)[-1]
-                    response = f"Moved motor {motor} by {angle} from {shared.theta_2} to {shared.theta_1 + angle}"
-                elif motor == 'paaty':
-                    print(f"th1 {shared.theta_1}, th2 {shared.theta_2 + angle}, dr {shared.delta_r}")
-                    end_point = forward_kinematics(shared.theta_1, shared.theta_2 + angle, shared.delta_r)[-1]
-                    response = f"Moved motor {motor} by {angle} from {shared.theta_2} to {shared.theta_2 + angle}"
-                else:
-                    response = "motor specified incorrectly"
-
-                arm.init_path(np.array([end_point]))
-        
-                if not start_arm_and_wait(arm.move, (shared,)):
-                    status = "error"
-                    response = "Movement not safe, check angles and try again"
-
+            m = getattr(arm, f"motor_{motor}", None)
+            if m is None:
+                status, response = "error", f"Invalid motor: {motor}"
             else:
-                if motor == 'paaty':
-                    m.angle = shared.theta_2
-                    if start_arm_and_wait(m.move_by_angle, (angle, speed, shared)):
-                        response = f"Motor {motor} moved by {angle}° to new angle: {shared.theta_2})"
+                # Update shared values
+                arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
+
+                if check:
+                    if motor == 'pontto':
+                        target = shared.theta_1 + angle
+                        end_point = forward_kinematics(target, shared.theta_2, shared.delta_r)[-1]
+                    elif motor == 'paaty':
+                        target = shared.theta_2 + angle
+                        end_point = forward_kinematics(shared.theta_1, target, shared.delta_r)[-1]
                     else:
-                        status = "error"
-                        response = "Movement didn't complete"
-                        
-                elif motor == 'pontto':
-                    m.angle = shared.theta_1
-                    if start_arm_and_wait(m.move_by_angle, (angle, speed, shared)):
-                        response = f"Motor {motor} moved by {angle}° to new angle: {shared.theta_1}"
+                        status, response = "error", f"Invalid motor: {motor}"
+                        return jsonify(status=status, response=response)
+
+                    arm.init_path(np.array([end_point]))
+                    if start_arm_and_wait(arm.move, (shared,)):
+                        response = f"Motor {motor} moved by {angle}° to {target}(with safety check)"
                     else:
-                        status = "error"
-                        response = "Movement didn't complete"
+                        status, response = "error", "Movement not safe, check angles and try again"
+
+                else:
+                    m.angle = getattr(shared, f"theta_{1 if motor == 'pontto' else 2}")
+                    if start_arm_and_wait(m.move_by_angle, (angle, speed, shared)):
+                        index = 1 if motor == 'pontto' else 2
+                        response = f"Motor {motor} moved by {angle}° to new angle: {getattr(shared, f'theta_{index}')}"
+                    else:
+                        status, response = "error", "Movement didn’t complete"
 
         elif cmd == 'to_angle':
             motor = request.args.get('motor')
