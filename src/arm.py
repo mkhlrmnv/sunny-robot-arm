@@ -86,7 +86,7 @@ class Arm:
         # self.current_path = np.array([self.current_path[0]])
         self.current_path = path
 
-    def move(self, shared=None):
+    def move(self, shared=None, speeds=None, check_safety=True):
         if self.current_path is None:
             raise ValueError("Initialize path first")
 
@@ -94,6 +94,12 @@ class Arm:
             print("Robot has already reached the end of the path")
             exit(68)
             return
+        
+        if speeds is None:
+            speed_joint = 0.1
+            speed_rail = 0.5
+        else:
+            speed_joint, speed_rail = speeds
 
         self.motor_pontto.angle = self.theta_1
         self.motor_paaty.angle = self.theta_2
@@ -101,22 +107,22 @@ class Arm:
 
         try:
             if self._target_not_set():
-                self._compute_next_target()
+                self._compute_next_target(check_safety=check_safety)
 
             print(f"Moving to target: theta_1={self.required_theta_1}, "
                   f"theta_2={self.required_theta_2}, delta_r={self.required_delta_r}")
 
             if not self._step_towards('theta_1', self.required_theta_1):
-                self.motor_pontto.move_to_angle(self.required_theta_1, speed=0.1)
+                self.motor_pontto.move_to_angle(self.required_theta_1, speed=speed_joint)
                 # pass  # Move theta_1
 
             if not self._step_towards('delta_r', self.required_delta_r):
-                self.motor_rail.move_to_distance(self.required_delta_r, speed=0.5)
+                self.motor_rail.move_to_distance(self.required_delta_r, speed=speed_rail)
                 # pass  # Move delta_r
 
             if not self._step_towards('theta_2', self.required_theta_2):
                 print("Moving theta_2 to", self.required_theta_2)
-                self.motor_paaty.move_to_angle(self.required_theta_2, speed=0.5)
+                self.motor_paaty.move_to_angle(self.required_theta_2, speed=speed_joint)
                 # pass  # Move theta_2
 
             self._clear_target()
@@ -192,11 +198,11 @@ class Arm:
             )
 
 
-    def _compute_next_target(self):
+    def _compute_next_target(self, check_safety=True):
         """Compute next target joint values based on current path."""
         next_point = self.current_path[self.iteration]
         print("nect point in compute", next_point)
-        sols = inverse_kinematics(*next_point, verbal=False)
+        sols = inverse_kinematics(*next_point, verbal=False, check_safety=check_safety)
         print("Solutions found:", sols)
         self.required_theta_1, self.required_theta_2, self.required_delta_r = choose_solution(
             sols, (self.theta_1, self.theta_2, self.delta_r)
