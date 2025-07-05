@@ -42,7 +42,7 @@ def inverse_kinematics(x, y, z,
                     T_base=[[1, 0, 0, 925.39], [0, 1, 0, -219.38], [0, 0, 1, 0], [0, 0, 0, 1]],
                     theta_r=137.9,     # rail orientation angle (deg)
                     link_rise=100,
-                    rail_limits=(0, 1000),
+                    rail_limits=(-0.1, 1000),
                     dx1=57.5,
                     dx2=107,
                     dy0=830,
@@ -171,9 +171,10 @@ def choose_solution(solutions, current_state):
     for sol in solutions[0:]:
         th1, th2, dr = sol
 
-        new_distance = (abs(th1) - abs(c_th1)) + (abs(th2) - abs(c_th2)) + (abs(dr) - abs(c_dr))
+        new_distance = abs(th1 - c_th1) + abs(th2 - c_th2) + abs(dr - c_dr)
 
         if new_distance < best_distance:
+            best_distance = new_distance
             best_sol = sol
 
     return best_sol

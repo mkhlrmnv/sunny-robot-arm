@@ -52,8 +52,8 @@ class Arm:
         try:
             print("Starting init")
             self.motor_paaty.init_motor(direction=-1, speed=0.1)
-            self.motor_pontto.init_motor(direction=1, speed=0.1)
-            self.motor_rail.init_motor(direction=1)
+            # self.motor_pontto.init_motor(direction=1, speed=0.1)
+            # self.motor_rail.init_motor(direction=1)
 
             time.sleep(5)
         except TimeoutError:
@@ -92,6 +92,7 @@ class Arm:
 
         if self.iteration >= len(self.current_path):
             print("Robot has already reached the end of the path")
+            exit(68)
             return
 
         self.motor_pontto.angle = self.theta_1
@@ -100,8 +101,10 @@ class Arm:
 
         try:
             if self._target_not_set():
-                print("setting target")
                 self._compute_next_target()
+
+            print(f"Moving to target: theta_1={self.required_theta_1}, "
+                  f"theta_2={self.required_theta_2}, delta_r={self.required_delta_r}")
 
             if not self._step_towards('theta_1', self.required_theta_1):
                 self.motor_pontto.move_to_angle(self.required_theta_1, speed=0.1)
@@ -118,12 +121,16 @@ class Arm:
 
             self._clear_target()
 
+            shared.theta_1 = self.theta_1
+            shared.theta_2 = self.theta_2
+            shared.delta_r = self.delta_r
+
             return False
         
         except ValueError as e:
             print(f"Error: {e}")
             print("Stopping robot.")
-            exit()
+            exit(69)
 
 
     def _target_not_set(self):
@@ -139,8 +146,6 @@ class Arm:
         """
         current = getattr(self, attr)
         diff = target - current
-
-        print(attr, "diff", diff)
 
         if abs(diff) < 1e-6:  # Already at target (with tolerance)
             return True
@@ -177,7 +182,7 @@ class Arm:
         }
 
         current_state[attr] = value
-        print("current state", current_state)
+        # print("current state", current_state)
 
         if not check_solutions_safety(
             (current_state['theta_1'], current_state['theta_2'], current_state['delta_r'])
@@ -190,10 +195,15 @@ class Arm:
     def _compute_next_target(self):
         """Compute next target joint values based on current path."""
         next_point = self.current_path[self.iteration]
-        sols = inverse_kinematics(*next_point)
+        print("nect point in compute", next_point)
+        sols = inverse_kinematics(*next_point, verbal=False)
+        print("Solutions found:", sols)
         self.required_theta_1, self.required_theta_2, self.required_delta_r = choose_solution(
             sols, (self.theta_1, self.theta_2, self.delta_r)
         )
+
+        print(f"Next target: theta_1={self.required_theta_1}, "
+                f"theta_2={self.required_theta_2}, delta_r={self.required_delta_r}")
 
 
     def _clear_target(self):
