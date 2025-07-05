@@ -230,7 +230,7 @@ def move_arm():
         elif cmd == 'by_angle':
             motor = request.args.get('motor')
             angle = float(request.args.get('angle'))
-            speed = float(request.args.get('speed', 0.5))
+            speed = float(request.args.get('speed', 0.1))
             check = bool(int(request.args.get('check_safety', 1)))
 
             m = getattr(arm, f"motor_{motor}", None)
@@ -270,7 +270,7 @@ def move_arm():
                         return jsonify({"status": status, "message": response})
 
                     arm.init_path(np.array([end_point]))
-                    return_code = start_arm_and_wait(arm.move, (shared,))
+                    return_code = start_arm_and_wait(arm.move, (shared, (speed, 0.5),))
                     if return_code == 0:
                         response = f"Motor {motor} moved by {angle}° to {target} (with safety check)"
                     else:
@@ -325,7 +325,7 @@ def move_arm():
                         return jsonify(status=status, response=response)
 
                     arm.init_path(np.array([end_point]))
-                    return_code = start_arm_and_wait(arm.move, (shared,))
+                    return_code = start_arm_and_wait(arm.move, (shared, (speed, 0.5),))
                     if return_code == 0:
                         response = f"Motor {motor} moved from {origin} to {angle} (with safety check)"
                     else:
@@ -344,15 +344,66 @@ def move_arm():
             dist = float(request.args.get('dist'))
             speed = float(request.args.get('speed', 0.5))
             check = bool(int(request.args.get('check_safety', 1)))
-            start_arm(arm.motor_rail.move_by_distance, (dist, speed, check))
-            response = f"Rail moved by {dist} at speed {speed} (safety={check})"
+            
+            if check:
+                arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
+                target = arm.motor_rail.distance + dist
+                end_point = forward_kinematics(arm.theta_1, arm.theta_2, target)[-1]
+                try:
+                    sols = inverse_kinematics(*end_point, verbal=False)
+                except ValueError as e:
+                    status, response = "error", f"Inverse kinematics failed: {e}"
+                    return jsonify({"status": status, "message": response})
+                c_th1, c_th2, c_dr = choose_solution(sols, (arm.theta_1, arm.theta_2, arm.delta_r))
+                if round(c_th1, 1) != round(arm.theta_1, 2) or round(c_th2, 1) != round(arm.theta_2, 1):
+                    status, response = "error", "Safety check failed: safe movement will require movement of other motors"
+                    return jsonify({"status": status, "message": response})
+                
+                arm.init_path(np.array([end_point]))
+                return_code = start_arm_and_wait(arm.move, (shared, (0.5, speed),))
+                if return_code == 0:
+                    response = f"Rail moved by {dist} to {target} (with safety check)"
+                else:
+                    status, response = "error", f"Function returned with exit code {return_code}"
+
+            else:
+                arm.motor_rail.distance = shared.delta_r
+                if start_arm_and_wait(arm.motor_rail.move_by_distance, (dist, speed, shared)) == 0:
+                    response = f"Rail moved by {dist} to new distance: {shared.delta_r}"
+                else:
+                    status, response = "error", "Movement didn’t complete"
 
         elif cmd == 'to_distance':
             dist = float(request.args.get('dist'))
             speed = float(request.args.get('speed', 0.5))
             check = bool(int(request.args.get('check_safety', 1)))
-            start_arm(arm.motor_rail.move_to_distance, (dist, speed, check))
-            response = f"Rail moved to {dist} at speed {speed} (safety={check})"
+            if check:
+                arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
+                origin = shared.delta_r
+                end_point = forward_kinematics(arm.theta_1, arm.theta_2, dist)[-1]
+                try:
+                    sols = inverse_kinematics(*end_point, verbal=False)
+                except ValueError as e:
+                    status, response = "error", f"Inverse kinematics failed: {e}"
+                    return jsonify({"status": status, "message": response})
+                c_th1, c_th2, c_dr = choose_solution(sols, (arm.theta_1, arm.theta_2, arm.delta_r))
+                if round(c_th1, 1) != round(arm.theta_1, 2) or round(c_th2, 1) != round(arm.theta_2, 1):
+                    status, response = "error", "Safety check failed: safe movement will require movement of other motors"
+                    return jsonify({"status": status, "message": response})
+                
+                arm.init_path(np.array([end_point]))
+                return_code = start_arm_and_wait(arm.move, (shared, (0.5, speed),))
+                if return_code == 0:
+                    response = f"Rail moved to {dist} from {origin} (with safety check)"
+                else:
+                    status, response = "error", f"Function returned with exit code {return_code}"
+
+            else:
+                arm.motor_rail.distance = shared.delta_r
+                if start_arm_and_wait(arm.motor_rail.move_to_distance, (dist, speed, shared)) == 0:
+                    response = f"Rail moved by {dist} to new distance: {shared.delta_r}"
+                else:
+                    status, response = "error", "Movement didn’t complete"
 
         elif cmd == 'to_point':
             x = float(request.args.get('x'))
@@ -361,9 +412,17 @@ def move_arm():
             check = bool(int(request.args.get('check_safety', 1)))
             speed_rail = float(request.args.get('speed_rail', 0.5))
             speed_joints = float(request.args.get('speed_joints', 0.5))
-            start_arm(arm.move_to_point, (x, y, z, check, speed_rail, speed_joints))
-            response = f"Moved to point ({x},{y},{z}) at speeds rail:{speed_rail}, joints:{speed_joints} (safety={check})"
 
+            arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
+
+            arm.init_path(np.array([x, y, z]))
+            return_code = start_arm_and_wait(arm.move, (shared, (speed_joints, speed_rail), check))
+            if return_code == 0:
+                response = f"Rail moved to {dist} from {origin} (with safety {check})"
+            else:
+                status, response = "error", f"Function returned with exit code {return_code}"
+
+            
         elif cmd == 'to_angles':
             theta_1 = float(request.args.get('theta_1'))
             theta_2 = float(request.args.get('theta_2'))
@@ -371,8 +430,18 @@ def move_arm():
             check = bool(int(request.args.get('check_safety', 1)))
             speed_rail = float(request.args.get('speed_rail', 0.5))
             speed_joints = float(request.args.get('speed_joints', 0.5))
-            start_arm(arm.move_to_angles, (theta_1, theta_2, delta_r, check, speed_rail, speed_joints))
-            response = f"Moved to angles θ1:{theta_1}, θ2:{theta_2}, Δr:{delta_r} at speeds rail:{speed_rail}, joints:{speed_joints} (safety={check})"
+
+            arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
+
+            end_point = forward_kinematics(theta_1, theta_2, delta_r)[-1]
+
+            arm.init_path(np.array([end_point]))
+            return_code = start_arm_and_wait(arm.move, (shared, (speed_joints, speed_rail), check))
+            if return_code == 0:
+                response = f"Arm moved to angles: {theta_1}, {theta_2}, {delta_r} (with safety check)"
+            else:
+                status, response = "error", f"Function returned with exit code {return_code}"
+            
 
         else:
             status = "error"
