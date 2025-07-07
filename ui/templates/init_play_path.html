@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Initialization</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='sensor_test_style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1 id="status-text">⏳ Initializing… please wait</h1>
+        <div class="description" id="description">
+            The system is currently initializing. This may take a moment.
+        </div>
+        <a href="/" class="button" id="back-button" style="display:inline-block;">STOP</a>
+        <a href="/init_play_path" class="button" id="try-again-button" style="display:none">Try Again</a>
+    </div>
+
+<script>
+function checkStatus() {
+    fetch('/status')
+        .then(r => r.json())
+        .then(data => {
+            if (data.running == "stopped") {
+                document.getElementById("status-text").innerText = "✅ Initialization Completed";
+                document.getElementById("description").innerText = "The system was successfully initialized.";
+                document.getElementById("back-button").style = "display:none";
+                setTimeout(() => {
+                    window.location.href = "/play";
+                }, 2500);
+            } else if (data.running == "init_failed") {
+                document.getElementById("status-text").innerText = "❌ Initialization Failed";
+                document.getElementById("description").innerText = "The system failed to initialize. Please check the logs or try again";
+                document.getElementById("back-button").innerText = "BACK TO HOME";
+                document.getElementById("try-again-button").style = "display:inline-block;";
+            } else {
+                setTimeout(checkStatus, 100);
+            }
+        });
+}
+checkStatus();
+</script>
+</body>
+</html>

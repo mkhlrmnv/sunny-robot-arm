@@ -145,8 +145,6 @@ play_process = None
 message_queue = Queue()
 
 
-# ─── Routes ──────────────────────────────────────────────────────────────────
-
 def start_play_path_loop():
     print("starting while loop")
     arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
@@ -156,18 +154,23 @@ def start_play_path_loop():
         arm.iteration = shared.path_it
     print("out of while loop")
 
+
 @app.route('/play')
 def play_path():
     global arm
-    print("Starting play_path")
-    start_arm_and_wait(arm.init, ())
-    print("initing path")
     arm.init_path(np.load("paths/test_path.npy"), 50)
     arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
     print("starting to move")
     play_thread = threading.Thread(target=start_play_path_loop, daemon=True)
     play_thread.start()
     return render_template('play.html')  # your SSE+plot template
+
+@app.route("/init_play_path")
+def init_play_path():
+    global arm
+    if not is_arm_running():
+        start_arm(arm.init, ())
+    return render_template("init_play_path.html", running=is_arm_running())
 
 
 @app.route('/points')
