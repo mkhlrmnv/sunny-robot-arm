@@ -448,7 +448,6 @@ def move_arm():
                 status = "error"
                 response = "One of the motors couldn't initialize"
 
-
         else:
             status = "error"
             response = "Unknown command"
