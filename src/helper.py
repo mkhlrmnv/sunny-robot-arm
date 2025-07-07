@@ -42,7 +42,7 @@ def inverse_kinematics(x, y, z,
                     T_base=[[1, 0, 0, 925.39], [0, 1, 0, -219.38], [0, 0, 1, 0], [0, 0, 0, 1]],
                     theta_r=137.9,     # rail orientation angle (deg)
                     link_rise=100,
-                    rail_limits=(-0.1, 1000),
+                    rail_limits=(-0.1, 718),
                     dx1=57.5,
                     dx2=107,
                     dy0=830,
