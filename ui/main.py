@@ -28,6 +28,8 @@ shared = manager.Namespace()
 shared.theta_1 = 0
 shared.theta_2 = 0
 shared.delta_r = 0
+shared.path_it = 0
+shared.timer = 0
 
 arm = Arm(shared)
 
@@ -138,13 +140,27 @@ message_queue = Queue()
 
 
 # ─── Routes ──────────────────────────────────────────────────────────────────
+
+def start_play_path_loop():
+    print("starting while loop")
+    arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
+    shared.path_it = 0
+    while start_arm_and_wait(arm.move, (shared,)) == 0:
+        arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
+        arm.iteration = shared.path_it
+    print("out of while loop")
+
 @app.route('/play')
 def play_path():
     global arm
     print("Starting play_path")
     start_arm_and_wait(arm.init, ())
-    arm.init_path()
-    start_arm(arm.move, ())
+    print("initing path")
+    arm.init_path(np.load("paths/test_path.npy"), 50)
+    arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
+    print("starting to move")
+    play_thread = threading.Thread(target=start_play_path_loop, daemon=True)
+    play_thread.start()
     return render_template('play.html')  # your SSE+plot template
 
 
@@ -153,11 +169,11 @@ def points():
     global arm
     
     # get your live joint values from arm
-    theta1 = arm.motor_pontto.angle
-    theta2 = arm.motor_paaty.angle
-    delta_r = arm.linear_rail.distance
+    theta1 = shared.theta_1
+    theta2 = shared.theta_2
+    delta_r = shared.delta_r
 
-    print("theta1:", arm.theta_1, "theta2:", theta2, "delta_r:", delta_r)
+    print("theta1:", theta1, "theta2:", theta2, "delta_r:", delta_r)
 
     pts = forward_kinematics(theta1, theta2, delta_r)
     # pts is an (N×3) numpy array
