@@ -32,7 +32,6 @@ class Arm:
         self.theta_r=theta_r
         self.rail_length=rail_length
 
-        self.current_path = None
         self.theta_1 = None
         self.theta_2 = None
         self.delta_r = None
@@ -41,7 +40,10 @@ class Arm:
         self.required_theta_2 = None
         self.required_delta_r = None
 
+        self.current_path = None
         self.iteration = 0
+        self.duration_per_point = 0
+        self.timer = 0 
 
         self.motor_paaty = SpinningJoints(shared, pulse_pin=20, dir_pin=19, limit_pin=23, name="paaty", gear_ratio=5)
         self.motor_pontto = SpinningJoints(shared, pulse_pin=13, dir_pin=26, limit_pin=22, name="pontto", gear_ratio=5*32/10)
@@ -80,10 +82,11 @@ class Arm:
         self.motor_paaty.angle = self.theta_2
 
 
-    def init_path(self, path):
+    def init_path(self, path, duration):
         # self.current_path, _ = get_sun_path()
         # self.current_path = np.load("paths/test_path.npy")
         # self.current_path = np.array([self.current_path[0]])
+        self.duration_per_point = duration / len(path)
         self.current_path = path
 
     def move(self, shared=None, speeds=None, check_safety=True):
@@ -104,6 +107,11 @@ class Arm:
         self.motor_pontto.angle = self.theta_1
         self.motor_paaty.angle = self.theta_2
         self.motor_rail.distance = self.delta_r
+
+        since_last_move = time.time() - self.timer
+        if since_last_move < self.duration_per_point:
+            print(f"Waiting for {self.duration_per_point - since_last_move:.2f} seconds before next move")
+            return True
 
         try:
             if self._target_not_set():
@@ -133,7 +141,9 @@ class Arm:
             shared.theta_2 = self.theta_2
 
             self._clear_target()
-
+            self.iteration += 1
+            self.timer = time.time()
+            
             return False
         
         except ValueError as e:
@@ -206,9 +216,7 @@ class Arm:
     def _compute_next_target(self, check_safety=True):
         """Compute next target joint values based on current path."""
         next_point = self.current_path[self.iteration]
-        print("nect point in compute", next_point)
         sols = inverse_kinematics(*next_point, verbal=False, check_safety=check_safety)
-        print("Solutions found:", sols)
         self.required_theta_1, self.required_theta_2, self.required_delta_r = choose_solution(
             sols, (self.theta_1, self.theta_2, self.delta_r)
         )
