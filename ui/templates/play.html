@@ -24,52 +24,120 @@
   <!-- 3D plot placeholder -->
   <div id="plot"></div>
 
-  <script>
-    // ——— SSE log ———
-    const log = document.getElementById('log');
-    const evtSrc = new EventSource("/autonomy_stream");
-    evtSrc.onmessage = e => {
-      log.textContent += e.data + "\n";
-      log.scrollTop = log.scrollHeight;
-    };
-    evtSrc.onerror = () => {
-      log.textContent += "\n🛑 Connection closed.\n";
-      evtSrc.close();
-    };
+<script>
+  // ——— SSE log ———
+  const log = document.getElementById('log');
+  const evtSrc = new EventSource("/autonomy_stream");
+  evtSrc.onmessage = e => {
+    log.textContent += e.data + "\n";
+    log.scrollTop = log.scrollHeight;
+  };
+  evtSrc.onerror = () => {
+    log.textContent += "\n🛑 Connection closed.\n";
+    evtSrc.close();
+  };
 
-    // ——— 3D FK plot, polling every 1 s ———
-    const plotDiv = document.getElementById('plot');
+  // ——— 3D FK plot, polling every 1 s ———
+  const plotDiv = document.getElementById('plot');
 
-    async function fetchAndPlot() {
-      try {
-        const res = await fetch('/points');
-        const points = await res.json();
-        const x = points.map(p => p[0]);
-        const y = points.map(p => p[1]);
-        const z = points.map(p => p[2]);
-        const trace = {
-          x, y, z,
-          mode: 'markers+lines',
-          type: 'scatter3d',
-          marker: { size: 3 }
-        };
-        Plotly.react(plotDiv, [trace], {
+  // static box corner definitions (in mm)
+  const konttiBox = [
+    [   0,    0,   -1],
+    [1820,    0,   -1],
+    [   0, -1680,   -1],
+    [1820, -1680,   -1],
+    [   0,    0, -1000],
+    [1820,    0, -1000],
+    [   0, -1680, -1000],
+    [1820, -1680, -1000]
+  ];
+  const safetyBox1 = [
+    [-2000, 1000, -1000],
+    [-2000, 2000, -1000],
+    [ 1820, 1000, -1000],
+    [ 1820, 2000, -1000],
+    [-2000, 1000,  1000],
+    [-2000, 2000,  1000],
+    [ 1820, 1000,  1000],
+    [ 1820, 2000,  1000]
+  ];
+  const safetyBox2 = [
+    [-2000, 1000, -1000],
+    [-1000, 1000, -1000],
+    [-2000, -1680, -1000],
+    [-1000, -1680, -1000],
+    [-2000, 1000,  1000],
+    [-1000, 1000,  1000],
+    [-2000, -1680,  1000],
+    [-1000, -1680,  1000]
+  ];
+
+  // helper to turn an 8-corner box into a scatter3d line trace
+  function makeBoxTrace(corners, name) {
+    // the 12 edges of a cuboid, as pairs of corner-indices
+    const edges = [
+      [0,1],[1,3],[3,2],[2,0],  // bottom face
+      [4,5],[5,7],[7,6],[6,4],  // top face
+      [0,4],[1,5],[2,6],[3,7]   // vertical edges
+    ];
+
+    const x = [], y = [], z = [];
+    edges.forEach(([i,j]) => {
+      x.push(corners[i][0], corners[j][0], null);
+      y.push(corners[i][1], corners[j][1], null);
+      z.push(corners[i][2], corners[j][2], null);
+    });
+
+    return {
+      x, y, z,
+      mode: 'lines',
+      type: 'scatter3d',
+      name,
+      line: { width: 2 }  // Plotly will auto-assign distinct colors
+    };
+  }
+
+  async function fetchAndPlot() {
+    try {
+      const res    = await fetch('/points');
+      const points = await res.json();
+      const x = points.map(p => p[0]),
+            y = points.map(p => p[1]),
+            z = points.map(p => p[2]);
+
+      // the moving-robot trace
+      const trace = {
+        x, y, z,
+        mode: 'markers+lines',
+        type: 'scatter3d',
+        marker: { size: 3 },
+        name: 'Path'
+      };
+
+      // build the three box traces
+      const konttiTrace   = makeBoxTrace(konttiBox,   'Container');
+      const safety1Trace  = makeBoxTrace(safetyBox1,  'Safety Box 1');
+      const safety2Trace  = makeBoxTrace(safetyBox2,  'Safety Box 2');
+
+      Plotly.react(plotDiv,
+        [ trace, konttiTrace, safety1Trace, safety2Trace ],
+        {
           margin: { l:0, r:0, b:0, t:0 },
           scene: {
-            xaxis:{ title:'X (mm)' },
-            yaxis:{ title:'Y (mm)' },
-            zaxis:{ title:'Z (mm)' }
+            xaxis: { title:'X (mm)' },
+            yaxis: { title:'Y (mm)' },
+            zaxis: { title:'Z (mm)' }
           }
-        });
-      } catch (err) {
-        console.error("Failed to fetch /points:", err);
-      }
+        }
+      );
+    } catch (err) {
+      console.error("Failed to fetch /points:", err);
     }
+  }
 
-    // initial draw
-    fetchAndPlot();
-    // update every 1 second
-    setInterval(fetchAndPlot, 1000);
-  </script>
+  // initial draw + polling
+  fetchAndPlot();
+  setInterval(fetchAndPlot, 1000);
+</script>
 </body>
 </html>
