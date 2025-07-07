@@ -139,7 +139,7 @@ class LinearRail:
         # for same reason that direction is flipped in previous function here
         # we need to input negative steps to get correctly current position
 
-        current_distance = - self.steps * (self.pitch / self.step_per_rev)
+        current_distance = self.distance
         distance_diff = target_distance - current_distance
         self.move_by_distance(distance_diff, speed=speed, shared=shared)
 
