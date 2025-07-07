@@ -104,8 +104,14 @@ def start_arm_and_wait(func, args):
 
 @app.route('/status')
 def status():
-    running = is_arm_running()
-    return jsonify({"running": running})
+    if arm_process.exitcode == 67:
+        return jsonify({"running": "init_failed"})
+
+    if arm_process is not None and arm_process.is_alive():
+        return jsonify({"running": "running"})
+        
+    if arm_process is not None and not arm_process.is_alive():
+        return jsonify({"running": "stopped"})
 
 
 def stop_arm():
