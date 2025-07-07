@@ -43,7 +43,6 @@ class Arm:
         self.current_path = None
         self.iteration = 0
         self.duration_per_point = 0
-        self.timer = 0 
 
         self.motor_paaty = SpinningJoints(shared, pulse_pin=20, dir_pin=19, limit_pin=23, name="paaty", gear_ratio=5)
         self.motor_pontto = SpinningJoints(shared, pulse_pin=13, dir_pin=26, limit_pin=22, name="pontto", gear_ratio=5*32/10)
@@ -54,10 +53,10 @@ class Arm:
         try:
             print("Starting init")
             self.motor_paaty.init_motor(direction=-1, speed=0.1)
-            # self.motor_pontto.init_motor(direction=1, speed=0.1)
-            # self.motor_rail.init_motor(direction=1)
+            self.motor_pontto.init_motor(direction=1, speed=0.1)
+            self.motor_rail.init_motor(direction=1)
 
-            time.sleep(5)
+            # time.sleep(5)
         except TimeoutError:
             print("One of the motor couldn't init")
             exit(67)
@@ -109,7 +108,11 @@ class Arm:
         self.motor_paaty.angle = self.theta_2
         self.motor_rail.distance = self.delta_r
 
-        since_last_move = time.time() - self.timer
+        print("motors set to theta 1", self.motor_pontto.angle)
+        print(" theta 2 ", self.motor_paaty.angle)
+        print(" delta r ", self.motor_rail.distance)
+
+        since_last_move = time.time() - shared.timer
         if since_last_move < self.duration_per_point:
             print(f"Waiting for {self.duration_per_point - since_last_move:.2f} seconds before next move")
             return True
@@ -122,28 +125,27 @@ class Arm:
                   f"theta_2={self.required_theta_2}, delta_r={self.required_delta_r}")
 
             if not self._step_towards('theta_1', self.required_theta_1, check_safety=check_safety):
-                self.motor_pontto.move_to_angle(self.required_theta_1, speed=speed_joint)
+                self.motor_pontto.move_to_angle(self.required_theta_1, speed=speed_joint, shared=shared)
                 # pass  # Move theta_1
 
             shared.theta_1 = self.theta_1
 
             if not self._step_towards('delta_r', self.required_delta_r, check_safety=check_safety):
                 print("Moving delta_r to", self.required_delta_r)
-                self.motor_rail.move_to_distance(self.required_delta_r, speed=speed_rail)
+                self.motor_rail.move_to_distance(self.required_delta_r, speed=speed_rail, shared=shared)
                 # pass  # Move delta_r
 
             shared.delta_r = self.delta_r
 
             if not self._step_towards('theta_2', self.required_theta_2, check_safety=check_safety):
                 print("Moving theta_2 to", self.required_theta_2)
-                self.motor_paaty.move_to_angle(self.required_theta_2, speed=speed_joint)
+                self.motor_paaty.move_to_angle(self.required_theta_2, speed=speed_joint, shared=shared)
                 # pass  # Move theta_2
-
             shared.theta_2 = self.theta_2
 
             self._clear_target()
-            self.iteration += 1
-            self.timer = time.time()
+            shared.path_it += 1
+            shared.timer = time.time()
             
             return False
         
@@ -217,6 +219,9 @@ class Arm:
     def _compute_next_target(self, check_safety=True):
         """Compute next target joint values based on current path."""
         next_point = self.current_path[self.iteration]
+        print("it ", self.iteration)
+        print("path ", self.current_path)
+        print("next point ", next_point)
         sols = inverse_kinematics(*next_point, verbal=False, check_safety=check_safety)
         self.required_theta_1, self.required_theta_2, self.required_delta_r = choose_solution(
             sols, (self.theta_1, self.theta_2, self.delta_r)
@@ -265,13 +270,20 @@ if __name__ == "__main__":
     # motor_rail = LinearRail(pulse_pin=27, dir_pin=4, limit_pin=24, gear_ratio=1)
     # motor_rail.init_motor(direction=1)
 
+    from multiprocessing import Process, Queue, Manager
+    manager = Manager()
+    shared = manager.Namespace()
+    shared.theta_1 = 0
+    shared.theta_2 = 0
+    shared.delta_r = 0
 
-    arm = Arm()
+
+    arm = Arm(shared)
     arm.init()
-    arm.init_path()
+    arm.init_path(path=np.load("paths/test_path.npy"), duration=1000)
 
     while True:
-        arm.move()
+        arm.move(shared=shared)
         time.sleep(0.1)
 
     # fig = plt.figure(figsize=(18, 9))
