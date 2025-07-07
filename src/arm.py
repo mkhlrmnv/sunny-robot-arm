@@ -60,6 +60,7 @@ class Arm:
             time.sleep(5)
         except TimeoutError:
             print("One of the motor couldn't init")
+            exit(67)
             return False
         
         self.motor_pontto.shared.theta_1 = self.motor_pontto.angle = self.theta_1 = 137.9

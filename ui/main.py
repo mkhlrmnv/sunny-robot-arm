@@ -441,6 +441,14 @@ def move_arm():
             else:
                 status, response = "error", f"Function returned with exit code {return_code}"
             
+        elif cmd == 'init':
+            if start_arm_and_wait(arm.init, ()) == 0:
+                response = f"Arm initialized and motor set to angles: theta_1 -> {shared.theta_1}, theta_2 -> {shared.theta_2}, delta_r -> {shared.delta_r}"
+            else:
+                status = "error"
+                response = "One of the motors couldn't initialize"
+
+
         else:
             status = "error"
             response = "Unknown command"
