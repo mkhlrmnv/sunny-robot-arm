@@ -10,6 +10,7 @@ import sys
 import threading
 from multiprocessing import Process, Queue, Manager
 import numpy as np
+import atexit
 
 from spinning_joints import SpinningJoints
 from linear_rail import LinearRail
@@ -37,6 +38,7 @@ arm = Arm(shared)
 def start_cooling_thread():
     print("starting cooling")
     controller = cooling.FanController(fan_pin=18, min_temp=20, max_temp=45)
+    atexit.register(controller.shutdown)
     controller.run(verbal=False, interval=0.1)
     print("started cooling")
 
