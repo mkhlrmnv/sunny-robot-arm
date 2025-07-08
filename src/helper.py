@@ -127,7 +127,7 @@ def inverse_kinematics(x, y, z,
             theta_1 = alpha - gamma
 
             # wrap into [-180,180]
-            theta_1_deg = (((np.degrees(theta_1) + theta_r) + 180) % 360) - 180
+            theta_1_deg = (((np.degrees(theta_1) + theta_r) - (-172)) % 360) + (-172)
             theta_2_deg = ((np.degrees(theta_2) + 180) % 360) - 180
 
             if verbal:
