@@ -5,17 +5,46 @@
   <title>🚀 Autonomous Mode</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='sensor_test_style.css') }}">
   <style>
-    body { font-family: sans-serif; text-align: center; padding: 30px; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+
+    body {
+      display: flex;
+      background: linear-gradient(to right, #79CED7, #1A56AF);
+    }
     #log { white-space: pre; text-align: left; width: 80%; margin: auto; height: 200px; overflow: auto;
            border: 1px solid #ccc; padding: 10px; margin-bottom: 20px; }
     #plot { width: 80%; height: 500px; margin: auto; }
-    button { margin-top: 20px; padding: 10px 20px; font-size: 18px; }
+    .button-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+      }
+      .big-button {
+          background-color: #4f4f4f;
+          color: #fff;
+          border: none;
+          border-radius: 50px;
+          padding: 20px 40px;
+          margin: 20px;
+          font-size: 24px;
+          cursor: pointer;
+          box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+          transition: background-color 0.3s ease;
+      }
+      .big-button:hover {
+          background-color: #5f5f5f;
+      }
     .desc {
-      font-size: 22px; 
+      font-size: 32px; 
       margin: 20px 0;
       color: #000; 
       line-height: 1.3;
     }
+
     .left-panel {
       width: 33.33%;
       background-color: rgba(51, 51, 51, 0.9);
@@ -27,18 +56,22 @@
       align-items: center;
       justify-content: center;
     }
+
     .left-panel h2 {
       margin-bottom: 20px;
     }
+
     .label {
       margin: 10px 0 5px;
       font-size: 18px;
       text-align: center;
     }
+    
     .temp-value {
       margin-bottom: 20px;
       font-size: 20px;
     }
+    
     .gauge {
       width: 120px;
       height: 120px;
@@ -46,8 +79,10 @@
       background: conic-gradient(#3498db 0%, #3498db var(--percent), #e0e0e0 var(--percent), #e0e0e0 100%);
       margin-bottom: 5px;
     }
+    
     .center-panel {
       width: 66.66%;
+      height: 100%;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -56,22 +91,32 @@
       padding: 20px;
       box-sizing: border-box;
     }
+    .container {
+      display: flex;
+      width: 100%;
+      height: 100%;
+    }
+
     @media (max-width: 768px) {
       body {
-      flex-direction: column;
-    }
-    .left-panel {
-      display: none;
-    }
-    .center-panel {
-      width: 100%;
-    }
-    .big-button {
-      width: 80%;
-      padding: 30px 0;
-      font-size: 32px;
-      margin: 10px 0;
-    }
+        flex-direction: column;
+      }
+    
+      .left-panel {
+        display: none;
+      }
+      
+      .center-panel {
+        width: 100%;
+      
+      }
+      .big-button {
+        width: 80%;
+        padding: 30px 0;
+        font-size: 32px;
+        margin: 10px 0;
+      }
+      #plot { width: 70%;  margin: auto; }
     }
   </style>
   <!-- Plotly.js CDN -->
@@ -90,7 +135,7 @@
   
   <!-- CENTER PANEL: Logo and Main Buttons -->
   <div class="center-panel">
-    <h1>🚀 Autonomous Mode</h1>
+    <h1 id="status-text">🚀 Autonomous Mode</h1>
 
     <div class="description" id="description">
         The system is currently initializing. This may take a moment.
@@ -100,7 +145,7 @@
 
     <!-- <div id="log">Starting…</div> -->
     
-    <button onclick="window.location='/'">Stop &amp; Exit</button>
+    <button class="big-button" onclick="window.location='/'">Stop &amp; Exit</button>
 
   </div>
 
@@ -119,28 +164,68 @@
   //   evtSrc.close();
   // };
 
+  if (window.innerWidth > 768) {
+          function fetchCoolingInfo() {
+            fetch('/cooling_info')
+              .then(response => response.json())
+              .then(data => updateGauges(data))
+              .catch(err => console.error('Error fetching cooling info:', err));
+          }
+          function updateGauges(data) {
+            // Assume max temperature for a full gauge is 60°C
+            const maxTemp = 60.0;
+            let temperature = parseFloat(data.temperature);
+            let tempPercent = (temperature / maxTemp) * 100;
+            if (tempPercent > 100) tempPercent = 100;
+            document.getElementById('gaugeTemp').style.setProperty('--percent', tempPercent + '%');
+            document.getElementById('tempValue').innerText = temperature + " °C";
+            
+            let fanSpeed = parseFloat(data.fan_speed);
+            if (fanSpeed > 100) fanSpeed = 100;
+            document.getElementById('gaugeFan').style.setProperty('--percent', fanSpeed + '%');
+            document.getElementById('fanValue').innerText = fanSpeed + " %";
+          }
+          fetchCoolingInfo();
+          setInterval(fetchCoolingInfo, 1000);
+          }
+</script>
+<script>
+
+  function checkStatus() {
   fetch('/status')
     .then(r => r.json())
     .then(data => {
         if (data.running == "stopped") {
-            document.getElementById("description").innerText = "Arm is stopped. To continue, please restart the process.";
+          document.getElementById("status-text").innerText = "🛑 Arm is stopped";
+          document.getElementById("description").innerText = "To continue, please restart the process";
 
         } else if (data.running == "path_ended") {
-            document.getElementById("description").innerText = "✅ Robot reached the end of the path";
+          document.getElementById("status-text").innerText = "✅ Robot reached the end of the path";
+          document.getElementById("description").innerText = "✅ Robot reached the end of the path";
 
         } else if (data.running == "arm_stopped_safety") {
-            document.getElementById("description").innerText = "❗️ Arm stopped due to safety conditions.\n Please check the logs for details.";
+          document.getElementById("status-text").innerText = "❗️ Arm stopped due to safety conditions";
+          document.getElementById("description").innerText = "Please check the logs for details";
 
         } else if (data.running == "running") {
-            document.getElementById("description").innerText = "🚀 Robot is running";
+          document.getElementById("status-text").innerText = "🚀 Robot is running";
+          document.getElementById("description").innerText = "🚀 Robot is running";
 
         } else if (data.running == "not_started") {
-            document.getElementById("description").innerText = "Something went wrong. The arm has not started yet.";
+          document.getElementById("status-text").innerText = "🤔 Something went wrong";
+          document.getElementById("description").innerText = "The arm has not started yet";
+
+        } else if (data.running == "waiting") {
+          document.getElementById("status-text").innerText = "⏳ Waiting to execute next point";
+          document.getElementById("description").innerText = "⏳ Waiting to execute next point";
 
         } else {
-            setTimeout(checkStatus, 100);
+          setTimeout(checkStatus, 100);
         }
     });
+  }
+
+  checkStatus();
 
 
   // ——— 3D FK plot, polling every 1 s ———
