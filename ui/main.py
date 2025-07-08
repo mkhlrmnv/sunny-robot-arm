@@ -172,7 +172,7 @@ def start_play_path_loop():
 @app.route('/play')
 def play_path():
     global arm
-    arm.init_path(np.load("paths/test_path.npy"), 50)
+    arm.init_path(np.load("paths/test2_path.npy"), 50)
     arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
     print("starting to move")
     play_thread = threading.Thread(target=start_play_path_loop, daemon=True)
@@ -231,22 +231,24 @@ def move_arm():
     with motor_lock:
         # Manual control stuff -> move up / down, etc.
         if cmd == 'motor_paaty_up':
-            start_arm(arm.motor_paaty.move_by_angle, (angles_per_key, 0.5))
+            start_arm(arm.motor_paaty.move_by_angle, (angles_per_key, 0.5, shared))
             response = "Motor paaty moving up"
         elif cmd == 'motor_paaty_down':
-            start_arm(arm.motor_paaty.move_by_angle, (-angles_per_key, 0.5))
+            start_arm(arm.motor_paaty.move_by_angle, (-angles_per_key, 0.5, shared))
             response = "Motor paaty moving down"
         elif cmd == 'motor_pontto_ccw':
-            start_arm(arm.motor_pontto.move_by_angle, (angles_per_key, 0.5))
+            start_arm(arm.motor_pontto.move_by_angle, (angles_per_key, 0.5, shared))
+            print("theta 1", shared.theta_1)
             response = "Motor pontto moving ccw"
         elif cmd == 'motor_pontto_cw':
-            start_arm(arm.motor_pontto.move_by_angle, (-angles_per_key, 0.5))
+            print("theta 1", shared.theta_1)
+            start_arm(arm.motor_pontto.move_by_angle, (-angles_per_key, 0.5, shared))
             response = "Motor pontto moving cw"
         elif cmd == 'motor_rail_right':
-            start_arm(arm.motor_rail.move_by_distance, (angles_per_key, 0.5))
+            start_arm(arm.motor_rail.move_by_distance, (angles_per_key, 0.5, shared))
             response = "Motor rail moving right"
         elif cmd == 'motor_rail_left':
-            start_arm(arm.motor_rail.move_by_distance, (-angles_per_key, 0.5))
+            start_arm(arm.motor_rail.move_by_distance, (-angles_per_key, 0.5, shared))
             response = "Motor rail moving left"
         elif cmd == 'pl':
             angles_per_key += 10

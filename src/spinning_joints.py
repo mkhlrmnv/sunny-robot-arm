@@ -114,6 +114,13 @@ class SpinningJoints:
             self.shared.theta_2 = self.angle
 
     def move_by_angle(self, angle, speed=0.5, shared=None):
+
+        if shared is not None:
+            if self.name == "pontto":
+                self.angle = shared.theta_1
+            elif self.name == "paaty":
+                self.angle = shared.theta_2
+
         if abs(angle) > self.angle_limit:
            raise ValueError("Angle must be between -360 and 360 degrees.")
 
