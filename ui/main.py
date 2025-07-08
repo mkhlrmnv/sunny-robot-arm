@@ -104,7 +104,12 @@ def start_arm_and_wait(func, args):
 
 @app.route('/status')
 def status():
-    if arm_process is not None and arm_process.exitcode == 67:
+    if arm_process is not None:
+        print("exit code ", arm_process.exitcode)
+    if arm_process is not None and arm_process.exitcode == 66:
+        return jsonify({"running": "waiting"})
+
+    elif arm_process is not None and arm_process.exitcode == 67:
         return jsonify({"running": "init_failed"})
     
     elif arm_process is not None and arm_process.exitcode == 68:
@@ -158,7 +163,7 @@ def start_play_path_loop():
     print("starting while loop")
     arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
     shared.path_it = 0
-    while start_arm_and_wait(arm.move, (shared,)) == 0:
+    while start_arm_and_wait(arm.move, (shared,)) == 0 or start_arm_and_wait(arm.move, (shared,)) == 66:
         arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
         arm.iteration = shared.path_it
     print("out of while loop")
