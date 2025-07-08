@@ -108,14 +108,10 @@ class Arm:
         self.motor_paaty.angle = self.theta_2
         self.motor_rail.distance = self.delta_r
 
-        print("motors set to theta 1", self.motor_pontto.angle)
-        print(" theta 2 ", self.motor_paaty.angle)
-        print(" delta r ", self.motor_rail.distance)
-
         since_last_move = time.time() - shared.timer
         if since_last_move < self.duration_per_point:
             print(f"Waiting for {self.duration_per_point - since_last_move:.2f} seconds before next move")
-            return True
+            exit(66)
 
         try:
             if self._target_not_set():
