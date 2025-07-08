@@ -53,7 +53,7 @@ class Arm:
         try:
             print("Starting init")
             self.motor_paaty.init_motor(direction=-1, speed=0.1)
-            self.motor_pontto.init_motor(direction=1, speed=0.1)
+            self.motor_pontto.init_motor(direction=-1, speed=0.1)
             self.motor_rail.init_motor(direction=1)
 
             # time.sleep(5)
@@ -113,6 +113,8 @@ class Arm:
             print(f"Waiting for {self.duration_per_point - since_last_move:.2f} seconds before next move")
             exit(66)
 
+        shared.timer = time.time()
+        
         try:
             if self._target_not_set():
                 self._compute_next_target(check_safety=check_safety)
@@ -141,7 +143,6 @@ class Arm:
 
             self._clear_target()
             shared.path_it += 1
-            shared.timer = time.time()
             
             return False
         

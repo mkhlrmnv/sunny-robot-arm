@@ -60,16 +60,16 @@ class SpinningJoints:
             direction_change = False
             print("initing pontto")
             while not self.limit_event.is_set():
-                if abs(self.angle) > 90:
-                    if not direction_change: 
-                        time.sleep(2)
-                        direction = -1 * direction
-                        direction_change = True
-                    else:  
-                        raise TimeoutError("Motor didn't find init pos")
+                if not direction_change and abs(self.angle) > 172:
+                    self.angle = 0
+                    time.sleep(2)
+                    direction = -1 * direction
+                    direction_change = True
+                elif direction_change and abs(self.angle) > 360:
+                    raise TimeoutError("Motor didn't find init pos")
                 self.step(direction=direction, speed=speed)
 
-            if not direction_change:
+            if direction_change:
                 self.move_by_angle(-10 * (direction), speed=speed)
                 time.sleep(2)
                 while not self.limit_event.is_set():
