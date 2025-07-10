@@ -83,9 +83,6 @@ class Arm:
 
 
     def init_path(self, path, duration):
-        # self.current_path, _ = get_sun_path()
-        # self.current_path = np.load("paths/test_path.npy")
-        # self.current_path = np.array([self.current_path[0]])
         self.duration_per_point = duration / len(path)
         self.current_path = path
 
@@ -108,12 +105,12 @@ class Arm:
         self.motor_paaty.angle = self.theta_2
         self.motor_rail.distance = self.delta_r
 
-        since_last_move = time.time() - shared.timer
+        since_last_move = time.time() - self.shared.timer
         if since_last_move < self.duration_per_point:
             print(f"Waiting for {self.duration_per_point - since_last_move:.2f} seconds before next move")
             exit(66)
 
-        shared.timer = time.time()
+        self.shared.timer = time.time()
         
         try:
             if self._target_not_set():
@@ -122,27 +119,69 @@ class Arm:
             print(f"Moving to target: theta_1={self.required_theta_1}, "
                   f"theta_2={self.required_theta_2}, delta_r={self.required_delta_r}")
 
-            if not self._step_towards('theta_1', self.required_theta_1, check_safety=check_safety):
-                self.motor_pontto.move_to_angle(self.required_theta_1, speed=speed_joint, shared=shared)
-                # pass  # Move theta_1
+            MAX_ITERATIONS = 1000
+            iteration = 0
 
-            shared.theta_1 = self.theta_1
+            while iteration < MAX_ITERATIONS:
+                iteration += 1
 
-            if not self._step_towards('delta_r', self.required_delta_r, check_safety=check_safety):
-                print("Moving delta_r to", self.required_delta_r)
-                self.motor_rail.move_to_distance(self.required_delta_r, speed=speed_rail, shared=shared)
-                # pass  # Move delta_r
+                unsafe_joints = []      # joints that hit a safety wall this pass
+                progress_made = False   # did _any_ joint advance?
+                all_at_target = True    # assume done until proven otherwise
 
-            shared.delta_r = self.delta_r
+                # ---- θ1 -----------------------------------------------------
+                try:
+                    at_target = self._step_towards('theta_1', self.required_theta_1,
+                                                check_safety=check_safety)
+                    if not at_target:
+                        self.lalala(self.required_theta_1)      # real move
+                        progress_made = True
+                        all_at_target = False
+                except ValueError:
+                    unsafe_joints.append('theta_1')
+                    all_at_target = False
 
-            if not self._step_towards('theta_2', self.required_theta_2, check_safety=check_safety):
-                print("Moving theta_2 to", self.required_theta_2)
-                self.motor_paaty.move_to_angle(self.required_theta_2, speed=speed_joint, shared=shared)
-                # pass  # Move theta_2
-            shared.theta_2 = self.theta_2
+                try:
+                    at_target = self._step_towards('delta_r', self.required_delta_r,
+                                                check_safety=check_safety)
+                    if not at_target:
+                        self.lalala(self.required_delta_r)
+                        progress_made = True
+                        all_at_target = False
+                except ValueError:
+                    unsafe_joints.append('delta_r')
+                    all_at_target = False
+
+                try:
+                    at_target = self._step_towards('theta_2', self.required_theta_2,
+                                                check_safety=check_safety)
+                    if not at_target:
+                        self.lalala(self.required_theta_2)
+                        progress_made = True
+                        all_at_target = False
+                except ValueError:
+                    unsafe_joints.append('theta_2')
+                    all_at_target = False
+                
+                if all_at_target:
+                    break                             # reached goal – great!
+
+                if not progress_made:                 # no joint could move this pass
+                    raise RuntimeError(f"Stopping: no safe motion "
+                                    f"(unsafe joints: {', '.join(unsafe_joints)})")
+
+                if iteration >= MAX_ITERATIONS:
+                    raise RuntimeError(f"Stopping: max iterations reached "
+                                    f"({MAX_ITERATIONS}) without reaching target.")
+
+            if unsafe_joints and not progress_made:
+                # Either every joint was unsafe, or the rest were already at target
+                # so no further progress toward the goal is possible.
+                raise RuntimeError(f"Stopping: no safe motion (unsafe joints: "
+                                f"{', '.join(unsafe_joints)})")
 
             self._clear_target()
-            shared.path_it += 1
+            self.shared.path_it += 1
             
             return False
         
@@ -216,9 +255,6 @@ class Arm:
     def _compute_next_target(self, check_safety=True):
         """Compute next target joint values based on current path."""
         next_point = self.current_path[self.iteration]
-        print("it ", self.iteration)
-        print("path ", self.current_path)
-        print("next point ", next_point)
         sols = inverse_kinematics(*next_point, verbal=False, check_safety=check_safety)
         self.required_theta_1, self.required_theta_2, self.required_delta_r = choose_solution(
             sols, (self.theta_1, self.theta_2, self.delta_r)
@@ -237,7 +273,10 @@ class Arm:
 
     def draw_all(self, index, ax):
         ax.clear()
-        self.move()
+        try:
+            self.move()
+        except ValueError as e:
+            print(f"Error during move: {e}")
         draw_all_safety_boxes(ax)
         draw_robot(ax, points=forward_kinematics(self.theta_1, self.theta_2, self.delta_r))
         plot_path(ax, self.current_path, linestyle='None')
@@ -273,20 +312,22 @@ if __name__ == "__main__":
     shared.theta_1 = 0
     shared.theta_2 = 0
     shared.delta_r = 0
+    shared.timer = 0
+    shared.path_it = 0
 
 
     arm = Arm(shared)
     arm.init()
-    arm.init_path(path=np.load("paths/test_path.npy"), duration=1000)
+    arm.init_path(path=np.load("paths/new_finnish_path.npy"), duration=0)
 
     while True:
-        arm.move(shared=shared)
-        time.sleep(0.1)
+       arm.move(shared=shared)
+       time.sleep(0.1)
 
-    # fig = plt.figure(figsize=(18, 9))
+    # fig = plt.figure(figsize=(9, 6))
     # ax = fig.add_subplot(111, projection='3d')
 # 
-    # ani = FuncAnimation(fig, arm.draw_all, frames=len(arm.current_path), fargs=(ax,), interval=10)
+    # ani = FuncAnimation(fig, arm.draw_all, frames=len(arm.current_path), fargs=(ax,), interval=100)
     # plt.show()
 
     
