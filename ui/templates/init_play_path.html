@@ -24,7 +24,7 @@ function checkStatus() {
                 document.getElementById("description").innerText = "The system was successfully initialized.";
                 document.getElementById("back-button").style = "display:none";
                 setTimeout(() => {
-                    window.location.href = "/play";
+                    window.location.href = "/choose_path";
                 }, 2500);
             } else if (data.running == "init_failed") {
                 document.getElementById("status-text").innerText = "❌ Initialization Failed";

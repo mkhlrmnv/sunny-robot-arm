@@ -38,9 +38,10 @@ class LinearRail:
         self.limit_switch.hold_time = 0.1
         self.limit_switch.hold_repeat = True
 
+        self.distance = 0
+
         self.steps = 0
         self.angle = 0
-        self.distance = 0
         self.pitch = pitch  # Pitch of the linear rail in mm
         self.step_per_rev = step_per_rev
         self.min_delay = min_delay
@@ -74,6 +75,8 @@ class LinearRail:
 
         # print(delay)
 
+        # print("self steps", self.steps)
+
         self.pulse.on()
         time.sleep(delay)
         self.pulse.off()
@@ -81,7 +84,7 @@ class LinearRail:
         self.steps += direction
         self.angle += direction * (360 / (self.step_per_rev * self.gear_ratio))
         self.angle = round(self.angle, 3)
-        self.distance = - self.steps * (self.pitch / self.step_per_rev)  # negative because of the flipped direction
+        self.distance += (-1 * direction) * (self.pitch / self.step_per_rev)  # negative because of the flipped direction
 
         self.shared.delta_r = self.distance
 
@@ -139,6 +142,8 @@ class LinearRail:
         # for same reason that direction is flipped in previous function here
         # we need to input negative steps to get correctly current position
 
+        print("self.distance in motor", self.distance)
+
         current_distance = self.distance
         distance_diff = target_distance - current_distance
         self.move_by_distance(distance_diff, speed=speed, shared=shared)
@@ -172,10 +177,13 @@ class LinearRail:
 
 
 if __name__ == "__main__":
-    motor = LinearRail(pulse_pin=27, dir_pin=4, limit_pin=24, gear_ratio=1)
+    from multiprocessing import Process, Queue, Manager
+    manager = Manager()
+    shared = manager.Namespace()
+    motor = LinearRail(pulse_pin=27, shared=shared, dir_pin=4, limit_pin=24, gear_ratio=1)
     # motor.move_by_angle(-720*6, speed=0.5)
-    motor.init_motor(direction=1)
-    # motor.move_by_distance(-200, speed=1)
+    # motor.init_motor(direction=1)
+    motor.move_by_distance(-500, speed=1)
     
     motor.move_to_distance(10, speed=0.5)
     print("moved")

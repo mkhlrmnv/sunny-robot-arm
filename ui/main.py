@@ -68,23 +68,6 @@ def index():
     stop_arm()
     return render_template('index.html')
 
-# idea how to make robot plot in play
-# def index():
-#     # Generate a 3D scatter
-#     import numpy as np
-#     t = np.linspace(0, 4*np.pi, 100)
-#     fig = go.Figure(data=[go.Scatter3d(
-#         x=np.sin(t), y=np.cos(t), z=t,
-#         mode='markers+lines'
-#     )])
-#     # Get the HTML <div> for the plot
-#     plot_div = pio.to_html(fig, full_html=False)
-# 
-#     return render_template_string('''
-#       <h1>Interactive 3D Plot</h1>
-#       {{ plot_div|safe }}
-#     ''', plot_div=plot_div)
-
 
 arm_process = None
 
@@ -106,8 +89,7 @@ def start_arm_and_wait(func, args):
 
 @app.route('/status')
 def status():
-    if arm_process is not None:
-        print("exit code ", arm_process.exitcode)
+    print("exit code ", arm_process.exitcode)
     if arm_process is not None and arm_process.exitcode == 66:
         return jsonify({"running": "waiting"})
 
@@ -161,16 +143,6 @@ play_process = None
 message_queue = Queue()
 
 
-def start_play_path_loop():
-    print("starting while loop")
-    arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
-    shared.path_it = 0
-    while start_arm_and_wait(arm.move, (shared,)) == 0 or start_arm_and_wait(arm.move, (shared,)) == 66:
-        arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
-        arm.iteration = shared.path_it
-    print("out of while loop")
-
-
 @app.route("/init_play_path")
 def init_play_path():
     global arm
@@ -179,7 +151,7 @@ def init_play_path():
     return render_template("init_play_path.html", running=is_arm_running())
 
 
-@app.route('choose_path')
+@app.route('/choose_path')
 def choose_path():
     return render_template('choose_path.html', running=is_arm_running())
 
@@ -189,7 +161,10 @@ def play_path():
     global arm
     name = request.args.get('cmd')
 
-    path = os.path.join(os.path.dirname(__file__), 'paths', name)
+    print("name ", name)
+    print("os", os.path.dirname(__file__))
+
+    path = os.path.join(os.path.dirname(__file__), '..', 'paths', name)
 
     arm.init_path(np.load(path), duration=0)
     arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
@@ -197,6 +172,17 @@ def play_path():
     play_thread = threading.Thread(target=start_play_path_loop, daemon=True)
     play_thread.start()
     return render_template('play.html')  # your SSE+plot template
+
+
+def start_play_path_loop():
+    print("starting while loop")
+    arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
+    shared.path_it = 0
+    while start_arm_and_wait(arm.move, (shared,)) == 0 or start_arm_and_wait(arm.move, (shared,)) == 66:
+        arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
+        arm.iteration = shared.path_it
+        
+    print("out of while loop")
 
 
 @app.route('/points')

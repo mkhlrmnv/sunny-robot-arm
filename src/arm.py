@@ -101,16 +101,20 @@ class Arm:
         else:
             speed_joint, speed_rail = speeds
 
+        print("self theta 1", self.theta_1)
+        print("self theta 2", self.theta_2)
+        print("self delta r", self.delta_r)
+
         self.motor_pontto.angle = self.theta_1
         self.motor_paaty.angle = self.theta_2
         self.motor_rail.distance = self.delta_r
 
-        since_last_move = time.time() - self.shared.timer
+        since_last_move = time.time() - shared.timer
         if since_last_move < self.duration_per_point:
             print(f"Waiting for {self.duration_per_point - since_last_move:.2f} seconds before next move")
             exit(66)
 
-        self.shared.timer = time.time()
+        shared.timer = time.time()
         
         try:
             if self._target_not_set():
@@ -129,12 +133,12 @@ class Arm:
                 progress_made = False   # did _any_ joint advance?
                 all_at_target = True    # assume done until proven otherwise
 
-                # ---- θ1 -----------------------------------------------------
                 try:
                     at_target = self._step_towards('theta_1', self.required_theta_1,
                                                 check_safety=check_safety)
                     if not at_target:
-                        self.lalala(self.required_theta_1)      # real move
+                        self.motor_pontto.move_to_angle(self.required_theta_1, speed=speed_joint, shared=shared)
+                        shared.theta_1 = self.theta_1
                         progress_made = True
                         all_at_target = False
                 except ValueError:
@@ -145,7 +149,8 @@ class Arm:
                     at_target = self._step_towards('delta_r', self.required_delta_r,
                                                 check_safety=check_safety)
                     if not at_target:
-                        self.lalala(self.required_delta_r)
+                        self.motor_rail.move_to_distance(self.required_delta_r, speed=speed_rail, shared=shared)
+                        shared.delta_r = self.delta_r
                         progress_made = True
                         all_at_target = False
                 except ValueError:
@@ -156,7 +161,8 @@ class Arm:
                     at_target = self._step_towards('theta_2', self.required_theta_2,
                                                 check_safety=check_safety)
                     if not at_target:
-                        self.lalala(self.required_theta_2)
+                        self.motor_paaty.move_to_angle(self.required_theta_2, speed=speed_joint, shared=shared)
+                        shared.theta_2 = self.theta_2
                         progress_made = True
                         all_at_target = False
                 except ValueError:
@@ -181,7 +187,7 @@ class Arm:
                                 f"{', '.join(unsafe_joints)})")
 
             self._clear_target()
-            self.shared.path_it += 1
+            shared.path_it += 1
             
             return False
         
@@ -226,6 +232,7 @@ class Arm:
 
         # If all steps are safe, perform the final move
         setattr(self, attr, target)
+        print(f"Moved {attr} to {target} safely.")
         return False
 
 

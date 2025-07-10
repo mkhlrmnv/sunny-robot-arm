@@ -20,6 +20,7 @@ def test(cmd, params=None):
 
 
 if __name__ == "__main__":
+    test("init")
     # test("motor_paaty_up")
     # test("motor_paaty_down")
     # test("motor_pontto_ccw")
@@ -33,22 +34,29 @@ if __name__ == "__main__":
 
     test("by_angle", {
         "motor": "paaty",
-        "angle": -10,
+        "angle": -20,
         "speed": 0.5,
+        "check_safety": 1
+    })
+    
+    test("to_angle", {
+        "motor": "pontto",
+        "angle": 120,
+        "speed": 0.1,
+        "check_safety": 0
+    })
+# 
+    test("by_distance", {
+        "dist": 20,
+        "speed": 1,
         "check_safety": 0
     })
 
-    # test("by_angle", {
-    #     "motor": "pontto",
-    #     "angle": -180,
-    #     "speed": 0.1,
-    #     "check_safety": 0
+    # test("to_point",{
+    #     "x": 1197.92882108,
+    #     "y": -1020.43108514,
+    #     "z": 1050,
+    #     "check_safety": 1,
+    #     "speed_rail": 0.1,
+    #     "speed_joints": 0.1
     # })
-# 
-    # test("by_distance", {
-    #     "dist": 100,
-    #     "speed": 0.5,
-    #     "check_safety": 1
-    # })
-
-   

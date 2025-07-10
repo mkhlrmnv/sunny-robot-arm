@@ -185,7 +185,6 @@
             document.getElementById('gaugeFan').style.setProperty('--percent', fanSpeed + '%');
             document.getElementById('fanValue').innerText = fanSpeed + " %";
           }
-          fetchCoolingInfo();
           setInterval(fetchCoolingInfo, 1000);
           }
 </script>
@@ -226,6 +225,9 @@
   }
 
   checkStatus();
+  setInterval(checkStatus, 1000);
+</script>
+<script>
 
 
   // ——— 3D FK plot, polling every 1 s ———
