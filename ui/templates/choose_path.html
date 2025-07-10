@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <title>J&M Automation</title>
+      <link rel="stylesheet" href="{{ url_for('static', filename='index_style.css') }}">
+    <body>
+      <!-- LEFT PANEL: Cooling Info (visible on desktop) -->
+      <div class="left-panel">
+        <h2>Cooling Info</h2>
+        <div class="label">Temperature</div>
+        <div class="gauge" id="gaugeTemp" style="--percent: 0%;"></div>
+        <div class="label temp-value" id="tempValue">-- °C</div>
+        <div class="label">Fan Speed</div>
+        <div class="gauge" id="gaugeFan" style="--percent: 0%;"></div>
+        <div class="label" id="fanValue">-- %</div>
+      </div>
+      
+      <!-- CENTER PANEL: Logo and Main Buttons -->
+      <div class="center-panel">
+        <!--<div class="logo-container">
+          <img src="{{ url_for('static', filename='logo.png') }}" alt="J&M Automation Logo">
+        </div> -->
+        <div class="button-container">
+          <button class="big-button" onclick="location.href='/play?test_path.npy'">Test Path 1</button>
+          <button class="big-button" onclick="location.href='/play?test_path.npy'">Test Path 2</button>
+          <button class="big-button" onclick="location.href='/play?new_finnish_path.npy'">Finnish Suns Path</button>
+        </div>
+      </div>
+      
+      <script>
+        // Only poll cooling info if the left panel is visible (desktop)
+        if (window.innerWidth > 768) {
+          function fetchCoolingInfo() {
+            fetch('/cooling_info')
+              .then(response => response.json())
+              .then(data => updateGauges(data))
+              .catch(err => console.error('Error fetching cooling info:', err));
+          }
+          function updateGauges(data) {
+            // Assume max temperature for a full gauge is 60°C
+            const maxTemp = 60.0;
+            let temperature = parseFloat(data.temperature);
+            let tempPercent = (temperature / maxTemp) * 100;
+            if (tempPercent > 100) tempPercent = 100;
+            document.getElementById('gaugeTemp').style.setProperty('--percent', tempPercent + '%');
+            document.getElementById('tempValue').innerText = temperature + " °C";
+            
+            let fanSpeed = parseFloat(data.fan_speed);
+            if (fanSpeed > 100) fanSpeed = 100;
+            document.getElementById('gaugeFan').style.setProperty('--percent', fanSpeed + '%');
+            document.getElementById('fanValue').innerText = fanSpeed + " %";
+          }
+          fetchCoolingInfo();
+          setInterval(fetchCoolingInfo, 1000);
+        }
+      </script>
+    </body>
+    </html>

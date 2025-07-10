@@ -171,22 +171,32 @@ def start_play_path_loop():
     print("out of while loop")
 
 
-@app.route('/play')
-def play_path():
-    global arm
-    arm.init_path(np.load("paths/test2_path.npy"), duration=0)
-    arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
-    print("starting to move")
-    play_thread = threading.Thread(target=start_play_path_loop, daemon=True)
-    play_thread.start()
-    return render_template('play.html')  # your SSE+plot template
-
 @app.route("/init_play_path")
 def init_play_path():
     global arm
     if not is_arm_running():
         start_arm(arm.init, ())
     return render_template("init_play_path.html", running=is_arm_running())
+
+
+@app.route('choose_path')
+def choose_path():
+    return render_template('choose_path.html', running=is_arm_running())
+
+
+@app.route('/play')
+def play_path():
+    global arm
+    name = request.args.get('cmd')
+
+    path = os.path.join(os.path.dirname(__file__), 'paths', name)
+
+    arm.init_path(np.load(path), duration=0)
+    arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
+    print("starting to move")
+    play_thread = threading.Thread(target=start_play_path_loop, daemon=True)
+    play_thread.start()
+    return render_template('play.html')  # your SSE+plot template
 
 
 @app.route('/points')
