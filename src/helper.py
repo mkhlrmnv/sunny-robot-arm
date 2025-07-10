@@ -257,26 +257,26 @@ kontti_box_corners = np.array([
 
 # Safety Box 1
 safety_box_1_corners = np.array([
-    [-2000, 1000, -1000],
+    [-2000, 1200, -1000],
     [-2000, 2000, -1000],
-    [1820, 1000, -1000],
+    [1820, 1200, -1000],
     [1820, 2000, -1000],
-    [-2000, 1000, 1000],
+    [-2000, 1200, 1000],
     [-2000, 2000, 1000],
-    [1820, 1000, 1000],
+    [1820, 1200, 1000],
     [1820, 2000, 1000]
 ])
 
 # Safety Box 2
 safety_box_2_corners = np.array([
     [-2000, 1000, -1000],
-    [-1000, 1000, -1000],
+    [-1100, 1000, -1000],
     [-2000, -1680, -1000],
-    [-1000, -1680, -1000],
+    [-1100, -1680, -1000],
     [-2000, 1000, 1000],
-    [-1000, 1000, 1000],
+    [-1100, 1000, 1000],
     [-2000, -1680, 1000],
-    [-1000, -1680, 1000]
+    [-1100, -1680, 1000]
 ])
 
 test_box = np.array([
@@ -290,7 +290,7 @@ test_box = np.array([
     [-100, 100, 1000]
 ])
 
-all_boxes = [kontti_box_corners, safety_box_1_corners, safety_box_2_corners] #, test_box]
+all_boxes = [kontti_box_corners]#, safety_box_1_corners, safety_box_2_corners] #, test_box]
 
     # Define edges by listing pairs of points (12 box edges total)
 edges = [
@@ -326,7 +326,7 @@ def draw_box(box_corners, edges, ax, color='b', linestyle='dashed', linewidth=1.
 def draw_all_safety_boxes(ax):
     draw_box(kontti_box_corners, edges=edges, ax=ax,  color='r')
 
-    for box in (safety_box_1_corners, safety_box_2_corners, test_box):
+    for box in (safety_box_1_corners, safety_box_2_corners):
         draw_box(box, edges=edges, ax=ax, color='r')
 
 def draw_robot(ax, points, color='g'):
@@ -436,14 +436,12 @@ def get_sun_path(R=1700,
     # First shift it to start and end in the center of the box (kontti),
     # then shift it so that none of the points are in the box
 
-    req_x = -800
-    req_y = 800
-    req_z = -850
+    center_point = [-800, 800, -830]
 
     # Shift to the center
-    x_shift = req_x - x.iloc[int(len(x)/2)]
-    y_shift = req_y - y.iloc[int(len(y)/2)]
-    z_shift = req_z - np.min([z.iloc[0], z.iloc[len(z)-1]])
+    x_shift = center_point[0] - x.iloc[int(len(x)/2)]
+    y_shift = center_point[1] - y.iloc[int(len(y)/2)] 
+    z_shift = center_point[2] - np.min([z.iloc[0], z.iloc[len(z)-1]])
 
     x += x_shift
     y += y_shift
@@ -456,21 +454,181 @@ def get_sun_path(R=1700,
     x += x_shift_2
     y += y_shift_2
 
+    x_shift_3 = -128 - x.iloc[0]
+
+    # x += x_shift_3
+
+    x_avg_orig = np.average([x.iloc[0], x.iloc[-1]])
+    y_avg_orig = np.average([y.iloc[0], y.iloc[-1]])
+    z_avg_orig = np.average([z.iloc[0], z.iloc[-1]])
+
     # stack for future steps
     sun_dirs = np.stack((x, y, z), axis=1)
 
+     
+    sun_dirs =  sun_dirs[4:-7]
+
     counter = 0
     unreachable_points = []
+
+    '''
+    R = 1000
+
+    x_small = R * np.cos(np.radians(alt)) * np.sin(np.radians(az + 135)) + (1820/2)
+    y_small = R * np.cos(np.radians(alt)) * np.cos(np.radians(az + 135)) - (1680/2)
+    z_small = R * np.sin(np.radians(alt))
+
+    # 4) Shift the path
+    # First shift it to start and end in the center of the box (kontti),
+    # then shift it so that none of the points are in the box
+
+    req_x = -800
+    req_y = 800
+    req_z = -850
+
+    # Shift to the center
+    x_shift_small = req_x - x_small.iloc[int(len(x_small)/2)]
+    y_shift_small = req_y - y.iloc[int(len(y_small)/2)] 
+    z_shift_small = req_z - np.min([z_small.iloc[0], z_small.iloc[len(z)-1]])
+
+    x_small += x_shift_small
+    y_small += y_shift_small
+    z_small += z_shift_small
+
+    # Shift to outside of the box
+    x_shift_2_small = 0 - x_small.iloc[0]
+    y_shift_2_small = 0 - y_small.iloc[-1]
+
+    x_small += x_shift_2_small
+    y_small += y_shift_2_small
+
+    x_avg_orig_small = np.average([x_small.iloc[0], x_small.iloc[-1]])
+    y_avg_orig_small = np.average([y_small.iloc[0], y_small.iloc[-1]])
+
+    x_shift_3_small = x_avg_orig - x_avg_orig_small
+    y_shift_3_small = y_avg_orig - y_avg_orig_small
+
+    x_small += x_shift_3_small
+    y_small += y_shift_3_small
+
+    # stack for future steps
+    sun_dirs_small = np.stack((x_small, y_small, z_small), axis=1)
+
+    '''
+    for i in range(len(sun_dirs)):
+        if sun_dirs[i][0] < -1000:
+            sun_dirs[i][0] = -999
+        if sun_dirs[i][0] > 1820:
+            sun_dirs[i][0] = 1819
+        if sun_dirs[i][1] < -1680:
+            sun_dirs[i][1] = -1679
+        if sun_dirs[i][1] > 1200:
+            sun_dirs[i][1] = 1199
 
     # for loop through all the points
     for i in range(len(sun_dirs)):
 
         # try if they are reachable
         try: 
-            inverse_kinematics(*sun_dirs[i], check_safety=False, verbal=False)
+            inverse_kinematics(*sun_dirs[i], check_safety=True, verbal=False)
 
         # if not, bring point closer until it is reachable
         except ValueError:
+            unreachable_points.append(sun_dirs[i].copy())
+            counter += 1
+            print("\ncxounter", counter)
+            print("point ", sun_dirs[i].copy())
+
+            x, y, z = sun_dirs[i]
+
+            T_base=[[1, 0, 0, 925.39], [0, 1, 0, -219.38], [0, 0, 1, 0], [0, 0, 0, 1]]
+
+            T_inv = np.linalg.inv(T_base)
+            p_world = np.array([x, y, z, 1])
+            p_local = T_inv @ p_world
+            x_l, y_l, z_l = p_local[:3]
+
+            # Step 2: Rotate point into rail frame (rail lies along +Y direction)
+            from scipy.spatial.transform import Rotation as R
+            Rz = R.from_euler('z', 137.9, degrees=True).as_matrix()
+            p_rail = Rz.T @ np.array([x_l, y_l, z_l])
+            x_r, y_r, z_r = p_rail
+
+            # Step 3: From z_r, solve for theta2
+            z_eff = z_r - 100
+
+            cx, cy = x_r, y_r
+            arm_reach_x = 57 + 107
+
+            theta_2_deg = inverse_kinematics(*sun_dirs[i-1], check_safety=True, verbal=False)[0][1]
+            theta_2 = np.radians(theta_2_deg)
+
+            arm_reach_y = z_eff / np.tan(theta_2) + 830
+
+            print("z_eff", z_eff)
+            print("arm_reach_y", arm_reach_y)
+
+            r = np.hypot(arm_reach_x, arm_reach_y)
+            
+
+            if cy > 0:
+                d = cx
+            else:
+                d = np.hypot(cx, cy)
+
+            if d > r:
+                s  = r / d                     # 0 < s < 1
+                cx = s * cx
+                cy = s * cy
+                # (optional) log or store how much we shortened:
+                shrink_mm = d - r
+                print(f"   → shortened ray by {shrink_mm:.1f} mm to stay reachable")
+
+
+            print("r: ", r)
+            print("cx, cy: ", cx, cy)
+
+            rhs = r**2 - cx**2
+
+            # breakpoint()
+
+            if rhs < 0: 
+                print("ERRPR: rhs < 0")
+                continue
+                
+            for sign in (+1, -1):
+                y_wrist = cy + sign * np.sqrt(rhs)
+
+                print(f"\t  y_wrist[{sign:+}] = {y_wrist:.2f}", end="")
+
+                if not (-0.1 <= y_wrist <= 718):
+                    print("\n")
+                    continue
+
+                print(" ✓ within limits")
+
+                dx = x_r - 0
+                dy = y_r - y_wrist
+                alpha = np.arctan2(dy, dx)
+                gamma = np.arctan2(arm_reach_y, 57 + 107)
+                theta_1 = alpha - gamma
+
+                # wrap into [-180,180]
+                theta_1_deg = (((np.degrees(theta_1) + 137) - (-172)) % 360) + (-172)
+
+
+                print(f"\t    α={np.degrees(alpha):.2f}°, γ={np.degrees(gamma):.2f}°")
+                print(f"\t    raw θ1={np.degrees(theta_1):.2f}°, wrapped θ1={theta_1_deg:.2f}°")
+                print(f"\t    wrapped θ2={theta_2_deg:.2f}°, delta_r={y_wrist:.2f}")
+
+                sol = (theta_1_deg, theta_2_deg, y_wrist)
+
+                end_point = forward_kinematics(*sol)
+
+                sun_dirs[i] = end_point[-1]
+            
+
+            '''
             unreachable_points.append(sun_dirs[i].copy())
             counter += 1
 
@@ -486,8 +644,18 @@ def get_sun_path(R=1700,
                 new_x += x_shift
                 new_y += y_shift
                 new_z += z_shift
+
                 new_x += x_shift_2
                 new_y += y_shift_2
+
+                x_avg_new = np.average([(R-j) * np.cos(np.radians(alt.iloc[0])) * np.sin(np.radians(az.iloc[0] + 135)) + (1820/2), (R-j) * np.cos(np.radians(alt.iloc[len(sun_dirs)-1])) * np.sin(np.radians(az.iloc[len(sun_dirs)-1] + 135)) + (1820/2)])
+                y_avg_new = np.average([(R-j) * np.cos(np.radians(alt.iloc[0])) * np.cos(np.radians(az.iloc[0] + 135)) - (1680/2), (R-j) * np.cos(np.radians(alt.iloc[len(sun_dirs)-1])) * np.cos(np.radians(az.iloc[len(sun_dirs)-1] + 135)) - (1680/2)])
+
+                x_shift_3 = x_avg_new - x_avg_orig
+                y_shift_3 = y_avg_new - y_avg_orig
+
+                new_x += x_shift_3
+                new_y += y_shift_3
 
                 candidate = np.array([new_x, new_y, new_z])
 
@@ -499,21 +667,17 @@ def get_sun_path(R=1700,
                 
                 # if not continue looping until it is
                 except ValueError:
-                    continue 
-            
+                    if j == max_iteration - 1:
+                        print(f"Point {i} is still unreachable after {max_iteration} iterations.")
+                        np.delete(sun_dirs, i)
+                    continue
+                '''
+
     # breakpoint()
     print(f"{counter} points are unreachable out of {len(sun_dirs)}")
 
     # making sure that none of the points are inside the safety boxes
-    for i in range(len(sun_dirs)):
-        if sun_dirs[i][0] < -1000:
-            sun_dirs[i][0] = -999
-        if sun_dirs[i][0] > 1820:
-            sun_dirs[i][0] = 1819
-        if sun_dirs[i][1] < -1680:
-            sun_dirs[i][1] = -1679
-        if sun_dirs[i][1] > 1000:
-            sun_dirs[i][1] = 999
+
 
     return sun_dirs, np.array(unreachable_points)
 
@@ -532,17 +696,24 @@ if __name__ == "__main__":
 
     # sols = inverse_kinematics(48.90380303, -2467.93789029, -561.66937223)
 
-    # suns_path, unreachable_points = get_sun_path(R=1700)
+    import time
+
+    start_time = time.time()
+    suns_path, unreachable_points = get_sun_path(R=1700)
+    finish_time = time.time()
+    print(f"Sun path computed in {finish_time - start_time:.2f} seconds")
     # test_path = np.array([[-335.454, -195.317, 1000], [413.476, 497.258, 1000]])
     test_path = np.load('paths/test_path.npy')
 
+    np.save('paths/new_finnish_path.npy', suns_path)
 
-    # sols = inverse_kinematics(*suns_path[int(len(suns_path)/2)], verbal=True)
-    sols = inverse_kinematics(*test_path[1], verbal=True)
+
+    sols = inverse_kinematics(*suns_path[14], verbal=True)
+    # sols = inverse_kinematics(*test_path[1], verbal=True)
 
     # print("safe", check_solutions_safety(sols[0], all_boxes)
 
-    # th1, th2, dr = [45, 90, 500]
+    # th1, th2, dr = [0, 0, 718]
     th1, th2, dr = sols[0]
 
     points = forward_kinematics(th1, th2, dr)
@@ -558,8 +729,8 @@ if __name__ == "__main__":
     draw_all_safety_boxes(ax_1)
 
 
-    plot_path(ax_1, test_path, linestyle='None')
-    # plot_path(ax_1, suns_path)
+    # plot_path(ax_1, test_path, linestyle='None')
+    plot_path(ax_1, suns_path)
     # plot_path(ax_1, unreachable_points, color='red', label='unreachable')
     
     draw_robot(ax_1, points=points)
