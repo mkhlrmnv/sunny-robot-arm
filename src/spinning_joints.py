@@ -53,21 +53,26 @@ class SpinningJoints:
             raise ValueError("Speed percent must be between 0 and 1.")
         return self.min_delay + (self.max_delay - self.min_delay) * (1 - speed_percent)
     
-    def init_motor(self, direction=1, speed=0.5, pontto=False):
+    def init_motor(self, speed=0.1, pontto=False):
         # pontto motor init is little bit more complicated to not get the 
         # cabel tangled there for it has own init sequence
         if self.name=="pontto":
             direction_change = False
-            print("initing pontto")
+            not_in_90_deg_range = False
+
+            direction = -1
+
             while not self.limit_event.is_set():
-                if not direction_change and abs(self.angle) > 90:
+                if not direction_change and abs(self.angle) > 52:
                     self.angle = 0
                     time.sleep(2)
                     direction = -1 * direction
                     direction_change = True
-                elif direction_change and abs(self.angle) > 180:
+
+                if direction_change and abs(self.angle) > 310:
                     raise TimeoutError("Motor didn't find init pos")
-                self.step(direction=direction, speed=speed)
+
+                self.step(direction=-1, speed=speed)
 
             if direction_change:
                 self.move_by_angle(-10 * (direction), speed=speed)
@@ -79,15 +84,14 @@ class SpinningJoints:
                 self.move_by_angle(-1 * (-1 * direction), speed=speed)
 
         else:
-            # this one is basic one, mainly used for paaty motor
+            # first it gets out of the shutdown pos by spinning 15 degrees
+            self.move_by_angle(-15, speed=speed)
+            time.sleep(1)
+
+            # then spins until it finds the limit switch
             while not self.limit_event.is_set():
                 if abs(self.angle) > 270:
                     raise TimeoutError("Motor didn't find init pos")
-                self.step(direction=direction, speed=speed)
-            time.sleep(1)
-            self.move_by_angle(-10 * (-1 * direction), speed=speed)
-            time.sleep(1)
-            while not self.limit_event.is_set():
                 self.step(direction=direction, speed=speed)
 
         self.reset_position()
@@ -171,11 +175,14 @@ class SpinningJoints:
 
 
 if __name__ == "__main__":
-    motor_paaty = SpinningJoints(pulse_pin=20, dir_pin=19, limit_pin=23, name="paaty", gear_ratio=5)
-    motor_pontto = SpinningJoints(pulse_pin=13, dir_pin=26, limit_pin=22, name="pontto", gear_ratio=5*32/10)
+    from multiprocessing import Process, Queue, Manager
+    manager = Manager()
+    shared = manager.Namespace()
+    motor_paaty = SpinningJoints(pulse_pin=20, dir_pin=19, limit_pin=23, name="paaty", shared=shared, gear_ratio=5)
+    motor_pontto = SpinningJoints(pulse_pin=13, dir_pin=26, limit_pin=22, name="pontto", shared=shared, gear_ratio=5*32/10)
     
     # motor_pontto.move_by_angle(-190, speed=0.1)
-    motor_paaty.move_by_angle(-90, speed=0.5)
+    # motor_paaty.move_by_angle(-90, speed=0.5)
 
-    motor_paaty.init_motor(direction=-1)
+    motor_paaty.init_motor(direction=-1, speed=0.1)
     motor_pontto.init_motor(direction=1, speed=0.1)
