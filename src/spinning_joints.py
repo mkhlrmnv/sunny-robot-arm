@@ -53,14 +53,14 @@ class SpinningJoints:
             raise ValueError("Speed percent must be between 0 and 1.")
         return self.min_delay + (self.max_delay - self.min_delay) * (1 - speed_percent)
     
-    def init_motor(self, speed=0.1, pontto=False):
+    def init_motor(self, speed=0.1):
         # pontto motor init is little bit more complicated to not get the 
         # cabel tangled there for it has own init sequence
         if self.name=="pontto":
             direction_change = False
             not_in_90_deg_range = False
 
-            direction = -1
+            direction = 1
 
             while not self.limit_event.is_set():
                 if not direction_change and abs(self.angle) > 52:
@@ -72,32 +72,41 @@ class SpinningJoints:
                 if direction_change and abs(self.angle) > 310:
                     raise TimeoutError("Motor didn't find init pos")
 
-                self.step(direction=-1, speed=speed)
+                self.step(direction=direction, speed=speed)
 
-            if direction_change:
-                self.move_by_angle(-10 * (direction), speed=speed)
+            if not direction_change:
+                self.move_by_angle(-10, speed=speed)
                 time.sleep(2)
                 while not self.limit_event.is_set():
-                    self.step(direction=-1*direction, speed=speed)
+                    self.step(direction=-1, speed=speed)
             else:
                 time.sleep(2)
-                self.move_by_angle(-1 * (-1 * direction), speed=speed)
+                self.move_by_angle(-1, speed=speed)
 
         else:
             # first it gets out of the shutdown pos by spinning 15 degrees
-            self.move_by_angle(-15, speed=speed)
+            self.move_by_angle(-17, speed=speed)
             time.sleep(1)
 
             # then spins until it finds the limit switch
             while not self.limit_event.is_set():
                 if abs(self.angle) > 270:
                     raise TimeoutError("Motor didn't find init pos")
-                self.step(direction=direction, speed=speed)
+                self.step(direction=-1, speed=speed)
 
         self.reset_position()
         print(f"Motor {self.name} initialized")
 
-    def step(self, direction=1, speed=0.5):
+    def shutdown(self):
+        if self.name == "pontto":
+            self.init_motor()
+
+        if self.name == "paaty":
+            self.init_motor()
+            time.sleep(2)
+            self.move_by_angle(14.8, speed=0.01)
+
+    def step(self, direction=1, speed=0.1):
         if abs(direction * (360 / (self.step_per_rev * self.gear_ratio)) > self.angle_limit):
             raise ValueError("Angle exceeded the limit.")
         
@@ -120,7 +129,7 @@ class SpinningJoints:
         elif self.name=="paaty":
             self.shared.theta_2 = self.angle
 
-    def move_by_angle(self, angle, speed=0.5, shared=None):
+    def move_by_angle(self, angle, speed=0.1, shared=None):
 
         if shared is not None:
             if self.name == "pontto":
@@ -146,7 +155,7 @@ class SpinningJoints:
             elif self.name == "paaty":
                 shared.theta_2 = self.angle
 
-    def move_to_angle(self, target_angle, speed=0.5, shared=None):
+    def move_to_angle(self, target_angle, speed=0.1, shared=None):
         if abs(target_angle) > self.angle_limit:
             raise ValueError("Target angle must be between -360 and 360 degrees.")
 
@@ -184,5 +193,10 @@ if __name__ == "__main__":
     # motor_pontto.move_by_angle(-190, speed=0.1)
     # motor_paaty.move_by_angle(-90, speed=0.5)
 
-    motor_paaty.init_motor(direction=-1, speed=0.1)
-    motor_pontto.init_motor(direction=1, speed=0.1)
+    motor_paaty.init_motor(speed=0.1)
+    # motor_pontto.init_motor(speed=0.1)
+
+    time.sleep(2)
+
+    motor_paaty.shutdown()
+    # motor_pontto.shutdown()
