@@ -133,6 +133,14 @@ def init():
         start_arm(arm.init, ())
     return render_template("init.html", running=is_arm_running())
 
+@app.route("/shutdown")
+def shutdown():
+    global arm
+    if is_arm_running():
+        stop_arm()
+
+    start_arm(arm.shutdown, ())
+    return render_template("shutdown.html", running=is_arm_running())
 
 @app.route("/stop")
 def stop():

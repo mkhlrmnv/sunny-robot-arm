@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Initialization</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='sensor_test_style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1 id="status-text">⏳ Shuting Down</h1>
+        <div class="description" id="description">
+            Moving arm into safe possition for shutdown. This may take a moment.
+        </div>
+        <a href="/" class="button" id="back-button" style="display:inline-block;">STOP</a>
+        <a href="/init" class="button" id="try-again-button" style="display:none">Try Again</a>
+    </div>
+
+<script>
+function checkStatus() {
+    fetch('/status')
+        .then(r => r.json())
+        .then(data => {
+            if (data.running == "stopped") {
+                document.getElementById("status-text").innerText = "✅ Arm Shutdown Completed";
+                document.getElementById("description").innerText = "Arm is in safe position, you can turn off the power.";
+            } else {
+                setTimeout(checkStatus, 100);
+            }
+        });
+}
+checkStatus();
+</script>
+</body>
+</html>
