@@ -43,6 +43,8 @@ class Arm:
         self.current_path = None
         self.iteration = 0
         self.duration_per_point = 0
+        
+        self.shared = shared
 
         self.motor_paaty = SpinningJoints(shared, pulse_pin=20, dir_pin=19, limit_pin=23, name="paaty", gear_ratio=5)
         self.motor_pontto = SpinningJoints(shared, pulse_pin=13, dir_pin=26, limit_pin=22, name="pontto", gear_ratio=5*32/10)
@@ -52,8 +54,8 @@ class Arm:
     def init(self):
         try:
             print("Starting init")
-            self.motor_paaty.init_motor(direction=-1, speed=0.1)
-            self.motor_pontto.init_motor(direction=-1, speed=0.1)
+            self.motor_paaty.init_motor(speed=0.1)
+            self.motor_pontto.init_motor(speed=0.1)
             self.motor_rail.init_motor(direction=1)
 
             # time.sleep(5)
@@ -69,6 +71,11 @@ class Arm:
         self.motor_rail.shared.delta_r = self.motor_rail.distance = self.delta_r = 0
 
         return True
+
+    def shutdown(self):
+        self.motor_paaty.shutdown()
+        self.motor_pontto.shutdown()
+        self.motor_rail.init_motor(direction=1)
 
     def set_from_shared(self, shared):
         """
