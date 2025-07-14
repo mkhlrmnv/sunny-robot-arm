@@ -1,6 +1,8 @@
 import time
 import numpy as np
 from helper import *
+from sun_helper import *
+from lamp import Lamp
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.animation import FuncAnimation
@@ -18,7 +20,8 @@ class Arm:
                  dy1=830,
                  end_link_length=950,
                  theta_r=137.9,
-                 rail_length=1000
+                 rail_length=1000,
+                 lamp_url='http://192.168.1.120/win'
                  ):
         """
         Initializes the robotic arm controller with a specified number of joints.
@@ -41,6 +44,7 @@ class Arm:
         self.required_delta_r = None
 
         self.current_path = None
+        self.current_path_colors = None
         self.iteration = 0
         self.duration_per_point = 0
         
@@ -50,8 +54,13 @@ class Arm:
         self.motor_pontto = SpinningJoints(shared, pulse_pin=13, dir_pin=26, limit_pin=22, name="pontto", gear_ratio=5*32/10)
         self.motor_rail = LinearRail(shared, pulse_pin=27, dir_pin=4, limit_pin=24, gear_ratio=1)
 
+        self.lamp = Lamp(https_url=lamp_url)
+
 
     def init(self):
+
+        self.lamp.set_to_blink()
+
         try:
             print("Starting init")
             self.motor_paaty.init_motor(speed=0.1)
@@ -69,6 +78,9 @@ class Arm:
         self.motor_paaty.shared.theta_2 = self.motor_paaty.angle = self.theta_2 = 90+69.795 
 
         self.motor_rail.shared.delta_r = self.motor_rail.distance = self.delta_r = 0
+
+        self.lamp.set_to_solid()
+        self.lamp.set_brightness(0)
 
         return True
 
@@ -89,11 +101,20 @@ class Arm:
         self.motor_paaty.angle = self.theta_2
 
 
-    def init_path(self, path, duration):
+    def init_path(self, path_file_path, duration):
         self.duration_per_point = duration / len(path)
-        self.current_path = path
+        self.current_path, self.current_path_colors = un_jsonify_path(path_file_path)
+        
+        if self.current_path is None:
+            raise ValueError("Path initialization failed. Check the path file.")
 
     def move(self, shared=None, speeds=None, check_safety=True):
+
+        if self.lamp.brightness == 0 or self.lamp.effect_index != 0:
+            self.lamp.set_brightness(255)
+            self.lamp.set_to_solid()
+
+
         if self.current_path is None:
             raise ValueError("Initialize path first")
 
@@ -197,9 +218,15 @@ class Arm:
                                 f"{', '.join(unsafe_joints)})")
 
             self._clear_target()
-            shared.path_it += 1
+
+            if self.current_path_colors is not None:
+                color = self.current_path_colors[self.iteration]
+                self.lamp.set_color(*color, verbal=True)
             
+            shared.path_it += 1
+        
             return False
+        
         
         except ValueError as e:
             print(f"Error: {e}")
