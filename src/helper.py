@@ -5,37 +5,8 @@ from mpl_toolkits.mplot3d.art3d import Line3DCollection
 import pvlib
 import pandas as pd
 
-class Vector:
-    def __init__(self, x, y, z):
-        self.x = x 
-        self.y = y
-        self.z = z
-    def __eq__(self, other):
-        """Overrides the == operator for Vector comparison."""
-        if isinstance(other, Vector):  # Ensure 'other' is also a Vector
-            return self.x == other.x and self.y == other.y and self.z == other.z
-        return False  # If 'other' is not a Vector, return False
-    
-    def __str__(self):
-        """Returns a string representation of the Vector."""
-        return f"Vector(x={self.x:.2f}, y={self.y:.2f}, z={self.z:.2f})"
+from sun_helper import get_sun_path, alt_to_color
 
-class Joints:
-    def __init__(self, theta1, theta2):
-        self.theta1 = theta1
-        self.theta2 = theta2
-        self.theta1_deg = np.rad2deg(theta1)
-        self.theta2_deg = np.rad2deg(theta2)
-
-    def __eq__(self, other):
-        if isinstance(other, Joints):
-            return self.theta1 == other.theta1 and self.theta2 == other.theta2
-        return False
-
-    def __str__(self):
-        return f"Joints(theta1={self.theta1:.2f} rad, theta2={self.theta2:.2f} rad, " \
-               f"theta1_deg={self.theta1_deg:.2f}°, theta2_deg={self.theta2_deg:.2f}°)"
-    
 
 # helper function to compute inverse kinematics
 def inverse_kinematics(x, y, z,
@@ -159,7 +130,6 @@ def inverse_kinematics(x, y, z,
 
 
 def choose_solution(solutions, current_state):
-    # TODO: check if this works + make it cleaner
     c_th1, c_th2, c_dr = current_state
 
     best_sol = solutions[0]
@@ -402,196 +372,7 @@ def edge_crosses_box(points, box_corners):
 
     return False
 
-def get_sun_path(R=1700,
-             max_iteration=1000,
-             latitude=60.1699, 
-             longitude=24.9384,
-             timezone = 'Europe/Helsinki'):
 
-    # 1) Define timespan
-    # Here we define from the day start to the end, cause we
-    # will get rid off the night time in step 2
-    times = pd.date_range(
-        end  ='2025-06-21 23:59',   
-        start='2025-06-21 00:00',   
-        freq='10min',
-        tz=timezone
-    )
-
-    # 2) Compute solar position (altitude & azimuth) and 
-    # remove the night time
-    location = pvlib.location.Location(latitude, longitude, timezone)
-    solpos = location.get_solarposition(times)
-    solpos = solpos.loc[solpos['apparent_elevation'] > 0, :] #remove night time => remove all where altitude is below 0
-    alt = solpos['apparent_elevation']  # degrees above horizon
-    az  = solpos['azimuth']             # degrees clockwise from North
-
-    # 3) Convert to unit‐sphere Cartesian for 3D plotting
-    #    X axis → East, Y → North, Z → Up
-    x = R * np.cos(np.radians(alt)) * np.sin(np.radians(az + 135)) + (1820/2)
-    y = R * np.cos(np.radians(alt)) * np.cos(np.radians(az + 135)) - (1680/2)
-    z = R * np.sin(np.radians(alt))
-
-    # 4) Shift the path
-    # First shift it to start and end in the center of the box (kontti),
-    # then shift it so that none of the points are in the box
-
-    center_point = [-800, 800, -830]
-
-    # Shift to the center
-    x_shift = center_point[0] - x.iloc[int(len(x)/2)]
-    y_shift = center_point[1] - y.iloc[int(len(y)/2)] 
-    z_shift = center_point[2] - np.min([z.iloc[0], z.iloc[len(z)-1]])
-
-    x += x_shift
-    y += y_shift
-    z += z_shift
-
-    # Shift to outside of the box
-    x_shift_2 = 0 - x.iloc[0]
-    y_shift_2 = 0 - y.iloc[-1]
-
-    x += x_shift_2
-    y += y_shift_2
-
-    x_shift_3 = -128 - x.iloc[0]
-
-    # x += x_shift_3
-
-    x_avg_orig = np.average([x.iloc[0], x.iloc[-1]])
-    y_avg_orig = np.average([y.iloc[0], y.iloc[-1]])
-    z_avg_orig = np.average([z.iloc[0], z.iloc[-1]])
-
-    # stack for future steps
-    sun_dirs = np.stack((x, y, z), axis=1)
-
-     
-    sun_dirs =  sun_dirs[4:-7]
-
-    counter = 0
-    unreachable_points = []
-
-    for i in range(len(sun_dirs)):
-        if sun_dirs[i][0] < -1000:
-            sun_dirs[i][0] = -999
-        if sun_dirs[i][0] > 1820:
-            sun_dirs[i][0] = 1819
-        if sun_dirs[i][1] < -1680:
-            sun_dirs[i][1] = -1679
-        if sun_dirs[i][1] > 1100:
-            sun_dirs[i][1] = 1099
-
-    # for loop through all the points
-    for i in range(len(sun_dirs)):
-
-        # try if they are reachable
-        try: 
-            inverse_kinematics(*sun_dirs[i], check_safety=True, verbal=False)
-
-        # if not, then ...
-        except ValueError:
-            unreachable_points.append(sun_dirs[i].copy())
-            counter += 1
-            print("counter ", counter)
-            print(f"Point {i} is unreachable: {sun_dirs[i]}")
-
-            # get the point
-            x, y, z = sun_dirs[i]
-
-            # translate it to the base + rail frames for inverse kinematics
-
-            # Step 1: Bring world point into robot base frame
-            T_base=[[1, 0, 0, 925.39], [0, 1, 0, -219.38], [0, 0, 1, 0], [0, 0, 0, 1]]
-            T_inv = np.linalg.inv(T_base)
-            p_world = np.array([x, y, z, 1])
-            p_local = T_inv @ p_world
-            x_l, y_l, z_l = p_local[:3]
-
-            # Step 2: Rotate point into rail frame (rail lies along +Y direction)
-            from scipy.spatial.transform import Rotation as R
-            Rz = R.from_euler('z', 137.9, degrees=True).as_matrix()
-            p_rail = Rz.T @ np.array([x_l, y_l, z_l])
-            x_r, y_r, z_r = p_rail
-
-            # solve for how much high is the point above the first joint
-            z_eff = z_r - 100
-
-            # rename the points 
-            cx, cy = x_r, y_r
-
-            # constant of how much is arm shifts in the joints in x direction (when aligned with the rail)
-            arm_reach_x = 57 + 107
-
-            # assume that the arm is not too long, so we can use the previous theta_2
-            theta_2_deg = 18.63 #inverse_kinematics(*sun_dirs[i-1], check_safety=True, verbal=False)[0][1]
-            theta_2 = np.radians(theta_2_deg)
-
-            # calculate the arm reach in y direction when the arm is aligned with the rail
-            arm_reach_y = z_eff / np.tan(theta_2) + 830
-
-            # total reach of the arm
-            r = np.hypot(arm_reach_x, arm_reach_y)
-            
-            if cy > 0:
-                d = cx
-            elif cy <= 0:
-                d = np.hypot(cx, cy)
-            else:
-                d = np.sqrt(cx**2 + (718-cy)**2)
-
-            if d > r:
-                s  = r / d                     # 0 < s < 1
-                cx = s * cx
-                cy = s * cy
-                # (optional) log or store how much we shortened:
-                shrink_mm = d - r
-                print(f"   → shortened ray by {shrink_mm:.1f} mm to stay reachable")
-
-            rhs = r**2 - cx**2
-
-            if rhs < 0: 
-                print("ERRPR: rhs < 0")
-                continue
-                
-            for sign in (+1, -1):
-                y_wrist = cy + sign * np.sqrt(rhs)
-
-                print(f"\t  y_wrist[{sign:+}] = {y_wrist:.2f}", end="")
-
-                if not (-0.1 <= y_wrist <= 718):
-                    print("\n")
-                    continue
-
-                print(" ✓ within limits")
-
-                dx = x_r - 0
-                dy = y_r - y_wrist
-                alpha = np.arctan2(dy, dx)
-                gamma = np.arctan2(arm_reach_y, 57 + 107)
-                theta_1 = alpha - gamma
-
-                # wrap into [-180,180]
-                theta_1_deg = (((np.degrees(theta_1) + 137) - (-172)) % 360) + (-172)
-
-
-                print(f"\t    α={np.degrees(alpha):.2f}°, γ={np.degrees(gamma):.2f}°")
-                print(f"\t    raw θ1={np.degrees(theta_1):.2f}°, wrapped θ1={theta_1_deg:.2f}°")
-                print(f"\t    wrapped θ2={theta_2_deg:.2f}°, delta_r={y_wrist:.2f}")
-
-                sol = (theta_1_deg, theta_2_deg, y_wrist)
-
-                end_point = forward_kinematics(*sol)
-
-                sun_dirs[i] = end_point[-1]
-            
-
-    # breakpoint()
-    print(f"{counter} points are unreachable out of {len(sun_dirs)}")
-
-    # making sure that none of the points are inside the safety boxes
-
-
-    return sun_dirs, np.array(unreachable_points)
 
 def plot_path(ax, path,
              color='blue',
@@ -602,6 +383,7 @@ def plot_path(ax, path,
     ax.plot(path[:, 0], path[:, 1], path[:, 2], marker=marker, linestyle=linestyle,
              color=color, label=label)
     ax.set_xlabel('X (mm)'); ax.set_ylabel('Y (mm)'); ax.set_zlabel('Z (mm)')
+
 
 # Example usage:
 if __name__ == "__main__":
@@ -615,9 +397,9 @@ if __name__ == "__main__":
     finish_time = time.time()
     print(f"Sun path computed in {finish_time - start_time:.2f} seconds")
     # test_path = np.array([[-335.454, -195.317, 1000], [413.476, 497.258, 1000]])
-    test_path = np.load('paths/test_path.npy')
+    # test_path = np.load('paths/test_path.npy')
 
-    np.save('paths/new_finnish_path.npy', suns_path)
+    # np.save('paths/test_path.npy', suns_path)
 
 
     sols = inverse_kinematics(*suns_path[14], verbal=True)
