@@ -6,6 +6,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 import json
 from typing import Iterable, Sequence, Union, Dict, List, Tuple
+import os
 
 def alt_to_color(alt, min_temp=2000, max_temp=6500):
     max_alt = alt.max()
@@ -249,9 +250,6 @@ def get_sun_path(R=1700,
     return sun_dirs, np.array(unreachable_points), colors
 
 
-Colour = Union[str, Tuple[int, int, int]]      # e.g. "#ff8800" or (255,136,0)
-Point  = Sequence[float]   
-
 def jsonify_path(path, colours=None):
 
     path_out = []
@@ -263,7 +261,7 @@ def jsonify_path(path, colours=None):
 
     result = {"path": path_out}
 
-    if colors is not None:
+    if colours is not None:
         assert len(path) == len(colours), "Path and colours must have the same length"
 
         colors_out = []
@@ -273,7 +271,7 @@ def jsonify_path(path, colours=None):
 
             colors_out.append({"r": int(c[0] * 255), "g": int(c[1] * 255), "b": int(c[2] * 255)})
 
-    result["colors"] = colors_out
+        result["colors"] = colors_out
 
     return result
 
@@ -309,18 +307,44 @@ def un_jsonify_path(json_file):
 
 if __name__ == "__main__":
 
+    '''
     sun_dirs, unreachable_points, colors = get_sun_path()
     
     res = jsonify_path(sun_dirs, colors)
 
     print(res)
 
-    with open("sun_path.json", "w") as f:
+    file_path = os.path.join(os.path.dirname(__file__), "..", "paths", "sun_path.json")
+
+    with open(file_path, "w") as f:
         json.dump(res, f, indent=4)
 
-    sun_dirs2, colors2 = un_jsonify_path("sun_path.json")
+    sun_dirs2, colors2 = un_jsonify_path(file_path)
     
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(sun_dirs2[:, 0], sun_dirs2[:, 1], sun_dirs2[:, 2], c=colors2, s=10)
     plt.show()
+    '''
+
+    orig_file_path = os.path.join(os.path.dirname(__file__), '..', 'paths', 'test2_path.npy')
+
+    path = np.load(orig_file_path, allow_pickle=True)
+
+    res = jsonify_path(path)
+
+    file_path = os.path.join(os.path.dirname(__file__), "..", "paths", "test2_path.json")
+
+    with open(file_path, "w") as f:
+        json.dump(res, f, indent=4)
+
+    sun_dirs2, colors2 = un_jsonify_path(file_path)
+
+    if colors2 is None:
+        colors2 = 'b'
+    
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(sun_dirs2[:, 0], sun_dirs2[:, 1], sun_dirs2[:, 2], c=colors2, s=10)
+    plt.show()
+
