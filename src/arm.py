@@ -88,32 +88,22 @@ class Arm:
         self.motor_paaty.shutdown()
         self.motor_pontto.shutdown()
         self.motor_rail.init_motor(direction=1)
-
-    def set_from_shared(self, shared):
-        """
-        Set the arm's joint angles and rail position from shared namespace.
-        """
-        self.theta_1 = shared.theta_1
-        self.theta_2 = shared.theta_2
-        self.delta_r = shared.delta_r
-
-        self.motor_pontto.angle = self.theta_1
-        self.motor_paaty.angle = self.theta_2
+        
 
 
     def init_path(self, path_file_path, duration):
-        self.duration_per_point = duration / len(path)
         self.current_path, self.current_path_colors = un_jsonify_path(path_file_path)
+        self.duration_per_point = duration / len(self.current_path)
         
         if self.current_path is None:
             raise ValueError("Path initialization failed. Check the path file.")
+
 
     def move(self, shared=None, speeds=None, check_safety=True):
 
         if self.lamp.brightness == 0 or self.lamp.effect_index != 0:
             self.lamp.set_brightness(255)
             self.lamp.set_to_solid()
-
 
         if self.current_path is None:
             raise ValueError("Initialize path first")
@@ -364,7 +354,7 @@ if __name__ == "__main__":
 
     arm = Arm(shared)
     arm.init()
-    arm.init_path(path=np.load("paths/new_finnish_path.npy"), duration=0)
+    arm.init_path(path_file_path="paths/finish_sun_path.json", duration=0)
 
     while True:
        arm.move(shared=shared)
