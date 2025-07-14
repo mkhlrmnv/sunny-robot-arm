@@ -7,7 +7,8 @@ from .cooling import FanController
 from .arm import Arm
 from .helper import Vector, Joints, forward_kinematics, inverse_kinematics
 from .cooling import FanController
-from .sun_helper import alt_to_color, get_sun_path
+from .sun_helper import alt_to_color, get_sun_path, jsonify_path, jsonify_path
+from .lamp import Lamp
 
 # Optional: Define package metadata
 __version__ = "1.0"
