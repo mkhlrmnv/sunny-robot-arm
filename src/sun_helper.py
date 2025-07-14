@@ -297,7 +297,7 @@ def un_jsonify_path(json_file):
         for c in colors:
             assert "r" in c and "g" in c and "b" in c, "Each color must have 'r', 'g', and 'b' keys"
             assert len(c) == 3, "Each color must have 3 components (r, g, b)"
-            c = [c["r"] / 255.0, c["g"] / 255.0, c["b"] / 255.0]
+            c = [c["r"], c["g"], c["b"]]
             colors_out.append(c)
         
         return np.array(path_out), np.array(colors_out)
