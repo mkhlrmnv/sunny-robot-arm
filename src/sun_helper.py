@@ -1,6 +1,11 @@
 import numpy as np
 import pvlib
 import pandas as pd
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+import json
+from typing import Iterable, Sequence, Union, Dict, List, Tuple
 
 def alt_to_color(alt, min_temp=2000, max_temp=6500):
     max_alt = alt.max()
@@ -244,15 +249,78 @@ def get_sun_path(R=1700,
     return sun_dirs, np.array(unreachable_points), colors
 
 
+Colour = Union[str, Tuple[int, int, int]]      # e.g. "#ff8800" or (255,136,0)
+Point  = Sequence[float]   
+
+def jsonify_path(path, colours=None):
+
+    path_out = []
+
+    for p in path:
+        assert len(p) == 3, "Each point must have 3 coordinates (x, y, z)"
+
+        path_out.append({"x": p[0], "y": p[1], "z": p[2]})
+
+    result = {"path": path_out}
+
+    if colors is not None:
+        assert len(path) == len(colours), "Path and colours must have the same length"
+
+        colors_out = []
+        
+        for c in colours:
+            assert len(c) == 3, "Each colour must have 3 components (r, g, b)"
+
+            colors_out.append({"r": int(c[0] * 255), "g": int(c[1] * 255), "b": int(c[2] * 255)})
+
+    result["colors"] = colors_out
+
+    return result
+
+def un_jsonify_path(json_file):
+
+    with open(json_file, "r") as f:
+        data = json.load(f)
+
+    path = data["path"]
+    colors = data.get("colors", None)
+
+    path_out = []
+
+    for p in path:
+        assert "x" in p and "y" in p and "z" in p, "Each point must have 'x', 'y', and 'z' keys"
+        assert len(p) == 3, "Each point must have 3 coordinates (x, y, z)"
+        p = [p["x"], p["y"], p["z"]]
+        path_out.append(p)
+
+
+    if colors is not None:
+        colors_out = []
+        for c in colors:
+            assert "r" in c and "g" in c and "b" in c, "Each color must have 'r', 'g', and 'b' keys"
+            assert len(c) == 3, "Each color must have 3 components (r, g, b)"
+            c = [c["r"] / 255.0, c["g"] / 255.0, c["b"] / 255.0]
+            colors_out.append(c)
+        
+        return np.array(path_out), np.array(colors_out)
+
+    return np.array(path_out), None
+    
+
 if __name__ == "__main__":
 
     sun_dirs, unreachable_points, colors = get_sun_path()
     
-    # Optionally, you can visualize the results using matplotlib
-    import matplotlib.pyplot as plt
-    from mpl_toolkits.mplot3d import Axes3D
+    res = jsonify_path(sun_dirs, colors)
 
+    print(res)
+
+    with open("sun_path.json", "w") as f:
+        json.dump(res, f, indent=4)
+
+    sun_dirs2, colors2 = un_jsonify_path("sun_path.json")
+    
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(sun_dirs[:, 0], sun_dirs[:, 1], sun_dirs[:, 2], c=colors, s=10)
+    ax.scatter(sun_dirs2[:, 0], sun_dirs2[:, 1], sun_dirs2[:, 2], c=colors2, s=10)
     plt.show()
