@@ -68,7 +68,8 @@ def main():
             print("Motor 3: stepped counter-clockwise.")
             
         elif key == 'p':
-            print(f"Motor 1: Steps = {motor1.get_steps()}, Angle = {motor1.get_angle()}°")
+            # TODO: FIX THIS AS THE get steps function is gone
+            print(f"Motor 1: Steps = {motor1.get_steps()}, Angle = {motor1.get_angle()}°") 
             print(f"Motor 2: Steps = {motor2.get_steps()}, Angle = {motor2.get_angle()}°")
             print(f"Motor 3: Steps = {motor3.get_steps()}, Angle = {motor3.get_angle()}°")
             print(f"Step per key: {angles_per_key}")
