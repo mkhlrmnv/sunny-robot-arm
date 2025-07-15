@@ -1,5 +1,5 @@
 """
-fan_controller.py
+cooling.py
 
 A simple temperature‑controlled fan script for the Raspberry Pi.
 

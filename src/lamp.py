@@ -1,5 +1,5 @@
 """
-lamp_controller.py
+lamp.py
 
 HTTP‑controlled RGB lamp helper for WLED or similar firmware.
 
