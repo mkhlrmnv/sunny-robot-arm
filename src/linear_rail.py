@@ -1,122 +1,163 @@
+"""
+linear_rail.py
+~~~~~~~~~~~~~~
+
+GPIO‑zero based driver for a **lead‑screw linear stage** (a.k.a. linear rail).
+The carriage is moved by a stepper motor through a gearbox and screw with
+*lead* (a.k.a. *pitch*) defined in **millimetres per revolution**.
+
+Features
+--------
+* Single‑step primitive with optional speed scaling (open‑loop; no accel).
+* Relative / absolute positioning in **millimetres**.
+* Simple *homing* routine using a normally‑closed **limit switch**.
+* Supports multi‑process coordination via a shared ``multiprocessing.Namespace``
+  (``shared.delta_r`` keeps track of current distance from home).
+
+The code assumes the STEP/DIR driver counts *negative* steps when moving the
+carriage *forward* (away from the home switch).  Adjust the sign comments if
+your wiring differs.
+"""
+
 from gpiozero import DigitalOutputDevice
 import time
 from gpiozero import Button
 from signal import pause
 
-from multiprocessing import Event
+from multiprocessing import Event, Manager, Namespace
 
 
 class LinearRail:
-    def __init__(self, shared, pulse_pin, dir_pin, limit_pin, step_per_rev=1600, gear_ratio=5, pitch=10, min_delay=1e-4, max_delay=1e-3):
-        """
-        Initialize the stepper motor with the given GPIO pins.
+    """Lead‑screw stage controlled via STEP/DIR driver and limit switch.
 
-        :param pulse_pin: GPIO pin for sending step pulses.
-        :param dir_pin: GPIO pin for setting the direction.
-        """
-        # asserts:)
-        assert isinstance(pulse_pin, int), "Pulse pin must be an integer."
-        assert isinstance(dir_pin, int), "Direction pin must be an integer."
-        assert isinstance(step_per_rev, int), "Steps per revolution must be an integer."
-        assert isinstance(gear_ratio, int), "Gear ratio must be an integer."
-        assert isinstance(min_delay, (int, float)), "Minimum delay must be a number."
-        assert isinstance(max_delay, (int, float)), "Maximum delay must be a number."
-        assert min_delay >= 0, "Minimum delay must be non-negative."
-        assert max_delay >= min_delay, "Maximum delay must be greater than or equal to minimum delay."
+    Parameters
+    ----------
+    shared : multiprocessing.Namespace
+        Object providing a floating‑point attribute ``delta_r`` that stores the
+        current carriage displacement [mm] – useful when several processes
+        must share state.
+    pulse_pin, dir_pin, limit_pin : int
+        BCM GPIO numbers for STEP, DIR, and *limit switch* inputs.
+    step_per_rev : int, default 1600
+        Micro‑stepped pulses per motor shaft revolution.
+    gear_ratio : float, default 1
+        **Output‑shaft : motor‑shaft** reduction factor.  If the motor drives
+        the screw directly use ``1``.
+    pitch : float, default 10
+        Screw lead in millimetres per *output‑shaft* revolution (after gearbox).
+    min_delay, max_delay : float
+        Range for pulse high/low time.  A *speed_percent* of **1** ⇒ *min_delay*
+        (fastest), **0** ⇒ *max_delay* (slowest).
+    """
+
+    def __init__(self, 
+                 shared: Namespace, 
+                 pulse_pin: int, 
+                 dir_pin: int, 
+                 limit_pin: int, 
+                 step_per_rev: int = 1600, 
+                 gear_ratio: float = 1, 
+                 pitch: float = 10.0, 
+                 min_delay: float = 1e-4, 
+                 max_delay: float = 1e-3) -> None:
+        assert all(isinstance(p, int) for p in (pulse_pin, dir_pin, limit_pin)), (
+            "GPIO pins must be integers"
+        )
+        assert step_per_rev > 0, "step_per_rev must be positive"
+        assert gear_ratio > 0, "gear_ratio must be positive"
+        assert pitch > 0, "pitch (mm/rev) must be positive"
+        assert 0 <= min_delay <= max_delay, "0 <= min_delay <= max_delay required"
         
-        self.shared = shared
+        self.shared: Namespace = shared
 
+        # GPIO
         self.pulse = DigitalOutputDevice(pulse_pin)
         self.direction = DigitalOutputDevice(dir_pin)
 
-        self.limit_event = Event()
-
+        # Limit switch (active‑low, bounce filtered)
+        self.limit_event: Event = Event()
         self.limit_switch = Button(limit_pin, pull_up=True, bounce_time=0.0001)
+        self.limit_switch.hold_time = 0.1   # call *when_held* after 100 ms
+        self.limit_switch.hold_repeat = True
         self.limit_switch.when_held = lambda: (print("Limit switch is pressed"), self.limit_event.set())
         self.limit_switch.when_released = lambda: (print("Limit switch is released"), self.limit_event.clear())
         
-        self.limit_switch.hold_time = 0.1
-        self.limit_switch.hold_repeat = True
+        # Mechanical parameters
+        self.pitch: float = pitch  # Pitch of the linear rail in mm
+        self.step_per_rev: int = step_per_rev
+        self.gear_ratio: float = gear_ratio
 
-        self.distance = 0
-
-        self.steps = 0
-        self.angle = 0
-        self.pitch = pitch  # Pitch of the linear rail in mm
-        self.step_per_rev = step_per_rev
-        self.min_delay = min_delay
-        self.max_delay = max_delay
-        self.gear_ratio = gear_ratio
+        # Timing range
+        self.min_delay: float = min_delay
+        self.max_delay: float = max_delay
+        
+        # Runtime state 
+        self.steps: int = 0
+        self.angle: float = 0
+        self.distance: float = 0
 
         self.stop = self.limit_event.is_set()  # Initialize stop state based on limit switch
 
-    def calc_delay(self, speed_percent):
+
+    # Timing helper
+    def calc_delay(self, speed_percent: float) -> float:
+        """Linearly map *speed_percent* ∈ [0,1] → delay seconds."""
         if not (0 <= speed_percent <= 1):
             raise ValueError("Speed percent must be between 0 and 1.")
+        
         return self.min_delay + (self.max_delay - self.min_delay) * (1 - speed_percent)
-    
-    def init_motor(self, direction=1):
+
+    # Homing routine
+    def init_motor(self, direction: int = 1) -> None:
+        """Seek the limit switch and back‑off ~90° to clear it."""
         while not self.limit_event.is_set():
             self.step(direction=direction, speed=0.1)
+
+        # Back‑off 90° (output shaft) opposite to approach direction to release the limit switch
         self.move_by_angle(90 * (direction * -1), speed=0.5, ignore_limit=True)
         self.reset_position()
         print(f"Motor limit initialized, stop state {self.stop}")
 
-    def step(self, direction=1, speed=0.5, ignore_limit=False):
+
+    def step(self, 
+             direction: int = 1, 
+             speed: float = 0.5, 
+             ignore_limit: bool = False) -> None:
+        """Issue **one** STEP pulse and update counters."""
+
         if self.limit_event.is_set() and not ignore_limit:
-            print("Limit switch is pressed. Cannot move motor.")
+            print("HARD LIMIT – move blocked")
             return
 
         if direction not in [-1, 1]:
-            raise ValueError("Direction must be 1 (forward) or -1 (backward).")
+            raise ValueError("Direction must be ±1")
 
         self.direction.value = 1 if direction == 1 else 0
         delay = self.calc_delay(speed)
 
-        # print(delay)
+        self.pulse.on(); time.sleep(delay)
+        self.pulse.off(); time.sleep(delay)
 
-        # print("self steps", self.steps)
-
-        self.pulse.on()
-        time.sleep(delay)
-        self.pulse.off()
-        time.sleep(delay)
+        # Update logical state.
         self.steps += direction
         self.angle += direction * (360 / (self.step_per_rev * self.gear_ratio))
         self.angle = round(self.angle, 3)
-        self.distance += (-1 * direction) * (self.pitch / self.step_per_rev)  # negative because of the flipped direction
 
+        # Distance sign inverted to compensate wiring: dir=+1 → −distance.
+        self.distance += (-1 * direction) * (self.pitch / self.step_per_rev)
         self.shared.delta_r = self.distance
 
-    def move_by_angle(self, angle, speed=0.5, ignore_limit=False):
-        # if abs(angle) > 360:
-        #    raise ValueError("Angle must be between -360 and 360 degrees.")
 
-        angle_per_step = 360 / (self.step_per_rev * self.gear_ratio)
-        steps = int(angle / angle_per_step)
-        direction = 1 if angle > 0 else -1
+    def move_by_distance(self, 
+                         distance: float, 
+                         speed: float = 0.5, 
+                         shared: Namespace | None = None) -> None:
+        """Translate carriage by *distance* millimetres (signed)."""
 
-        for _ in range(abs(steps)):
-            self.step(direction=direction, speed=speed, ignore_limit=ignore_limit)
-
-    def move_to_angle(self, target_angle, speed=0.5):
-        if abs(target_angle) > 360:
-            raise ValueError("Target angle must be between -360 and 360 degrees.")
-
-        angle_diff = target_angle - self.angle
-        self.move_by_angle(angle_diff, speed=speed)
-
-    def move_by_distance(self, distance, speed=0.5, shared=None):
-        """
-        Move the linear rail by a specified distance in mm.
-
-        :param distance: Distance to move in mm.
-        :param speed: Speed of movement as a percentage (0 to 1).
-        """
         if distance == 0:
             return
 
-        steps_per_mm = self.step_per_rev / self.pitch
+        steps_per_mm = self.step_per_rev / self.pitch  # after gearbox already accounted in *step_per_rev*
         steps = int(distance * steps_per_mm)
         direction = 1 if distance < 0 else -1 
         
@@ -126,50 +167,30 @@ class LinearRail:
         for _ in range(abs(steps)):
             self.step(direction=direction, speed=speed)
 
-        if shared is not None:
+        if shared is not None:    # <- TODO: in theory this can be deleted:)
             shared.delta_r = self.distance
     
-    def move_to_distance(self, target_distance, speed=0.5, shared=None):
-        """
-        Move the linear rail to a specified distance in mm.
-
-        :param target_distance: Target distance in mm.
-        :param speed: Speed of movement as a percentage (0 to 1).
-        """
+    def move_to_distance(self, 
+                         target_distance: float, 
+                         speed: float = 0.5, 
+                         shared: Namespace = None) -> None:
+        """Translate until :pyattr:`distance` == *target_distance* mm."""
         if target_distance < 0:
             raise ValueError("Target distance must be non-negative.")
-
-        # for same reason that direction is flipped in previous function here
-        # we need to input negative steps to get correctly current position
-
-        print("self.distance in motor", self.distance)
-
-        current_distance = self.distance
-        distance_diff = target_distance - current_distance
+        
+        distance_diff = target_distance - self.distance
         self.move_by_distance(distance_diff, speed=speed, shared=shared)
 
-    def get_steps(self):
-        return self.steps
 
-    def get_angle(self):
-        return self.angle
-
-    def reset_position(self):
+    def reset_position(self) -> None:
         self.steps = 0
-        self.angle = 0
+        self.angle = 0.0
+        self.distance = 0.0
+        self.shared.delta_r = self.distance
 
-    def button_held(self):
-        print("Button held")
-        self.stop = True
 
-    def button_release(self):
-        print("released")
-        self.stop = False
-
-    def cleanup(self):
-        """
-        Cleanup method to release GPIO resources.
-        """
+    def cleanup(self) -> None:
+        """Release GPIO resources."""
         self.pulse.close()
         self.direction.close()
         self.limit_switch.close()
@@ -177,7 +198,6 @@ class LinearRail:
 
 
 if __name__ == "__main__":
-    from multiprocessing import Process, Queue, Manager
     manager = Manager()
     shared = manager.Namespace()
     motor = LinearRail(pulse_pin=27, shared=shared, dir_pin=4, limit_pin=24, gear_ratio=1)
