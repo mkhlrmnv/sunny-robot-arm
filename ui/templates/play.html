@@ -286,9 +286,15 @@
       mode: 'lines',
       type: 'scatter3d',
       name,
-      line: { width: 2 }  // Plotly will auto-assign distinct colors
+      line: { width: 2, color: 'red' }  // Plotly will auto-assign distinct colors
     };
   }
+
+  const initialCamera = {
+    eye:    { x: 2, y: -2, z: 2 },
+    center: { x: 0, y: 0, z: 0 },
+    up:     { x: 0, y: 0, z: 1 }
+  };
 
   async function fetchAndPlot() {
     try {
@@ -303,7 +309,7 @@
               x, y, z,
               mode: 'markers+lines',
               type: 'scatter3d',
-              marker: { size: 3 },
+              marker: { size: 3, color: 'blue' },
               name: 'Robot'
             };
 
@@ -317,7 +323,7 @@
         x: path_x, y: path_y, z: path_z,
         mode: 'lines',
         type: 'scatter3d',
-        line: { width: 2, color: 'red' },
+        line: { width: 2, color: 'green' },
         name: 'Path Points'
       };      
 
@@ -326,17 +332,20 @@
       const safety1Trace  = makeBoxTrace(safetyBox1,  'Safety Box 1');
       const safety2Trace  = makeBoxTrace(safetyBox2,  'Safety Box 2');
 
-      Plotly.react(plotDiv,
-        [ robotTrace, pathTrace, konttiTrace, safety1Trace, safety2Trace ],
-        {
-          margin: { l:0, r:0, b:0, t:0 },
-          scene: {
-            xaxis: { title:'X (mm)' },
-            yaxis: { title:'Y (mm)' },
-            zaxis: { title:'Z (mm)' }
-          }
+      const layout = {
+        margin: { l:0, r:0, b:0, t:0 },
+        scene: {
+          camera: initialCamera,
+          xaxis: { title: 'X (mm)' },
+          yaxis: { title: 'Y (mm)' },
+          zaxis: { title: 'Z (mm)' }
         }
+      };
+
+      Plotly.react(plotDiv,
+        [ robotTrace, pathTrace, konttiTrace, safety1Trace, safety2Trace], layout
       );
+
     } catch (err) {
       console.error("Failed to fetch /points:", err);
     }
