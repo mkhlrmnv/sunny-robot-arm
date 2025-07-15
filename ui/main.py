@@ -175,7 +175,7 @@ def play_path():
 
     path = os.path.join(os.path.dirname(__file__), '..', 'paths', name)
 
-    arm.init_path(np.load(path), duration=0)
+    arm.init_path(path, duration=0)
     arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
     print("starting to move")
     play_thread = threading.Thread(target=start_play_path_loop, daemon=True)
@@ -209,7 +209,7 @@ def points():
     # pts is an (N×3) numpy array
     return jsonify(pts.tolist())
 
-@app.route('\path_points')
+@app.route('/path_points')
 def path_points():
     if shared.path is None:
         pts = []
