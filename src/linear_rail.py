@@ -24,7 +24,7 @@ import time
 from gpiozero import Button
 from signal import pause
 
-from multiprocessing import Event, Manager, Namespace
+from multiprocessing import Event, Manager
 
 
 class LinearRail:
@@ -51,7 +51,7 @@ class LinearRail:
     """
 
     def __init__(self, 
-                 shared: Namespace, 
+                 shared, 
                  pulse_pin: int, 
                  dir_pin: int, 
                  limit_pin: int, 
@@ -68,7 +68,7 @@ class LinearRail:
         assert pitch > 0, "pitch (mm/rev) must be positive"
         assert 0 <= min_delay <= max_delay, "0 <= min_delay <= max_delay required"
         
-        self.shared: Namespace = shared
+        self.shared = shared
 
         # GPIO
         self.pulse = DigitalOutputDevice(pulse_pin)
@@ -114,7 +114,7 @@ class LinearRail:
             self.step(direction=direction, speed=0.1)
 
         # Back‑off 90° (output shaft) opposite to approach direction to release the limit switch
-        self.move_by_angle(90 * (direction * -1), speed=0.5, ignore_limit=True)
+        self.move_by_distance(3, speed=0.5, ignore_limit=True)
         self.reset_position()
         print(f"Motor limit initialized, stop state {self.stop}")
 
@@ -150,8 +150,9 @@ class LinearRail:
 
     def move_by_distance(self, 
                          distance: float, 
-                         speed: float = 0.5, 
-                         shared: Namespace | None = None) -> None:
+                         speed: float = 0.5,
+                         ignore_limit: bool = False, 
+                         shared = None) -> None:
         """Translate carriage by *distance* millimetres (signed)."""
 
         if distance == 0:
@@ -165,7 +166,7 @@ class LinearRail:
         # so to get to use positive numbers when going right direction has to be flipped
 
         for _ in range(abs(steps)):
-            self.step(direction=direction, speed=speed)
+            self.step(direction=direction, speed=speed, ignore_limit=ignore_limit)
 
         if shared is not None:    # <- TODO: in theory this can be deleted:)
             shared.delta_r = self.distance
@@ -173,7 +174,7 @@ class LinearRail:
     def move_to_distance(self, 
                          target_distance: float, 
                          speed: float = 0.5, 
-                         shared: Namespace = None) -> None:
+                         shared = None) -> None:
         """Translate until :pyattr:`distance` == *target_distance* mm."""
         if target_distance < 0:
             raise ValueError("Target distance must be non-negative.")
@@ -202,21 +203,21 @@ if __name__ == "__main__":
     shared = manager.Namespace()
     motor = LinearRail(pulse_pin=27, shared=shared, dir_pin=4, limit_pin=24, gear_ratio=1)
     # motor.move_by_angle(-720*6, speed=0.5)
-    # motor.init_motor(direction=1)
-    motor.move_by_distance(-500, speed=1)
+    motor.init_motor(direction=1)
+    # motor.move_by_distance(-500, speed=1)
     
-    motor.move_to_distance(10, speed=0.5)
-    print("moved")
-    print(motor.steps)
-    time.sleep(1)
-    motor.move_to_distance(40, speed=0.5)
-    print("moved")
-    print(motor.steps)
-    time.sleep(1)
-    motor.move_to_distance(30, speed=0.5)
-    print("moved")
-    print(motor.steps)
-    time.sleep(1)
-    motor.move_to_distance(50, speed=0.5)
-    print("moved")
+    # motor.move_to_distance(10, speed=0.5)
+    # print("moved")
+    # print(motor.steps)
+    # time.sleep(1)
+    # motor.move_to_distance(40, speed=0.5)
+    # print("moved")
+    # print(motor.steps)
+    # time.sleep(1)
+    # motor.move_to_distance(30, speed=0.5)
+    # print("moved")
+    # print(motor.steps)
+    # time.sleep(1)
+    # motor.move_to_distance(50, speed=0.5)
+    # print("moved")
 
