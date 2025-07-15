@@ -63,13 +63,14 @@ class SpinningJoints:
             direction = 1
 
             while not self.limit_event.is_set():
+                # TODO: CHECK THIS INIT FUNCTION!
                 if not direction_change and abs(self.angle) > 52:
                     self.angle = 0
                     time.sleep(2)
                     direction = -1 * direction
                     direction_change = True
 
-                if direction_change and abs(self.angle) > 310:
+                if direction_change and abs(self.angle) > 258: # TODO: Check this number
                     raise TimeoutError("Motor didn't find init pos")
 
                 self.step(direction=direction, speed=speed)
