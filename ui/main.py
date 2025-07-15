@@ -31,6 +31,7 @@ shared.theta_2 = 0
 shared.delta_r = 0
 shared.path_it = 0
 shared.timer = 0
+shared.path = None
 
 arm = Arm(shared)
 
@@ -207,6 +208,16 @@ def points():
     pts = forward_kinematics(theta1, theta2, delta_r)
     # pts is an (N×3) numpy array
     return jsonify(pts.tolist())
+
+@app.route('\path_points')
+def path_points():
+    if shared.path is None:
+        pts = []
+        return jsonify(pts)
+    else:
+        pts = shared.path
+        # pts is an (N×3) numpy array
+        return jsonify(pts.tolist())
 
 
 # You can also protect these with a threading.Lock if you worry about concurrent requests:

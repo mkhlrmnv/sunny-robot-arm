@@ -245,24 +245,24 @@
     [1820, -1680, -1000]
   ];
   const safetyBox1 = [
-    [-2000, 1000, -1000],
+    [-2000, 1200, -1000],
     [-2000, 2000, -1000],
-    [ 1820, 1000, -1000],
-    [ 1820, 2000, -1000],
-    [-2000, 1000, 0],
+    [1820, 1200, -1000],
+    [1820, 2000, -1000],
+    [-2000, 1200, 0],
     [-2000, 2000, 0],
-    [ 1820, 1000, 0],
-    [ 1820, 2000, 0]
+    [1820, 1200, 0],
+    [1820, 2000, 0]
   ];
   const safetyBox2 = [
     [-2000, 1000, -1000],
-    [-1000, 1000, -1000],
+    [-1100, 1000, -1000],
     [-2000, -1680, -1000],
-    [-1000, -1680, -1000],
+    [-1100, -1680, -1000],
     [-2000, 1000, 0],
-    [-1000, 1000, 0],
+    [-1100, 1000, 0],
     [-2000, -1680, 0],
-    [-1000, -1680, 0]
+    [-1100, -1680, 0]
   ];
 
   // helper to turn an 8-corner box into a scatter3d line trace
@@ -298,14 +298,28 @@
             y = points.map(p => p[1]),
             z = points.map(p => p[2]);
 
-      // the moving-robot trace
-      const trace = {
-        x, y, z,
-        mode: 'markers+lines',
+            // the moving-robot trace
+      const robotTrace = {
+              x, y, z,
+              mode: 'markers+lines',
+              type: 'scatter3d',
+              marker: { size: 3 },
+              name: 'Robot'
+            };
+
+      const res_path = await fetch('/path_points');
+      const path_points = await res_path.json();
+      const path_x = path_points.map(p => p[0]),
+            path_y = path_points.map(p => p[1]),
+            path_z = path_points.map(p => p[2]);
+
+      const pathTrace = {
+        x: path_x, y: path_y, z: path_z,
+        mode: 'lines',
         type: 'scatter3d',
-        marker: { size: 3 },
-        name: 'Path'
-      };
+        line: { width: 2, color: 'red' },
+        name: 'Path Points'
+      };      
 
       // build the three box traces
       const konttiTrace   = makeBoxTrace(konttiBox,   'Container');
@@ -313,7 +327,7 @@
       const safety2Trace  = makeBoxTrace(safetyBox2,  'Safety Box 2');
 
       Plotly.react(plotDiv,
-        [ trace, konttiTrace, safety1Trace, safety2Trace ],
+        [ robotTrace, pathTrace, konttiTrace, safety1Trace, safety2Trace ],
         {
           margin: { l:0, r:0, b:0, t:0 },
           scene: {

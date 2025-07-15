@@ -94,6 +94,8 @@ class Arm:
     def init_path(self, path_file_path, duration):
         self.current_path, self.current_path_colors = un_jsonify_path(path_file_path)
         self.duration_per_point = duration / len(self.current_path)
+
+        self.shared.path = self.current_path
         
         if self.current_path is None:
             raise ValueError("Path initialization failed. Check the path file.")
