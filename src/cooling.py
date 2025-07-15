@@ -31,14 +31,14 @@ class FanController:
         Temperature (°C) above which the fan is forced to 100 % duty cycle.
     """
 
-    def __init__(self, fan_pin=18, min_temp=30.0, max_temp=60.0):
+    def __init__(self, fan_pin: int = 18, min_temp: float = 30.0, max_temp: float = 60.0):
         self.sensor = W1ThermSensor()           # DS18B20 on the default 1‑Wire bus
         self.fan = PWMOutputDevice(fan_pin)     # Hardware‑PWM device (0.0 – 1.0)
         self.min_temp = min_temp
         self.max_temp = max_temp
         self.latest_reading = None              # Instance copy; updated every cycle
 
-    def map_temp_to_speed(self, temperature):
+    def map_temp_to_speed(self, temperature: float) -> float:
         """Translate *temperature* in °C to a PWM duty cycle (0.0 – 1.0)."""
         # Completely off
         if temperature <= self.min_temp:
@@ -51,7 +51,7 @@ class FanController:
         # Linear ramp between the thresholds
         return (temperature - self.min_temp) / (self.max_temp - self.min_temp)
 
-    def run(self, verbal=True, interval=0.1):
+    def run(self, verbal: bool = True, interval: float = 0.1) -> None:
         """Main control loop.
 
         Continuously:
