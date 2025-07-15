@@ -5,7 +5,7 @@ from .linear_rail import LinearRail
 from .spinning_joints import SpinningJoints
 from .cooling import FanController
 from .arm import Arm
-from .helper import Vector, Joints, forward_kinematics, inverse_kinematics
+from .kinematics_and_safety import Vector, Joints, forward_kinematics, inverse_kinematics
 from .cooling import FanController
 from .sun_helper import alt_to_color, get_sun_path, jsonify_path, jsonify_path
 from .lamp import Lamp

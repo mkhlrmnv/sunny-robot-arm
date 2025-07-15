@@ -3,7 +3,7 @@ from unittest.mock import patch
 import time
 from scipy.spatial.transform import Rotation as R
 
-from src import helper
+from src import kinematics_and_safety
 import numpy as np
 
 class TestHelper(unittest.TestCase):
@@ -67,7 +67,7 @@ class TestHelper(unittest.TestCase):
 
         end_point = points[-1]
 
-        solutions = helper.inverse_kinematics(end_point[0], end_point[1], end_point[2], 
+        solutions = kinematics_and_safety.inverse_kinematics(end_point[0], end_point[1], end_point[2], 
                                                      T_base=T_base, theta_r=theta_r, verbal=False)
 
         for sol in solutions:
@@ -139,7 +139,7 @@ class TestHelper(unittest.TestCase):
 
             end_point = points[-1]
 
-            solutions = helper.inverse_kinematics(end_point[0], end_point[1], end_point[2], 
+            solutions = kinematics_and_safety.inverse_kinematics(end_point[0], end_point[1], end_point[2], 
                                                      T_base=T_base, theta_r=theta_r, verbal=False)
 
             found_correct = False
@@ -161,7 +161,7 @@ class TestHelper(unittest.TestCase):
         delta_r = 1000
 
         # Compute the end-effector position using forward kinematics
-        end_effector_pos = helper.forward_kinematics(theta1_deg, theta2_deg, delta_r)
+        end_effector_pos = kinematics_and_safety.forward_kinematics(theta1_deg, theta2_deg, delta_r)
 
         # Expected position based on manual calculations or known values
         expected_pos = np.array([419.46338104, 540.39560115, -571.75144213])
@@ -171,10 +171,10 @@ class TestHelper(unittest.TestCase):
 
     def test_segment_intercets_box(self):
         # Define the segment endpoints
-        points_1 = helper.forward_kinematics(-10, -40, 1200)
-        points_2 = helper.forward_kinematics(20, 20, 300)
-        points_3 = helper.forward_kinematics(60, 20, 1200)
-        points_4 = helper.forward_kinematics(20, 20, 700)
+        points_1 = kinematics_and_safety.forward_kinematics(-10, -40, 1200)
+        points_2 = kinematics_and_safety.forward_kinematics(20, 20, 300)
+        points_3 = kinematics_and_safety.forward_kinematics(60, 20, 1200)
+        points_4 = kinematics_and_safety.forward_kinematics(20, 20, 700)
 
         safety_box_1_corners = np.array([
             [-2000, 1000, -1000],
@@ -211,21 +211,21 @@ class TestHelper(unittest.TestCase):
 
 
         # Assert that the segment does intersect the box
-        self.assertTrue(helper.edge_crosses_box(points_1, kontti_box_corners))
-        self.assertFalse(helper.edge_crosses_box(points_1, safety_box_1_corners))
-        self.assertFalse(helper.edge_crosses_box(points_1, safety_box_2_corners))
+        self.assertTrue(kinematics_and_safety.edge_crosses_box(points_1, kontti_box_corners))
+        self.assertFalse(kinematics_and_safety.edge_crosses_box(points_1, safety_box_1_corners))
+        self.assertFalse(kinematics_and_safety.edge_crosses_box(points_1, safety_box_2_corners))
 
-        self.assertFalse(helper.edge_crosses_box(points_2, kontti_box_corners))
-        self.assertTrue(helper.edge_crosses_box(points_2, safety_box_1_corners))
-        self.assertFalse(helper.edge_crosses_box(points_2, safety_box_2_corners))
+        self.assertFalse(kinematics_and_safety.edge_crosses_box(points_2, kontti_box_corners))
+        self.assertTrue(kinematics_and_safety.edge_crosses_box(points_2, safety_box_1_corners))
+        self.assertFalse(kinematics_and_safety.edge_crosses_box(points_2, safety_box_2_corners))
 
-        self.assertFalse(helper.edge_crosses_box(points_3, kontti_box_corners))
-        self.assertFalse(helper.edge_crosses_box(points_3, safety_box_1_corners))
-        self.assertTrue(helper.edge_crosses_box(points_3, safety_box_2_corners))
+        self.assertFalse(kinematics_and_safety.edge_crosses_box(points_3, kontti_box_corners))
+        self.assertFalse(kinematics_and_safety.edge_crosses_box(points_3, safety_box_1_corners))
+        self.assertTrue(kinematics_and_safety.edge_crosses_box(points_3, safety_box_2_corners))
 
-        self.assertFalse(helper.edge_crosses_box(points_4, kontti_box_corners))
-        self.assertFalse(helper.edge_crosses_box(points_4, safety_box_1_corners))
-        self.assertFalse(helper.edge_crosses_box(points_4, safety_box_2_corners))
+        self.assertFalse(kinematics_and_safety.edge_crosses_box(points_4, kontti_box_corners))
+        self.assertFalse(kinematics_and_safety.edge_crosses_box(points_4, safety_box_1_corners))
+        self.assertFalse(kinematics_and_safety.edge_crosses_box(points_4, safety_box_2_corners))
 
 
 if __name__ == '__main__':

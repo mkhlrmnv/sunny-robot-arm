@@ -59,7 +59,7 @@ def get_sun_path(R=1700,
              longitude=24.9384,
              timezone = 'Europe/Helsinki'):
     
-    from helper import inverse_kinematics, forward_kinematics
+    from src.kinematics_and_safety import inverse_kinematics, forward_kinematics
 
     # 1) Define timespan
     # Here we define from the day start to the end, cause we
