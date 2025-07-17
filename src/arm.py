@@ -1,6 +1,6 @@
 import time
 import numpy as np
-from src.kinematics_and_safety import *
+from kinematics_and_safety import *
 from sun_helper import *
 from lamp import Lamp
 import matplotlib.pyplot as plt
