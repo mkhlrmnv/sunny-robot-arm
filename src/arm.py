@@ -103,6 +103,8 @@ class Arm:
         self.duration_per_point = duration / len(self.current_path)
 
         self.shared.path = self.current_path
+
+        self.iteration = 0
         
         if self.current_path is None:
             raise ValueError("Path initialization failed. Check the path file.")
