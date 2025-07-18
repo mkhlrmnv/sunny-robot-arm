@@ -82,16 +82,21 @@ class Arm:
 
         self.motor_rail.shared.delta_r = self.motor_rail.distance = self.delta_r = 0
 
-        self.lamp.set_to_solid()
         self.lamp.set_brightness(0)
+        self.lamp.set_to_solid()
 
         return True
 
 
     def shutdown(self):
+        self.lamp.set_to_blink()
+
         self.motor_paaty.shutdown()
         self.motor_pontto.shutdown()
         self.motor_rail.init_motor()
+        
+        self.lamp.set_brightness(0)
+        self.lamp.set_to_solid()
 
 
     def init_path(self, path_file_path, duration, dynamic_lamp=True):
