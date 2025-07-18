@@ -6,6 +6,9 @@ from lamp import Lamp
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.animation import FuncAnimation
+import os
+from dotenv import load_dotenv
+load_dotenv() 
 
 from linear_rail import LinearRail
 from spinning_joints import SpinningJoints
@@ -21,7 +24,7 @@ class Arm:
                  end_link_length=905,
                  theta_r=137.6,
                  rail_length=731.3,
-                 lamp_url='...'
+                 lamp_url=os.getenv("WLED_ADR")
                  ):
         """
         Initializes the robotic arm controller with a specified number of joints.

@@ -23,6 +23,9 @@ Example
 
 import requests
 import time
+import os
+from dotenv import load_dotenv
+load_dotenv() 
 
 class Lamp:
     """Small convenience wrapper around a network‑attached RGB lamp.
@@ -38,7 +41,7 @@ class Lamp:
 
     def __init__(self,
                  brightness: int = 255,
-                 https_url: str = 'http://192.168.1.120/win') -> None: # TODO: 
+                 https_url: str = os.getenv("WLED_ADR")) -> None:
         
         assert 0 <= brightness <= 255,          "Brightness must be between 0 and 255"
         assert isinstance(https_url, str),      "URL must be a string"
