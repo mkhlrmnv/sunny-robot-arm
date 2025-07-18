@@ -23,8 +23,10 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
 import pvlib
 import pandas as pd
+import os
+import json
 
-from sun_helper import get_sun_path, alt_to_color
+from sun_helper import get_sun_path, alt_to_color, jsonify_path, un_jsonify_path
 
 
 # -----------------------------------------------------------------------------
@@ -393,24 +395,32 @@ if __name__ == "__main__":
     import time
 
     start_time = time.time()
-    suns_path, unreachable_points, _ = get_sun_path(R=1700)
+    # suns_path, unreachable_points, _ = get_sun_path(R=1700)
     finish_time = time.time()
     print(f"Sun path computed in {finish_time - start_time:.2f} seconds")
-    # test_path = np.array([[-335.454, -195.317, 1000], [413.476, 497.258, 1000]])
+    test_path = np.array([[377.04045089,  391.49348017, 1115.], [-968.47394546, -372.88213625,  662.5]])
     # test_path = np.load('paths/test_path.npy')
 
-    # np.save('paths/test_path.npy', suns_path)
+    json_res = jsonify_path(test_path)
+    file_path = os.path.join(os.path.dirname(__file__), "..", "paths", "test_path.json")
+    with open(file_path, "w") as f:
+        json.dump(json_res, f, indent=4)
 
 
-    sols = inverse_kinematics(*suns_path[14], verbal=True)
-    # sols = inverse_kinematics(*test_path[1], verbal=True)
+    # np.save('paths/finish_sun_path.json', suns_path)
+
+    counter = 0
+    # sols = inverse_kinematics(*suns_path[34], verbal=False)
+    sols = inverse_kinematics(*test_path[0], verbal=True)
 
     # print("safe", check_solutions_safety(sols[0], all_boxes)
 
-    # th1, th2, dr = [0, 0, 718]
+    # th1, th2, dr = [30, 30, 400]
     th1, th2, dr = sols[0]
 
     points = forward_kinematics(th1, th2, dr)
+
+    print(points[-1])
 
     print(f"Points: {points[-1]}")
 
@@ -423,8 +433,8 @@ if __name__ == "__main__":
     draw_all_safety_boxes(ax_1)
 
 
-    # plot_path(ax_1, test_path, linestyle='None')
-    plot_path(ax_1, suns_path)
+    plot_path(ax_1, test_path, linestyle='None')
+    # plot_path(ax_1, suns_path)
     # plot_path(ax_1, unreachable_points, color='red', label='unreachable')
     
     draw_robot(ax_1, points=points)
