@@ -33,10 +33,10 @@ class SpinningJoints:
 
         self.limit_event = Event()
 
-        self.limit_switch = Button(limit_pin, pull_up=True, bounce_time=0.00001)
-        self.limit_switch.when_pressed = lambda: (print("Metal detected"), 
+        self.limit_switch = Button(limit_pin, pull_up=True, bounce_time=0.0001)
+        self.limit_switch.when_pressed = lambda: (print(f"Metal detected by {self.name}"), 
                                                 self.limit_event.set())
-        self.limit_switch.when_released = lambda: (print("No metal anymore"), 
+        self.limit_switch.when_released = lambda: (print(f"No metal anymore by {self.name}"), 
                                                     self.limit_event.clear())
 
         self.angle_limit = angle_limit
