@@ -13,14 +13,14 @@ from spinning_joints import SpinningJoints
 class Arm:
     def __init__(self,
                  shared,
-                 init_pos=[925.39, -219.38, 0],
-                 dz1=100,
+                 init_pos=[920, -240, 0],
+                 dz1=210,
                  dx1=57.5,
-                 dx2=107,
-                 dy1=830,
-                 end_link_length=950,
-                 theta_r=137.9,
-                 rail_length=1000,
+                 dx2=105,
+                 dy1=835,
+                 end_link_length=905,
+                 theta_r=137.6,
+                 rail_length=731.3,
                  lamp_url='http://192.168.1.120/win'
                  ):
         """
@@ -73,9 +73,9 @@ class Arm:
             exit(67)
             return False
         
-        self.motor_pontto.shared.theta_1 = self.motor_pontto.angle = self.theta_1 = 137.9
+        self.motor_pontto.shared.theta_1 = self.motor_pontto.angle = self.theta_1 = 137.6
 
-        self.motor_paaty.shared.theta_2 = self.motor_paaty.angle = self.theta_2 = 90+69.795 
+        self.motor_paaty.shared.theta_2 = self.motor_paaty.angle = self.theta_2 = 90+73.17
 
         self.motor_rail.shared.delta_r = self.motor_rail.distance = self.delta_r = 0
 
@@ -84,11 +84,11 @@ class Arm:
 
         return True
 
+
     def shutdown(self):
         self.motor_paaty.shutdown()
         self.motor_pontto.shutdown()
-        self.motor_rail.init_motor(direction=1)
-        
+        self.motor_rail.init_motor()
 
 
     def init_path(self, path_file_path, duration):

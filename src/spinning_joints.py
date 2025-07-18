@@ -105,7 +105,7 @@ class SpinningJoints:
         if self.name == "paaty":
             self.init_motor()
             time.sleep(2)
-            self.move_by_angle(14.8, speed=0.01)
+            self.move_by_angle(10.5, speed=0.01)
 
     def step(self, direction=1, speed=0.1):
         if abs(direction * (360 / (self.step_per_rev * self.gear_ratio)) > self.angle_limit):

@@ -34,14 +34,14 @@ from sun_helper import get_sun_path, alt_to_color
 def inverse_kinematics(x: float,
                        y: float, 
                        z: float,
-                       T_base: list[list[float]] = [[1, 0, 0, 925.39], [0, 1, 0, -219.38], [0, 0, 1, 0], [0, 0, 0, 1]],
-                       theta_r: float = 137.9,      # rail orientation (deg)
-                       link_rise: float = 100,      # vertical offset of first joint (mm)
-                       rail_limits: tuple[float, float] = (-0.1, 718),
+                       T_base: list[list[float]] = [[1, 0, 0, 920], [0, 1, 0, -240], [0, 0, 1, 0], [0, 0, 0, 1]],
+                       theta_r: float = 137.6,      # rail orientation (deg)
+                       link_rise: float = 210,      # vertical offset of first joint (mm)
+                       rail_limits: tuple[float, float] = (-0.1, 731.3),
                        dx1: float = 57.5,           # x-offset first link (mm)
-                       dx2: float = 107,            # x-offset second link (mm)
-                       dy0: float = 830,            # first arm length (mm)
-                       link_length: float = 950,    # second arm length (mm)  
+                       dx2: float = 105,            # x-offset second link (mm)
+                       dy0: float = 835,            # first arm length (mm)
+                       link_length: float = 905,    # second arm length (mm)  
                        eps: float = 1e-6, 
                        check_reachability: bool = True,
                        check_safety: bool = True,
@@ -177,12 +177,12 @@ def choose_solution(solutions: list[tuple[float,float,float]],
 def forward_kinematics(theta1_deg: float, 
                        theta2_deg: float, 
                        delta_r: float, 
-                       theta_r: float = 137.9,      # angle of the rails
-                       link_rise: float = 100,      # first Z offset (mm)
+                       theta_r: float = 137.6,      # angle of the rails
+                       link_rise: float = 210,      # first Z offset (mm)
                        dx1: float = 57.5,           # first X offset (mm)
-                       dx2: float = 107,            # second X offset (mm)
-                       dy0: float = 830,            # Y offset before pitch (mm)
-                       link_length: float = 950     # final link length (mm)
+                       dx2: float = 105,            # second X offset (mm)
+                       dy0: float = 835,            # Y offset before pitch (mm)
+                       link_length: float = 905     # final link length (mm)
                     ) -> np.array:
     """
     Compute XYZ positions of each joint (and end-effector) in world frame.
@@ -197,7 +197,7 @@ def forward_kinematics(theta1_deg: float,
     transforms = []
 
     # base translation
-    Tb = np.eye(4); Tb[:3,3] = [925.39, -219.38, 0]
+    Tb = np.eye(4); Tb[:3,3] = [920, -240, 0]
     transforms.append(Tb)
 
     # rail rotation
