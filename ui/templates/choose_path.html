@@ -22,13 +22,28 @@
           <img src="{{ url_for('static', filename='logo.png') }}" alt="J&M Automation Logo">
         </div> -->
         <div class="button-container">
-          <button class="big-button" onclick="location.href='/play?cmd=test_path.json'">Test Path 1</button>
-          <button class="big-button" onclick="location.href='/play?cmd=test2_path.json'">Test Path 2</button>
-          <button class="big-button" onclick="location.href='/play?cmd=finish_sun_path.json'">Finnish Suns Path</button>
+          <button class="big-button" onclick="play('test_path.json')">Test Path 1</button>
+          <button class="big-button" onclick="play('test2_path.json')">Test Path 2</button>
+          <button class="big-button" onclick="play('finish_sun_path.json')">Finnish Suns Path</button>
+        </div>
+        
+        <div class="controls">
+          <label for="durationInput">Duration:</label>
+          <input type="number" id="durationInput" value="100" min="0" />
+          <label for="lampCheckbox">
+            <input type="checkbox" id="lampCheckbox" checked />
+            Lamp
+          </label>
         </div>
       </div>
       
       <script>
+        function play(name) {
+          const duration = document.getElementById('durationInput').value || 100;
+          const lamp = document.getElementById('lampCheckbox').checked ? 1 : 0;
+          const url = `/play?name=${encodeURIComponent(name)}&duration=${encodeURIComponent(duration)}&lamp=${lamp}`;
+          window.location.href = url;
+        }
         // Only poll cooling info if the left panel is visible (desktop)
         if (window.innerWidth > 768) {
           function fetchCoolingInfo() {

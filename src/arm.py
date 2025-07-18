@@ -94,8 +94,12 @@ class Arm:
         self.motor_rail.init_motor()
 
 
-    def init_path(self, path_file_path, duration):
+    def init_path(self, path_file_path, duration, dynamic_lamp=True):
         self.current_path, self.current_path_colors = un_jsonify_path(path_file_path)
+        
+        if not dynamic_lamp:
+            self.current_path_colors = None
+        
         self.duration_per_point = duration / len(self.current_path)
 
         self.shared.path = self.current_path
