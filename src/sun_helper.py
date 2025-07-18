@@ -121,8 +121,8 @@ def get_sun_path(R=1700,
     sun_dirs = np.stack((x, y, z), axis=1)
 
      
-    sun_dirs =  sun_dirs[4:-7]
-    colors = colors[4:-7]
+    sun_dirs =  sun_dirs[8:-6]
+    colors = colors[8:-6]
 
     counter = 0
     unreachable_points = []
@@ -157,7 +157,7 @@ def get_sun_path(R=1700,
             # translate it to the base + rail frames for inverse kinematics
 
             # Step 1: Bring world point into robot base frame
-            T_base=[[1, 0, 0, 925.39], [0, 1, 0, -219.38], [0, 0, 1, 0], [0, 0, 0, 1]]
+            T_base=[[1, 0, 0, 920], [0, 1, 0, -240], [0, 0, 1, 0], [0, 0, 0, 1]]
             T_inv = np.linalg.inv(T_base)
             p_world = np.array([x, y, z, 1])
             p_local = T_inv @ p_world
@@ -165,35 +165,43 @@ def get_sun_path(R=1700,
 
             # Step 2: Rotate point into rail frame (rail lies along +Y direction)
             from scipy.spatial.transform import Rotation as R
-            Rz = R.from_euler('z', 137.9, degrees=True).as_matrix()
+            Rz = R.from_euler('z', 137.6, degrees=True).as_matrix()
             p_rail = Rz.T @ np.array([x_l, y_l, z_l])
             x_r, y_r, z_r = p_rail
 
             # solve for how much high is the point above the first joint
-            z_eff = z_r - 100
+            z_eff = z_r - 210
 
             # rename the points 
             cx, cy = x_r, y_r
 
             # constant of how much is arm shifts in the joints in x direction (when aligned with the rail)
-            arm_reach_x = 57 + 107
+            arm_reach_x = 57 + 105
 
             # assume that the arm is not too long, so we can use the previous theta_2
-            theta_2_deg = 18.63 #inverse_kinematics(*sun_dirs[i-1], check_safety=True, verbal=False)[0][1]
+            j = 1
+
+            while True:
+                try: 
+                    theta_2_deg = inverse_kinematics(*sun_dirs[i-j])[0][1]
+                    break
+                except:
+                    j += 1
+
             theta_2 = np.radians(theta_2_deg)
 
             # calculate the arm reach in y direction when the arm is aligned with the rail
-            arm_reach_y = z_eff / np.tan(theta_2) + 830
+            arm_reach_y = z_eff / np.tan(theta_2) + 835
 
             # total reach of the arm
             r = np.hypot(arm_reach_x, arm_reach_y)
             
-            if cy > 0:
+            if cy > 0  and cy < 731.3:
                 d = cx
             elif cy <= 0:
                 d = np.hypot(cx, cy)
             else:
-                d = np.sqrt(cx**2 + (718-cy)**2)
+                d = np.sqrt(cx**2 + (731.3-cy)**2)
 
             if d > r:
                 s  = r / d                     # 0 < s < 1
@@ -214,7 +222,7 @@ def get_sun_path(R=1700,
 
                 print(f"\t  y_wrist[{sign:+}] = {y_wrist:.2f}", end="")
 
-                if not (-0.1 <= y_wrist <= 718):
+                if not (-0.1 <= y_wrist <= 731.3):
                     print("\n")
                     continue
 
@@ -223,11 +231,11 @@ def get_sun_path(R=1700,
                 dx = x_r - 0
                 dy = y_r - y_wrist
                 alpha = np.arctan2(dy, dx)
-                gamma = np.arctan2(arm_reach_y, 57 + 107)
+                gamma = np.arctan2(arm_reach_y, 57 + 105)
                 theta_1 = alpha - gamma
 
                 # wrap into [-180,180]
-                theta_1_deg = (((np.degrees(theta_1) + 137) - (-172)) % 360) + (-172)
+                theta_1_deg = (((np.degrees(theta_1) + 137.6) - (-172)) % 360) + (-172)
 
 
                 print(f"\t    α={np.degrees(alpha):.2f}°, γ={np.degrees(gamma):.2f}°")
@@ -237,6 +245,10 @@ def get_sun_path(R=1700,
                 sol = (theta_1_deg, theta_2_deg, y_wrist)
 
                 end_point = forward_kinematics(*sol)
+
+                # breakpoint()
+
+                print("new point z eff", end_point[-1][2] - 210)
 
                 sun_dirs[i] = end_point[-1]
             
