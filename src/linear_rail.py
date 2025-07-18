@@ -77,7 +77,7 @@ class LinearRail:
         # Limit switch (active‑low, bounce filtered)
         self.limit_event: Event = Event()
         self.limit_switch = Button(limit_pin, pull_up=True, bounce_time=0.0001)
-        self.limit_switch.hold_time = 0.2   # call *when_held* after 100 ms
+        self.limit_switch.hold_time = 0.5   # call *when_held* after 100 ms
         self.limit_switch.hold_repeat = True
         self.limit_switch.when_held = lambda: (print("Limit switch is pressed"), self.limit_event.set())
         self.limit_switch.when_released = lambda: (print("Limit switch is released"), self.limit_event.clear())
