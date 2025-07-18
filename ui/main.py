@@ -16,7 +16,7 @@ from spinning_joints import SpinningJoints
 from linear_rail import LinearRail
 from arm import Arm
 import cooling
-from helper import forward_kinematics, check_solutions_safety, inverse_kinematics, choose_solution
+from kinematics_and_safety import forward_kinematics, check_solutions_safety, inverse_kinematics, choose_solution
 
 app = Flask(__name__)
 
