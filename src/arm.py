@@ -21,7 +21,7 @@ class Arm:
                  end_link_length=905,
                  theta_r=137.6,
                  rail_length=731.3,
-                 lamp_url='http://192.168.1.120/win'
+                 lamp_url='...'
                  ):
         """
         Initializes the robotic arm controller with a specified number of joints.
@@ -103,7 +103,7 @@ class Arm:
 
     def move(self, shared=None, speeds=None, check_safety=True):
 
-        if self.lamp.brightness == 0 or self.lamp.effect_index != 0:
+        if self.lamp.brightness == 0 or self.lamp.effect != 0:
             self.lamp.set_brightness(255)
             self.lamp.set_to_solid()
 
@@ -138,8 +138,12 @@ class Arm:
         
         try:
             if self._target_not_set():
-                self._compute_next_target(check_safety=check_safety)
+                distance_to_target = self._compute_next_target(check_safety=check_safety)
 
+            # if movement is over 10cm, lamp will blink
+            if distance_to_target > 100:
+                self.lamp.set_to_blink()
+        
             print(f"Moving to target: theta_1={self.required_theta_1}, "
                   f"theta_2={self.required_theta_2}, delta_r={self.required_delta_r}")
 
@@ -213,7 +217,10 @@ class Arm:
 
             if self.current_path_colors is not None:
                 color = self.current_path_colors[self.iteration]
-                self.lamp.set_color(*color, verbal=True)
+                # self.lamp.set_color(*color, verbal=True)
+                self.lamp.set_to_solid(*color)
+            else:
+                self.lamp.set_to_solid()
             
             shared.path_it += 1
         
@@ -291,6 +298,8 @@ class Arm:
     def _compute_next_target(self, check_safety=True):
         """Compute next target joint values based on current path."""
         next_point = self.current_path[self.iteration]
+        curr_point = forward_kinematics(self.theta_1, self.theta_2, self.delta_r)[-1]
+
         sols = inverse_kinematics(*next_point, verbal=False, check_safety=check_safety)
         self.required_theta_1, self.required_theta_2, self.required_delta_r = choose_solution(
             sols, (self.theta_1, self.theta_2, self.delta_r)
@@ -298,6 +307,9 @@ class Arm:
 
         print(f"Next target: theta_1={self.required_theta_1}, "
                 f"theta_2={self.required_theta_2}, delta_r={self.required_delta_r}")
+
+        # returns distance to next point
+        return np.linalg.norm(np.array(next_point) - np.array(curr_point))
 
 
     def _clear_target(self):
