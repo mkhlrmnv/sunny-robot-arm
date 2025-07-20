@@ -13,6 +13,7 @@ keeping the fan off below *min_temp* and at full speed above *max_temp*.
 from w1thermsensor import W1ThermSensor         # Temperature sensor driver
 from gpiozero import PWMOutputDevice            # Hardware‑PWM wrapper
 from time import sleep                          # Simple delay helper
+from config import *
 
 # A mutable global that external processes/threads can poll
 # to get the most recent measurement and fan setting.
@@ -31,7 +32,10 @@ class FanController:
         Temperature (°C) above which the fan is forced to 100 % duty cycle.
     """
 
-    def __init__(self, fan_pin: int = 18, min_temp: float = 30.0, max_temp: float = 60.0):
+    def __init__(self, fan_pin: int = FAN_PIN, 
+                 min_temp: float = MIN_TEMP_IN_BOX, 
+                 max_temp: float = MAX_TEMP_IN_BOX):
+        
         self.sensor = W1ThermSensor()           # DS18B20 on the default 1‑Wire bus
         self.fan = PWMOutputDevice(fan_pin)     # Hardware‑PWM device (0.0 – 1.0)
         self.min_temp = min_temp
@@ -94,5 +98,5 @@ class FanController:
 
 if __name__ == "__main__":
     # Tweak *min_temp* and *max_temp* to suit your hardware or environment.
-    cooler = FanController(fan_pin=18, min_temp=20, max_temp=45)
+    cooler = FanController()
     cooler.run()

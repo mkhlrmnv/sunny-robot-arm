@@ -24,6 +24,8 @@ import time
 from gpiozero import Button
 from signal import pause
 
+from config import *
+
 from multiprocessing import Event, Manager
 
 
@@ -56,10 +58,10 @@ class LinearRail:
                  dir_pin: int, 
                  limit_pin: int, 
                  step_per_rev: int = 1600, 
-                 gear_ratio: float = 1, 
-                 pitch: float = 10.0, 
-                 min_delay: float = 1e-4, 
-                 max_delay: float = 1e-3) -> None:
+                 gear_ratio: float = RAIL_MOTOR_GEAR_RATIO, 
+                 pitch: float = SCREW_DRIVE_PITCH, 
+                 min_delay: float = MOTORS_MIN_DELAY, 
+                 max_delay: float = MOTORS_MAX_DELAY) -> None:
         assert all(isinstance(p, int) for p in (pulse_pin, dir_pin, limit_pin)), (
             "GPIO pins must be integers"
         )
@@ -75,7 +77,7 @@ class LinearRail:
         self.direction = DigitalOutputDevice(dir_pin)
 
         # Limit switch (active‑low, bounce filtered)
-        self.limit_event: Event = Event()
+        self.limit_event = Event()
         self.limit_switch = Button(limit_pin, pull_up=True, bounce_time=0.0001)
         self.limit_switch.hold_time = 0.5   # call *when_held* after 100 ms
         self.limit_switch.hold_repeat = True

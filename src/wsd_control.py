@@ -5,6 +5,17 @@ import sys
 import termios
 import tty
 
+from multiprocessing import Process, Queue, Manager
+manager = Manager()
+shared = manager.Namespace()
+shared.theta_1 = 0
+shared.theta_2 = 0
+shared.delta_r = 0
+shared.timer = 0
+shared.path_it = 0
+
+from config import *
+
 # Interactive terminal interface to control three motors.
 # Function to capture a single key press without requiring ENTER.
 def getch():
@@ -24,17 +35,33 @@ def getch():
 
 def main():
     # Instantiate three Motor objects with example GPIO pin assignments.
-    motor1 = SpinningJoints(pulse_pin=20, dir_pin=19, limit_pin=23, name="paaty", gear_ratio=5)
-    motor2 = SpinningJoints(pulse_pin=13, dir_pin=26, limit_pin=22, name="pontto", gear_ratio=5*32/10)
-    motor3 = LinearRail(pulse_pin=27, dir_pin=4, limit_pin=24, gear_ratio=1)
+    motor_paaty = SpinningJoints(shared, 
+                                pulse_pin=PAATY_MOTOR_PULSE_PIN, 
+                                dir_pin=PAATY_MOTOR_DIR_PIN, 
+                                limit_pin=PAATY_MOTOR_SENSOR_PIN, 
+                                name="paaty", 
+                                gear_ratio=PAATY_MOTOR_GEAR_RATIO)
+        
+    motor_pontto = SpinningJoints(shared, 
+                                pulse_pin=PONTTO_MOTOR_PULSE_PIN, 
+                                dir_pin=PONTTO_MOTOR_DIR_PIN, 
+                                limit_pin=PONTTO_MOTOR_SENSOR_PIN, 
+                                name="pontto",
+                                gear_ratio=PONTTO_MOTOR_GEAR_RATION)
+        
+    motor_rail = LinearRail(shared, 
+                                pulse_pin=RAIL_MOTOR_PULSE_PIN, 
+                                dir_pin=RAIL_MOTOR_DIR_PIN, 
+                                limit_pin=RAIL_MOTOR_SENSOR_PIN, 
+                                gear_ratio=RAIL_MOTOR_GEAR_RATIO)
 
     angles_per_key = 1
     
     print("Keyboard Control for Three Motors")
     print("Controls:")
-    print("  Motor 1: 'w' (clockwise), 's' (counter-clockwise)")
-    print("  Motor 2: 'a' (clockwise), 'd' (counter-clockwise)")
-    print("  Motor 3: 'j' (clockwise), 'k' (counter-clockwise)")
+    print("  Motor paaty: 'w' (up), 's' (down)") # <- TODO has to be checked if direction match the desc
+    print("  Motor pontto: 'a' (clockwise), 'd' (counter-clockwise)")
+    print("  Motor rail: 'j' (left), 'k' (right)")
     print("  'i' to increase step per key and 'o' to decrease it")
     print("  'p' prints the status for all motors")
     print("  'q' quits the program")
@@ -46,32 +73,32 @@ def main():
         if key == 'q':
             break
         elif key == 'w':
-            motor1.move_by_angle(angle=angles_per_key, speed=speed)
+            motor_paaty.move_by_angle(angle=angles_per_key, speed=speed)
              #motor1.step(steps=step_per_key, direction=1, speed=speed)
             print("Motor 1: stepped clockwise.")
         elif key == 's':
-            motor1.move_by_angle(angle=-angles_per_key, speed=speed)
+            motor_paaty.move_by_angle(angle=-angles_per_key, speed=speed)
             print("Motor 1: stepped counter-clockwise.")
 
         elif key == 'a':
-            motor2.move_by_angle(angle=angles_per_key, speed=speed)
+            motor_pontto.move_by_angle(angle=angles_per_key, speed=speed)
             print("Motor 2: stepped clockwise.")
         elif key == 'd':
-            motor2.move_by_angle(angle=-angles_per_key, speed=speed)
+            motor_pontto.move_by_angle(angle=-angles_per_key, speed=speed)
             print("Motor 2: stepped counter-clockwise.")
 
         elif key == 'j':
-            motor3.move_by_distance(angle=angles_per_key, speed=speed)
+            motor_rail.move_by_distance(angle=angles_per_key, speed=speed)
             print("Motor 3: stepped clockwise.")
         elif key == 'k':
-            motor3.move_by_distance(angle=-angles_per_key, speed=speed)
+            motor_rail.move_by_distance(angle=-angles_per_key, speed=speed)
             print("Motor 3: stepped counter-clockwise.")
             
         elif key == 'p':
             # TODO: FIX THIS AS THE get steps function is gone
-            print(f"Motor 1: Steps = {motor1.get_steps()}, Angle = {motor1.get_angle()}°") 
-            print(f"Motor 2: Steps = {motor2.get_steps()}, Angle = {motor2.get_angle()}°")
-            print(f"Motor 3: Steps = {motor3.get_steps()}, Angle = {motor3.get_angle()}°")
+            print(f"Motor 1: Steps = {motor_pontto.steps}, Angle = {motor_pontto.angle}°") 
+            print(f"Motor 2: Steps = {motor_paaty.steps}, Angle = {motor_paaty.angle}°")
+            print(f"Motor 3: Steps = {motor_rail.steps}, Distance = {motor_rail.distance}°")
             print(f"Step per key: {angles_per_key}")
 
         elif key == 'i':

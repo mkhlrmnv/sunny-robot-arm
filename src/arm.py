@@ -1,8 +1,5 @@
 import time
 import numpy as np
-from kinematics_and_safety import *
-from sun_helper import *
-from lamp import Lamp
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.animation import FuncAnimation
@@ -10,20 +7,24 @@ import os
 from dotenv import load_dotenv
 load_dotenv() 
 
+from kinematics_and_safety import *
+from sun_helper import *
+from lamp import Lamp
 from linear_rail import LinearRail
 from spinning_joints import SpinningJoints
+from config import *
 
 class Arm:
     def __init__(self,
                  shared,
-                 init_pos=[920, -240, 0],
-                 dz1=210,
-                 dx1=57.5,
-                 dx2=105,
-                 dy1=835,
-                 end_link_length=905,
-                 theta_r=137.6,
-                 rail_length=731.3,
+                 init_pos=[BASE_X_OFFSET, BASE_Y_OFFSET, BASE_Z_OFFSET],
+                 dz1=PONTTO_Z_OFFSET,
+                 dx1=PONTTO_X_OFFSET,
+                 dx2=PAATY_X_OFFSET,
+                 dy1=PONTTO_ARM_LENGTH,
+                 end_link_length=PAATY_ARM_LENGTH,
+                 theta_r=RAIL_ANGLE,
+                 rail_length=RAIL_MAX_LIMIT,
                  lamp_url=os.getenv("WLED_ADR")
                  ):
         """
@@ -53,9 +54,25 @@ class Arm:
         
         self.shared = shared
 
-        self.motor_paaty = SpinningJoints(shared, pulse_pin=20, dir_pin=19, limit_pin=23, name="paaty", gear_ratio=5)
-        self.motor_pontto = SpinningJoints(shared, pulse_pin=13, dir_pin=26, limit_pin=22, name="pontto", gear_ratio=5*32/10)
-        self.motor_rail = LinearRail(shared, pulse_pin=27, dir_pin=4, limit_pin=24, gear_ratio=1)
+        self.motor_paaty = SpinningJoints(shared, 
+                                          pulse_pin=PAATY_MOTOR_PULSE_PIN, 
+                                          dir_pin=PAATY_MOTOR_DIR_PIN, 
+                                          limit_pin=PAATY_MOTOR_SENSOR_PIN, 
+                                          name="paaty", 
+                                          gear_ratio=PAATY_MOTOR_GEAR_RATIO)
+        
+        self.motor_pontto = SpinningJoints(shared, 
+                                           pulse_pin=PONTTO_MOTOR_PULSE_PIN, 
+                                           dir_pin=PONTTO_MOTOR_DIR_PIN, 
+                                           limit_pin=PONTTO_MOTOR_SENSOR_PIN, 
+                                           name="pontto",
+                                           gear_ratio=PONTTO_MOTOR_GEAR_RATION)
+        
+        self.motor_rail = LinearRail(shared, 
+                                     pulse_pin=RAIL_MOTOR_PULSE_PIN, 
+                                     dir_pin=RAIL_MOTOR_DIR_PIN, 
+                                     limit_pin=RAIL_MOTOR_SENSOR_PIN, 
+                                     gear_ratio=RAIL_MOTOR_GEAR_RATIO)
 
         self.lamp = Lamp(https_url=lamp_url)
 
@@ -76,11 +93,11 @@ class Arm:
             exit(67)
             return False
         
-        self.motor_pontto.shared.theta_1 = self.motor_pontto.angle = self.theta_1 = 137.6
+        self.motor_pontto.shared.theta_1 = self.motor_pontto.angle = self.theta_1 = RAIL_ANGLE
 
-        self.motor_paaty.shared.theta_2 = self.motor_paaty.angle = self.theta_2 = 90+73.17
+        self.motor_paaty.shared.theta_2 = self.motor_paaty.angle = self.theta_2 = THETA_2_VAL_IN_INIT
 
-        self.motor_rail.shared.delta_r = self.motor_rail.distance = self.delta_r = 0
+        self.motor_rail.shared.delta_r = self.motor_rail.distance = self.delta_r = DELTA_R_VAL_IN_INIT
 
         self.lamp.set_brightness(0)
         self.lamp.set_to_solid()

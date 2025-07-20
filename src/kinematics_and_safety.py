@@ -26,6 +26,7 @@ import pandas as pd
 import os
 import json
 
+from config import *
 from sun_helper import get_sun_path, alt_to_color, jsonify_path, un_jsonify_path
 
 
@@ -36,14 +37,15 @@ from sun_helper import get_sun_path, alt_to_color, jsonify_path, un_jsonify_path
 def inverse_kinematics(x: float,
                        y: float, 
                        z: float,
-                       T_base: list[list[float]] = [[1, 0, 0, 920], [0, 1, 0, -240], [0, 0, 1, 0], [0, 0, 0, 1]],
-                       theta_r: float = 137.6,      # rail orientation (deg)
-                       link_rise: float = 210,      # vertical offset of first joint (mm)
-                       rail_limits: tuple[float, float] = (-0.1, 731.3),
-                       dx1: float = 57.5,           # x-offset first link (mm)
-                       dx2: float = 105,            # x-offset second link (mm)
-                       dy0: float = 835,            # first arm length (mm)
-                       link_length: float = 905,    # second arm length (mm)  
+                       T_base: list[list[float]] = BASE_TRANSFORM_MATRIX,
+                       theta_r: float = RAIL_ANGLE,             # rail orientation (deg)
+                       link_rise: float = PONTTO_Z_OFFSET,      # vertical offset of first joint (mm)
+                       rail_limits: tuple[float, float] = (RAIL_MIN_LIMIT, 
+                                                           RAIL_MAX_LIMIT),
+                       dx1: float = PONTTO_X_OFFSET,            # x-offset first link (mm)
+                       dx2: float = PAATY_X_OFFSET,             # x-offset second link (mm)
+                       dy0: float = PONTTO_ARM_LENGTH,          # first arm length (mm)
+                       link_length: float = PAATY_ARM_LENGTH,   # second arm length (mm)  
                        eps: float = 1e-6, 
                        check_reachability: bool = True,
                        check_safety: bool = True,
@@ -126,7 +128,7 @@ def inverse_kinematics(x: float,
             theta_1 = alpha - gamma
 
             # convert and wrap angles into degrees domain
-            theta_1_deg = (((np.degrees(theta_1) + theta_r) - (-172)) % 360) + (-172)
+            theta_1_deg = (((np.degrees(theta_1) + theta_r) - (PONTTO_MOTOR_MIN_ANGLE)) % 360) + (PONTTO_MOTOR_MIN_ANGLE)
             theta_2_deg = ((np.degrees(theta_2) + 180) % 360) - 180
 
             if verbal:
@@ -179,12 +181,12 @@ def choose_solution(solutions: list[tuple[float,float,float]],
 def forward_kinematics(theta1_deg: float, 
                        theta2_deg: float, 
                        delta_r: float, 
-                       theta_r: float = 137.6,      # angle of the rails
-                       link_rise: float = 210,      # first Z offset (mm)
-                       dx1: float = 57.5,           # first X offset (mm)
-                       dx2: float = 105,            # second X offset (mm)
-                       dy0: float = 835,            # Y offset before pitch (mm)
-                       link_length: float = 905     # final link length (mm)
+                       theta_r: float = RAIL_ANGLE,             # angle of the rails
+                       link_rise: float = PONTTO_Z_OFFSET,      # first Z offset (mm)
+                       dx1: float = PONTTO_X_OFFSET,            # first X offset (mm)
+                       dx2: float = PAATY_X_OFFSET,             # second X offset (mm)
+                       dy0: float = PONTTO_ARM_LENGTH,          # Y offset before pitch (mm)
+                       link_length: float = PAATY_ARM_LENGTH    # final link length (mm)
                     ) -> np.array:
     """
     Compute XYZ positions of each joint (and end-effector) in world frame.
@@ -199,7 +201,7 @@ def forward_kinematics(theta1_deg: float,
     transforms = []
 
     # base translation
-    Tb = np.eye(4); Tb[:3,3] = [920, -240, 0]
+    Tb = BASE_TRANSFORM_MATRIX
     transforms.append(Tb)
 
     # rail rotation

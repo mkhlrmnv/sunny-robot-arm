@@ -3,10 +3,22 @@ import time
 from gpiozero import Button
 from signal import pause
 
+from config import *
+
 from multiprocessing import Event
 
 class SpinningJoints:
-    def __init__(self, shared, pulse_pin, dir_pin, name, limit_pin, step_per_rev=1600, gear_ratio=5, min_delay=1e-4, max_delay=1e-3, angle_limit=360):
+    def __init__(self, 
+                 shared, 
+                 pulse_pin, 
+                 dir_pin, 
+                 name, 
+                 limit_pin, 
+                 step_per_rev=1600, 
+                 gear_ratio=5, 
+                 min_delay: float = MOTORS_MIN_DELAY, 
+                 max_delay: float = MOTORS_MAX_DELAY, 
+                 angle_limit=360):
         """
         Initialize the stepper motor with the given GPIO pins.
 
@@ -64,13 +76,13 @@ class SpinningJoints:
 
             while not self.limit_event.is_set():
                 # TODO: CHECK THIS INIT FUNCTION!
-                if not direction_change and abs(self.angle) > 52:
+                if not direction_change and abs(self.angle) > abs(PONTTO_MOTOR_MIN_ANGLE-RAIL_ANGLE):
                     self.angle = 0
                     time.sleep(2)
                     direction = -1 * direction
                     direction_change = True
 
-                if direction_change and abs(self.angle) > 258: # TODO: Check this number
+                if direction_change and abs(self.angle) > 360-abs(PONTTO_MOTOR_MIN_ANGLE-RAIL_ANGLE): # TODO: Check this number
                     raise TimeoutError("Motor didn't find init pos")
 
                 self.step(direction=direction, speed=speed)
@@ -188,8 +200,19 @@ if __name__ == "__main__":
     from multiprocessing import Process, Queue, Manager
     manager = Manager()
     shared = manager.Namespace()
-    motor_paaty = SpinningJoints(pulse_pin=20, dir_pin=19, limit_pin=23, name="paaty", shared=shared, gear_ratio=5)
-    motor_pontto = SpinningJoints(pulse_pin=13, dir_pin=26, limit_pin=22, name="pontto", shared=shared, gear_ratio=5*32/10)
+    motor_paaty = SpinningJoints(shared, 
+                                pulse_pin=PAATY_MOTOR_PULSE_PIN, 
+                                dir_pin=PAATY_MOTOR_DIR_PIN, 
+                                limit_pin=PAATY_MOTOR_SENSOR_PIN, 
+                                name="paaty", 
+                                gear_ratio=PAATY_MOTOR_GEAR_RATIO)
+        
+    motor_pontto = SpinningJoints(shared, 
+                                pulse_pin=PONTTO_MOTOR_PULSE_PIN, 
+                                dir_pin=PONTTO_MOTOR_DIR_PIN, 
+                                limit_pin=PONTTO_MOTOR_SENSOR_PIN, 
+                                name="pontto",
+                                gear_ratio=PONTTO_MOTOR_GEAR_RATION)
     
     # motor_pontto.move_by_angle(-190, speed=0.1)
     # motor_paaty.move_by_angle(-90, speed=0.5)
