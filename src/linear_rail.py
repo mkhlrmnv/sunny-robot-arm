@@ -147,14 +147,14 @@ class LinearRail:
 
         # Distance sign inverted to compensate wiring: dir=+1 → −distance.
         self.distance += (-1 * direction) * (self.pitch / self.step_per_rev)
-        self.shared.delta_r = self.distance
+        self.shared.delta_r += (-1 * direction) * (self.pitch / self.step_per_rev)
 
 
     def move_by_distance(self, 
                          distance: float, 
                          speed: float = 0.5,
                          ignore_limit: bool = False, 
-                         shared = None) -> None:
+                         ): #shared = None) -> None:
         """Translate carriage by *distance* millimetres (signed)."""
 
         if distance == 0:
@@ -170,19 +170,19 @@ class LinearRail:
         for _ in range(abs(steps)):
             self.step(direction=direction, speed=speed, ignore_limit=ignore_limit)
 
-        if shared is not None:    # <- TODO: in theory this can be deleted:)
-            shared.delta_r = self.distance
+        # if shared is not None:    # <- TODO: in theory this can be deleted:)
+        #     shared.delta_r = self.distance
     
     def move_to_distance(self, 
                          target_distance: float, 
                          speed: float = 0.5, 
-                         shared = None) -> None:
+                         ): # shared = None) -> None:
         """Translate until :pyattr:`distance` == *target_distance* mm."""
         if target_distance < 0:
             raise ValueError("Target distance must be non-negative.")
         
         distance_diff = target_distance - self.distance
-        self.move_by_distance(distance_diff, speed=speed, shared=shared)
+        self.move_by_distance(distance_diff, speed=speed) # , shared=shared)
 
 
     def reset_position(self) -> None:

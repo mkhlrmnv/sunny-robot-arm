@@ -70,7 +70,6 @@ class SpinningJoints:
         # cabel tangled there for it has own init sequence
         if self.name=="pontto":
             direction_change = False
-            not_in_90_deg_range = False
 
             direction = 1
 
@@ -138,17 +137,17 @@ class SpinningJoints:
         self.angle = round(self.angle, 3)
 
         if self.name=="pontto":
-            self.shared.theta_1 = self.angle
+            self.shared.theta_1 -= direction * (360 / (self.step_per_rev * self.gear_ratio))
         elif self.name=="paaty":
-            self.shared.theta_2 = self.angle
+            self.shared.theta_2 -= direction * (360 / (self.step_per_rev * self.gear_ratio))
 
-    def move_by_angle(self, angle, speed=0.1, shared=None):
+    def move_by_angle(self, angle, speed=0.1): #, shared=None):
 
-        if shared is not None:
-            if self.name == "pontto":
-                self.angle = shared.theta_1
-            elif self.name == "paaty":
-                self.angle = shared.theta_2
+        # if shared is not None:
+        #     if self.name == "pontto":
+        #         self.angle = shared.theta_1
+        #     elif self.name == "paaty":
+        #         self.angle = shared.theta_2
 
         if abs(angle) > self.angle_limit:
            raise ValueError("Angle must be between -360 and 360 degrees.")
@@ -162,19 +161,19 @@ class SpinningJoints:
             # print("curr ", self.angle)
             self.step(direction=direction, speed=speed)
 
-        if shared is not None:
-            if self.name == "pontto":
-                shared.theta_1 = self.angle
-            elif self.name == "paaty":
-                shared.theta_2 = self.angle
+        # if shared is not None:
+        #     if self.name == "pontto":
+        #         shared.theta_1 = self.angle
+        #     elif self.name == "paaty":
+        #         shared.theta_2 = self.angle
 
-    def move_to_angle(self, target_angle, speed=0.1, shared=None):
+    def move_to_angle(self, target_angle, speed=0.1): #, shared=None):
         if abs(target_angle) > self.angle_limit:
             raise ValueError("Target angle must be between -360 and 360 degrees.")
 
         angle_diff = target_angle - self.angle
 
-        self.move_by_angle(angle_diff, speed=speed, shared=shared)
+        self.move_by_angle(angle_diff, speed=speed) #, shared=shared)
 
     def get_steps(self):
         return self.steps

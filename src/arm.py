@@ -136,7 +136,7 @@ class Arm:
             raise ValueError("Path initialization failed. Check the path file.")
 
 
-    def move(self, shared=None, speeds=None, check_safety=True):
+    def move(self, speeds=None, check_safety=True):
 
         if self.lamp.brightness == 0 or self.lamp.effect != 0:
             self.lamp.set_brightness(255)
@@ -156,13 +156,13 @@ class Arm:
         else:
             speed_joint, speed_rail = speeds
 
-        print("self theta 1", self.theta_1)
-        print("self theta 2", self.theta_2)
-        print("self delta r", self.delta_r)
+        # print("self theta 1", self.theta_1)
+        # print("self theta 2", self.theta_2)
+        # print("self delta r", self.delta_r)
 
-        self.motor_pontto.angle = self.theta_1
-        self.motor_paaty.angle = self.theta_2
-        self.motor_rail.distance = self.delta_r
+        # self.motor_pontto.angle = self.theta_1
+        # self.motor_paaty.angle = self.theta_2
+        # self.motor_rail.distance = self.delta_r
 
         since_last_move = time.time() - shared.timer
         if since_last_move < self.duration_per_point:
@@ -198,9 +198,9 @@ class Arm:
                     at_target = self._step_towards('theta_1', self.required_theta_1,
                                                 check_safety=check_safety)
                     if not at_target:
-                        self.motor_pontto.move_to_angle(self.required_theta_1, speed=speed_joint, shared=shared)
-                        if shared is not None:
-                            shared.theta_1 = self.theta_1
+                        self.motor_pontto.move_to_angle(self.required_theta_1, speed=speed_joint) # , shared=shared)
+                        # if shared is not None:
+                        #     shared.theta_1 = self.theta_1
                         progress_made = True
                         all_at_target = False
                 except ValueError:
@@ -211,9 +211,9 @@ class Arm:
                     at_target = self._step_towards('delta_r', self.required_delta_r,
                                                 check_safety=check_safety)
                     if not at_target:
-                        self.motor_rail.move_to_distance(self.required_delta_r, speed=speed_rail, shared=shared)
-                        if shared is not None:
-                            shared.delta_r = self.delta_r
+                        self.motor_rail.move_to_distance(self.required_delta_r, speed=speed_rail) #, shared=shared)
+                        # if shared is not None:
+                        #     shared.delta_r = self.delta_r
                         progress_made = True
                         all_at_target = False
                 except ValueError:
@@ -224,9 +224,9 @@ class Arm:
                     at_target = self._step_towards('theta_2', self.required_theta_2,
                                                 check_safety=check_safety)
                     if not at_target:
-                        self.motor_paaty.move_to_angle(self.required_theta_2, speed=speed_joint, shared=shared)
-                        if shared is not None:
-                            shared.theta_2 = self.theta_2
+                        self.motor_paaty.move_to_angle(self.required_theta_2, speed=speed_joint) #, shared=shared)
+                        # if shared is not None:
+                        #     shared.theta_2 = self.theta_2
                         progress_made = True
                         all_at_target = False
                 except ValueError:

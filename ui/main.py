@@ -176,7 +176,7 @@ def play_path():
 
     arm.init_path(path, duration=duration, dynamic_lamp=dynamic_lamp)
     shared.path_it = 0
-    arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
+    # arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
     print("starting to move")
     play_thread = threading.Thread(target=start_play_path_loop, daemon=True)
     play_thread.start()
@@ -185,11 +185,12 @@ def play_path():
 
 def start_play_path_loop():
     print("starting while loop")
-    arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
-    shared.path_it = 0
-    while start_arm_and_wait(arm.move, (shared,)) == 0 or start_arm_and_wait(arm.move, (shared,)) == 66:
-        arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
-        arm.iteration = shared.path_it
+    # arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
+    # shared.path_it = 0
+    while start_arm_and_wait(arm.move, ()) == 0 or start_arm_and_wait(arm.move, ()) == 66:
+        # arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
+        # arm.iteration = shared.path_it
+        print("iteration", shared.path_it)
         
     print("out of while loop")
 
@@ -248,24 +249,24 @@ def move_arm():
     with motor_lock:
         # Manual control stuff -> move up / down, etc.
         if cmd == 'motor_paaty_up':
-            start_arm(arm.motor_paaty.move_by_angle, (angles_per_key, 0.5, shared))
+            start_arm(arm.motor_paaty.move_by_angle, (angles_per_key, 0.5))
             response = "Motor paaty moving up"
         elif cmd == 'motor_paaty_down':
-            start_arm(arm.motor_paaty.move_by_angle, (-angles_per_key, 0.5, shared))
+            start_arm(arm.motor_paaty.move_by_angle, (-angles_per_key, 0.5))
             response = "Motor paaty moving down"
         elif cmd == 'motor_pontto_ccw':
-            start_arm(arm.motor_pontto.move_by_angle, (angles_per_key, 0.5, shared))
+            start_arm(arm.motor_pontto.move_by_angle, (angles_per_key, 0.5))
             print("theta 1", shared.theta_1)
             response = "Motor pontto moving ccw"
         elif cmd == 'motor_pontto_cw':
             print("theta 1", shared.theta_1)
-            start_arm(arm.motor_pontto.move_by_angle, (-angles_per_key, 0.5, shared))
+            start_arm(arm.motor_pontto.move_by_angle, (-angles_per_key, 0.5))
             response = "Motor pontto moving cw"
         elif cmd == 'motor_rail_right':
-            start_arm(arm.motor_rail.move_by_distance, (angles_per_key, 0.5, shared))
+            start_arm(arm.motor_rail.move_by_distance, (angles_per_key, 0.5))
             response = "Motor rail moving right"
         elif cmd == 'motor_rail_left':
-            start_arm(arm.motor_rail.move_by_distance, (-angles_per_key, 0.5, shared))
+            start_arm(arm.motor_rail.move_by_distance, (-angles_per_key, 0.5))
             response = "Motor rail moving left"
         elif cmd == 'pl':
             angles_per_key += 10
@@ -296,7 +297,7 @@ def move_arm():
                 status, response = "error", f"Invalid motor: {motor}"
             else:
                 # Update shared values
-                arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
+                # arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
 
                 if check:
                     if motor == 'pontto':
@@ -328,7 +329,7 @@ def move_arm():
                         return jsonify({"status": status, "message": response})
 
                     arm.init_path(np.array([end_point]), duration=0)
-                    return_code = start_arm_and_wait(arm.move, (shared, (speed, 0.5),))
+                    return_code = start_arm_and_wait(arm.move, ((speed, 0.5),))
                     if return_code == 0:
                         response = f"Motor {motor} moved by {angle}° to {target} (with safety check)"
                     else:
@@ -336,7 +337,7 @@ def move_arm():
 
                 else:
                     m.angle = getattr(shared, f"theta_{1 if motor == 'pontto' else 2}")
-                    if start_arm_and_wait(m.move_by_angle, (angle, speed, shared)) == 0:
+                    if start_arm_and_wait(m.move_by_angle, (angle, speed)) == 0:
                         index = 1 if motor == 'pontto' else 2
                         response = f"Motor {motor} moved by {angle}° to new angle: {getattr(shared, f'theta_{index}')}"
                     else:
@@ -352,7 +353,7 @@ def move_arm():
             if m is None:
                 status, response = "error", f"Invalid motor: {motor}"
             else:
-                arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
+                # arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
                 if check:
                     if motor == 'pontto':
                         origin = shared.theta_1
@@ -383,7 +384,7 @@ def move_arm():
                         return jsonify(status=status, response=response)
 
                     arm.init_path(np.array([end_point]), duration=0)
-                    return_code = start_arm_and_wait(arm.move, (shared, (speed, 0.5),))
+                    return_code = start_arm_and_wait(arm.move, ((speed, 0.5),))
                     if return_code == 0:
                         response = f"Motor {motor} moved from {origin} to {angle} (with safety check)"
                     else:
@@ -391,7 +392,7 @@ def move_arm():
                         
                 else:
                     origin = m.angle = getattr(shared, f"theta_{1 if motor == 'pontto' else 2}")
-                    if start_arm_and_wait(m.move_to_angle, (angle, speed, shared)) == 0:
+                    if start_arm_and_wait(m.move_to_angle, (angle, speed)) == 0:
                         index = 1 if motor == 'pontto' else 2
                         response = f"Motor {motor} moved from {origin}° to new angle: {getattr(shared, f'theta_{index}')}"
                     else:
@@ -404,7 +405,7 @@ def move_arm():
             check = bool(int(request.args.get('check_safety', 1)))
             
             if check:
-                arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
+                # arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
                 target = arm.motor_rail.distance + dist
                 end_point = forward_kinematics(arm.theta_1, arm.theta_2, target)[-1]
                 try:
@@ -418,15 +419,15 @@ def move_arm():
                     return jsonify({"status": status, "message": response})
                 
                 arm.init_path(np.array([end_point]), duration=0)
-                return_code = start_arm_and_wait(arm.move, (shared, (0.5, speed),))
+                return_code = start_arm_and_wait(arm.move, ((0.5, speed),))
                 if return_code == 0:
                     response = f"Rail moved by {dist} to {target} (with safety check)"
                 else:
                     status, response = "error", f"Function returned with exit code {return_code}"
 
             else:
-                arm.motor_rail.distance = shared.delta_r
-                if start_arm_and_wait(arm.motor_rail.move_by_distance, (dist, speed, shared)) == 0:
+                # arm.motor_rail.distance = shared.delta_r
+                if start_arm_and_wait(arm.motor_rail.move_by_distance, (dist, speed)) == 0:
                     response = f"Rail moved by {dist} to new distance: {shared.delta_r}"
                 else:
                     status, response = "error", "Movement didn’t complete"
@@ -436,7 +437,7 @@ def move_arm():
             speed = float(request.args.get('speed', 0.5))
             check = bool(int(request.args.get('check_safety', 1)))
             if check:
-                arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
+                # arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
                 origin = shared.delta_r
                 end_point = forward_kinematics(arm.theta_1, arm.theta_2, dist)[-1]
                 try:
@@ -450,15 +451,15 @@ def move_arm():
                     return jsonify({"status": status, "message": response})
                 
                 arm.init_path(np.array([end_point]), duration=0)
-                return_code = start_arm_and_wait(arm.move, (shared, (0.5, speed),))
+                return_code = start_arm_and_wait(arm.move, ((0.5, speed),))
                 if return_code == 0:
                     response = f"Rail moved to {dist} from {origin} (with safety check)"
                 else:
                     status, response = "error", f"Function returned with exit code {return_code}"
 
             else:
-                arm.motor_rail.distance = shared.delta_r
-                if start_arm_and_wait(arm.motor_rail.move_to_distance, (dist, speed, shared)) == 0:
+                # arm.motor_rail.distance = shared.delta_r
+                if start_arm_and_wait(arm.motor_rail.move_to_distance, (dist, speed)) == 0:
                     response = f"Rail moved by {dist} to new distance: {shared.delta_r}"
                 else:
                     status, response = "error", "Movement didn’t complete"
@@ -471,14 +472,14 @@ def move_arm():
             speed_rail = float(request.args.get('speed_rail', 0.5))
             speed_joints = float(request.args.get('speed_joints', 0.1))
 
-            arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
+            # arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
 
             sols = inverse_kinematics(x, y, z, verbal=False)
             c_th1, c_th2, c_dr = choose_solution(sols, (arm.theta_1, arm.theta_2, arm.delta_r))
             origin = forward_kinematics(c_th1, c_th2, c_dr)[-1]
 
             arm.init_path(np.array([[x, y, z]]), duration=0)
-            return_code = start_arm_and_wait(arm.move, (shared, (speed_joints, speed_rail), check))
+            return_code = start_arm_and_wait(arm.move, ((speed_joints, speed_rail), check))
             if return_code == 0:
                 response = f"Arm moved from ({origin[0], origin[1], origin[2]} to ({x}, {y}, {z})"
             else:
@@ -492,12 +493,12 @@ def move_arm():
             speed_rail = float(request.args.get('speed_rail', 0.5))
             speed_joints = float(request.args.get('speed_joints', 0.5))
 
-            arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
+            # arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
 
             end_point = forward_kinematics(theta_1, theta_2, delta_r)[-1]
 
             arm.init_path(np.array([end_point]), duration=0)
-            return_code = start_arm_and_wait(arm.move, (shared, (speed_joints, speed_rail), check))
+            return_code = start_arm_and_wait(arm.move, ((speed_joints, speed_rail), check))
             if return_code == 0:
                 response = f"Arm moved to angles: {theta_1}, {theta_2}, {delta_r} (with safety check)"
             else:
