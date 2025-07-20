@@ -13,6 +13,7 @@ from lamp import Lamp
 from linear_rail import LinearRail
 from spinning_joints import SpinningJoints
 from config import *
+from warning_sound import WarningSound
 
 class Arm:
     def __init__(self,
@@ -75,11 +76,13 @@ class Arm:
                                      gear_ratio=RAIL_MOTOR_GEAR_RATIO)
 
         self.lamp = Lamp(https_url=lamp_url)
+        self.warning_sound = WarningSound("sounds/timanttei_leikattu.wav")
 
 
     def init(self):
 
         self.lamp.set_to_blink()
+        self.warning_sound.start()
 
         try:
             print("Starting init")
@@ -101,6 +104,7 @@ class Arm:
 
         self.lamp.set_brightness(0)
         self.lamp.set_to_solid()
+        self.warning_sound.stop()
 
         return True
 
@@ -174,6 +178,8 @@ class Arm:
             # if movement is over 10cm, lamp will blink
             if distance_to_target > 100:
                 self.lamp.set_to_blink()
+            
+            self.warning_sound.start()
         
             print(f"Moving to target: theta_1={self.required_theta_1}, "
                   f"theta_2={self.required_theta_2}, delta_r={self.required_delta_r}")
@@ -252,6 +258,8 @@ class Arm:
                 self.lamp.set_to_solid(*color)
             else:
                 self.lamp.set_to_solid()
+
+            self.warning_sound.stop()
             
             shared.path_it += 1
         
