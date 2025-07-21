@@ -107,254 +107,6 @@ def alt_to_color(alt: pd.Series,
     return colors
 
 
-def get_sun_path_singapore(R: int = 2200,
-             latitude: float = 1.290270, 
-             longitude: float = 103.851959,
-             timezone: str = 'Asia/Singapore'
-             ) -> tuple[np.array, np.array, np.array]:
-    '''
-    This works same as the get_sun_path_finland expect that this handles few expectations 
-    differently
-
-    But in other stuff such as parameters and return values this function is absolutely the 
-    same so search get_sun_path_finland() if you want to know about them
-    '''
-
-    # All the basic path generation is also copied from there, there for look for explanations 
-    # in get_sun_path_finland() function
-    from kinematics_and_safety import inverse_kinematics, forward_kinematics
-
-    times = pd.date_range(
-        end  ='2025-06-21 23:59',   
-        start='2025-06-21 00:00',   
-        freq='10min',
-        tz=timezone
-    )
-
-    # 2) Compute solar positions and drop nighttime (elevation ≤ 0°)
-    location = pvlib.location.Location(latitude, longitude, timezone)
-    solpos = location.get_solarposition(times)
-    # keep only daytime
-    solpos = solpos.loc[solpos['apparent_elevation'] > 0, :]
-    alt = solpos['apparent_elevation']  
-    az  = solpos['azimuth']
-
-    # map altitude → RGB color
-    colors = alt_to_color(alt)
-
-    x = R * np.cos(np.radians(alt)) * np.sin(np.radians(az + 135)) # + (1820/2)
-    y = R * np.cos(np.radians(alt)) * np.cos(np.radians(az + 135)) # - (1680/2)
-    z = R * np.sin(np.radians(alt))
-
-    # Singapores paths starts and ends outside the reach of the robot, so this shifts it into it
-    x_shift = x[-1] - 1820
-    y_shift = y[0] + 1680
-    z_shift = PAATY_ARM_LENGTH - PONTTO_Z_OFFSET
-
-    x -= x_shift
-    y -= y_shift
-    z += np.min([z[0], z[-1]]) - z_shift
-
-    sun_dirs = np.stack((x, y, z), axis=1)
-
-    # trim first/last few as they are usually to close to the 
-    # "kontti" and cannot be reached safely
-    sun_dirs =  sun_dirs[2:-2]
-    colors =    colors[2:-2]
-
-    counter = 0
-    unreachable_points = []
-
-    for i, p in enumerate(sun_dirs):
-
-        try: 
-            inverse_kinematics(*p)
-
-        except ValueError:
-            unreachable_points.append(sun_dirs[i].copy())
-            counter += 1
-
-            # collect original coordinates
-            x, y, z = sun_dirs[i]
-
-            # translate them into a base + rail coordinates
-
-            # base
-            T_base=BASE_TRANSFORM_MATRIX
-            T_inv = np.linalg.inv(T_base)
-            p_world = np.array([x, y, z, 1])
-            p_local = T_inv @ p_world
-            x_l, y_l, z_l = p_local[:3]
-
-            # rail
-            from scipy.spatial.transform import Rotation as R
-            Rz = R.from_euler('z', RAIL_ANGLE, degrees=True).as_matrix()
-            p_rail = Rz.T @ np.array([x_l, y_l, z_l])
-            x_r, y_r, z_r = p_rail
-
-            # solve for how much high is the point above the first joint
-            z_eff = z_r - PONTTO_Z_OFFSET
-
-            # Singapore path puts all unreachable points into three categories, which are
-            # 1. At the start first paths are just two far away to they need to be shifter closer
-            # 2. At the end same stuff but they have to assume known angles differently
-            # 3. In the middle points are above the rail, so they are unreachable by the robot, as
-            #    they will need it to move outside rail limits
-
-            j = 1
-
-            if i < ((len(sun_dirs) - 1) // 4):
-                # FIRST CASE:
-                # We look ahead for the next reachable point, then “borrow” its
-                # base/rail angles, adjusting θ2 by –7° per step to interpolate.
-                while j < (len(sun_dirs) - i - 1):
-                    try:
-                        theta_1_deg, theta_2_deg, delta_r = inverse_kinematics(*sun_dirs[i+j])[0]
-                        theta_2_deg -= 7 * j
-                        sol = (theta_1_deg, theta_2_deg, delta_r)
-                        end_point = forward_kinematics(*sol)
-                        sun_dirs[i] = end_point[-1]
-                        break
-                    except:
-                        j += 1
-
-            elif i > (2 * ((len(sun_dirs) - 1) // 4)):
-                # SECOND CASE:
-                # Search backwards for a reachable point, then interpolate similarly.
-                while j < i:
-                    try:
-                        theta_1_deg, theta_2_deg, delta_r = inverse_kinematics(*sun_dirs[i-j])[0]
-                        theta_2_deg -= 7 * j
-                        sol = (theta_1_deg, theta_2_deg, delta_r)
-                        end_point = forward_kinematics(*sol)
-                        sun_dirs[i] = end_point[-1]
-                        break
-                    except:
-                        j += 1
-            else:
-                # THIRD CASE:
-
-                previous_sols = inverse_kinematics(*sun_dirs[i-1])
-
-                # This has two possible ways on handeling unreachable
-                # 1. It makes robot to assume same th2 value and adjust th1 and dr 
-                #    until it reaches next point with IK solution
-                # 2. It locks both th1 and th2 and gradually changes dr until
-                #    it reaches next point with IK solution
-
-                # ---------- HERE STARTS THE FIRST VERSION ----------
-                
-                # First it saves the previous valid solution and choses the one with
-                # smaller delta r
-                
-                if len(previous_sols) > 1:
-                    # Choose the one with smaller delta_r
-                    d1, d2 = previous_sols[0][2], previous_sols[1][2]
-                    previous_th1, previous_th2, previous_dr = previous_sols[0] if d1 < d2 else previous_sols[1]
-                else:
-                    previous_th1, previous_th2, previous_dr = previous_sols[0]
-
-                # Then it finds next index with valid solution
-                # and saves it choosing the one with larger delta_r if multiple solutions exist
-                j = i
-                while j < (len(sun_dirs)):
-                    try:
-                        next_sols = inverse_kinematics(*sun_dirs[j])
-                        break
-                    except:
-                        j += 1
-
-                if len(next_sols) != 1:
-                    d1, d2 = next_sols[0][2], next_sols[1][2]
-
-                    if d1 > d2:
-                        next_th1, next_th2, next_dr = next_sols[0]
-                    else:
-                        next_th1, next_th2, next_dr = next_sols[1]
-                else:
-                    next_th1, next_th2, next_dr = next_sols[0]
-
-                # calc how many indexes are between to valid solutions
-                index_dif = abs(j-i)
-
-                # calc how much dr and th1 should change per point
-                dr_pre_point = (next_dr - previous_dr) / index_dif
-                th1_pre_point = (next_th1 - previous_th1) / index_dif
-
-                # loops through all unreachable points and overwrites them with 
-                # slightly rotated new point
-                k = 0
-                while k < abs(j-i):
-                    sol = (previous_th1 + (th1_pre_point * k), previous_th2, previous_dr + (dr_pre_point * k))
-                    end_point = forward_kinematics(*sol)
-                    unreachable_points.append(sun_dirs[i+k].copy())
-                    sun_dirs[i+k] = end_point[-1]
-                    k += 1
-                
-                '''    
-                # ---------- HERE STARTS THE SECOND VERSION ----------
-
-                # Similarly to v1 find previous solution
-                if len(previous_sols) != 1:
-                    d1, d2 = previous_sols[0][2], previous_sols[1][2]
-
-                    if d1 < d2:
-                        previous_th1, previous_th2, previous_dr = previous_sols[0]
-                    else:
-                        previous_th1, previous_th2, previous_dr = previous_sols[1]
-                else:
-                    previous_th1, previous_th2, previous_dr = previous_sols[0]
-
-                    
-                # finds next index
-                j = i
-                while j < (len(sun_dirs)):
-                    try:
-                        next_sols = inverse_kinematics(*sun_dirs[j])
-                        break
-                    except:
-                        j += 1
-
-                if len(next_sols) != 1:
-                    d1, d2 = next_sols[0][2], next_sols[1][2]
-
-                    if d1 > d2:
-                        next_th1, next_th2, next_dr = next_sols[0]
-                    else:
-                        next_th1, next_th2, next_dr = next_sols[1]
-                else:
-                    next_th1, next_th2, next_dr = next_sols[0]
-
-                index_dif = abs(j-i)
-
-                dr_per_point = (previous_dr + (RAIL_MAX_LIMIT-next_dr)) / index_dif
-
-                # Loops thought all unreachable by adjusting delta_r on each one, but
-                # keeping the th1 and th2 the same to previous or to next one
-                k = 0
-                while k < abs(j-i):
-                    
-                    new_dr = previous_dr - (dr_per_point * k)
-
-                    if new_dr > 0:
-                        sol = (previous_th1, previous_th2, new_dr)
-                    else:
-                        new_dr += RAIL_MAX_LIMIT
-                        sol = (next_th1, next_th2, new_dr)
-
-                    # sol = (previous_th1 + (th1_pre_point * k), previous_th2, previous_dr + (dr_pre_point * k))
-                    end_point = forward_kinematics(*sol)
-                    unreachable_points.append(sun_dirs[i+k].copy())
-                    sun_dirs[i+k] = end_point[-1]
-                    k += 1
-
-                '''
-
-    print(f"in total {counter} points are unreachabel")
-
-    return sun_dirs, np.array(unreachable_points), colors
-    
-
 def get_sun_path_finland(R: int = 1700,
              latitude: float = 60.1699, 
              longitude: float = 24.9384,
@@ -583,6 +335,253 @@ def get_sun_path_finland(R: int = 1700,
 
     return sun_dirs, np.array(unreachable_points), colors
 
+
+def get_sun_path_singapore(R: int = 2200,
+             latitude: float = 1.290270, 
+             longitude: float = 103.851959,
+             timezone: str = 'Asia/Singapore'
+             ) -> tuple[np.array, np.array, np.array]:
+    '''
+    This works same as the get_sun_path_finland expect that this handles few expectations 
+    differently
+
+    But in other stuff such as parameters and return values this function is absolutely the 
+    same so search get_sun_path_finland() if you want to know about them
+    '''
+
+    # All the basic path generation is also copied from there, there for look for explanations 
+    # in get_sun_path_finland() function
+    from kinematics_and_safety import inverse_kinematics, forward_kinematics
+
+    times = pd.date_range(
+        end  ='2025-06-21 23:59',   
+        start='2025-06-21 00:00',   
+        freq='10min',
+        tz=timezone
+    )
+
+    # 2) Compute solar positions and drop nighttime (elevation ≤ 0°)
+    location = pvlib.location.Location(latitude, longitude, timezone)
+    solpos = location.get_solarposition(times)
+    # keep only daytime
+    solpos = solpos.loc[solpos['apparent_elevation'] > 0, :]
+    alt = solpos['apparent_elevation']  
+    az  = solpos['azimuth']
+
+    # map altitude → RGB color
+    colors = alt_to_color(alt)
+
+    x = R * np.cos(np.radians(alt)) * np.sin(np.radians(az + 135)) # + (1820/2)
+    y = R * np.cos(np.radians(alt)) * np.cos(np.radians(az + 135)) # - (1680/2)
+    z = R * np.sin(np.radians(alt))
+
+    # Singapores paths starts and ends outside the reach of the robot, so this shifts it into it
+    x_shift = x[-1] - 1820
+    y_shift = y[0] + 1680
+    z_shift = PAATY_ARM_LENGTH - PONTTO_Z_OFFSET
+
+    x -= x_shift
+    y -= y_shift
+    z += np.min([z[0], z[-1]]) - z_shift
+
+    sun_dirs = np.stack((x, y, z), axis=1)
+
+    # trim first/last few as they are usually to close to the 
+    # "kontti" and cannot be reached safely
+    sun_dirs =  sun_dirs[2:-2]
+    colors =    colors[2:-2]
+
+    counter = 0
+    unreachable_points = []
+
+    for i, p in enumerate(sun_dirs):
+
+        try: 
+            inverse_kinematics(*p)
+
+        except ValueError:
+            unreachable_points.append(sun_dirs[i].copy())
+            counter += 1
+
+            # collect original coordinates
+            x, y, z = sun_dirs[i]
+
+            # translate them into a base + rail coordinates
+
+            # base
+            T_base=BASE_TRANSFORM_MATRIX
+            T_inv = np.linalg.inv(T_base)
+            p_world = np.array([x, y, z, 1])
+            p_local = T_inv @ p_world
+            x_l, y_l, z_l = p_local[:3]
+
+            # rail
+            from scipy.spatial.transform import Rotation as R
+            Rz = R.from_euler('z', RAIL_ANGLE, degrees=True).as_matrix()
+            p_rail = Rz.T @ np.array([x_l, y_l, z_l])
+            x_r, y_r, z_r = p_rail
+
+            # solve for how much high is the point above the first joint
+            z_eff = z_r - PONTTO_Z_OFFSET
+
+            # Singapore path puts all unreachable points into three categories, which are
+            # 1. At the start first paths are just two far away to they need to be shifter closer
+            # 2. At the end same stuff but they have to assume known angles differently
+            # 3. In the middle points are above the rail, so they are unreachable by the robot, as
+            #    they will need it to move outside rail limits
+
+            j = 1
+
+            if i < ((len(sun_dirs) - 1) // 4):
+                # FIRST CASE:
+                # We look ahead for the next reachable point, then “borrow” its
+                # base/rail angles, adjusting θ2 by –7° per step to interpolate.
+                while j < (len(sun_dirs) - i - 1):
+                    try:
+                        theta_1_deg, theta_2_deg, delta_r = inverse_kinematics(*sun_dirs[i+j])[0]
+                        theta_2_deg -= 7 * j
+                        sol = (theta_1_deg, theta_2_deg, delta_r)
+                        end_point = forward_kinematics(*sol)
+                        sun_dirs[i] = end_point[-1]
+                        break
+                    except:
+                        j += 1
+
+            elif i > (2 * ((len(sun_dirs) - 1) // 4)):
+                # SECOND CASE:
+                # Search backwards for a reachable point, then interpolate similarly.
+                while j < i:
+                    try:
+                        theta_1_deg, theta_2_deg, delta_r = inverse_kinematics(*sun_dirs[i-j])[0]
+                        theta_2_deg -= 7 * j
+                        sol = (theta_1_deg, theta_2_deg, delta_r)
+                        end_point = forward_kinematics(*sol)
+                        sun_dirs[i] = end_point[-1]
+                        break
+                    except:
+                        j += 1
+            else:
+                # THIRD CASE:
+
+                previous_sols = inverse_kinematics(*sun_dirs[i-1])
+
+                # This has two possible ways on handeling unreachable
+                # 1. It makes robot to assume same th2 value and adjust th1 and dr 
+                #    until it reaches next point with IK solution
+                # 2. It locks both th1 and th2 and gradually changes dr until
+                #    it reaches next point with IK solution
+
+                # ---------- HERE STARTS THE FIRST VERSION ----------
+                
+                # First it saves the previous valid solution and choses the one with
+                # smaller delta r
+                if len(previous_sols) > 1:
+                    # Choose the one with smaller delta_r
+                    d1, d2 = previous_sols[0][2], previous_sols[1][2]
+                    previous_th1, previous_th2, previous_dr = previous_sols[0] if d1 < d2 else previous_sols[1]
+                else:
+                    previous_th1, previous_th2, previous_dr = previous_sols[0]
+
+                # Then it finds next index with valid solution
+                # and saves it choosing the one with larger delta_r if multiple solutions exist
+                j = i
+                while j < (len(sun_dirs)):
+                    try:
+                        next_sols = inverse_kinematics(*sun_dirs[j])
+                        break
+                    except:
+                        j += 1
+
+                if len(next_sols) != 1:
+                    d1, d2 = next_sols[0][2], next_sols[1][2]
+
+                    if d1 > d2:
+                        next_th1, next_th2, next_dr = next_sols[0]
+                    else:
+                        next_th1, next_th2, next_dr = next_sols[1]
+                else:
+                    next_th1, next_th2, next_dr = next_sols[0]
+
+                # calc how many indexes are between to valid solutions
+                index_dif = abs(j-i)
+
+                # calc how much dr and th1 should change per point
+                dr_pre_point = (next_dr - previous_dr) / index_dif
+                th1_pre_point = (next_th1 - previous_th1) / index_dif
+
+                # loops through all unreachable points and overwrites them with 
+                # slightly rotated new point
+                k = 0
+                while k < abs(j-i):
+                    sol = (previous_th1 + (th1_pre_point * k), previous_th2, previous_dr + (dr_pre_point * k))
+                    end_point = forward_kinematics(*sol)
+                    unreachable_points.append(sun_dirs[i+k].copy())
+                    sun_dirs[i+k] = end_point[-1]
+                    k += 1
+                
+                '''    
+                # ---------- HERE STARTS THE SECOND VERSION ----------
+
+                # Similarly to v1 find previous solution
+                if len(previous_sols) != 1:
+                    d1, d2 = previous_sols[0][2], previous_sols[1][2]
+
+                    if d1 < d2:
+                        previous_th1, previous_th2, previous_dr = previous_sols[0]
+                    else:
+                        previous_th1, previous_th2, previous_dr = previous_sols[1]
+                else:
+                    previous_th1, previous_th2, previous_dr = previous_sols[0]
+
+                    
+                # finds next index
+                j = i
+                while j < (len(sun_dirs)):
+                    try:
+                        next_sols = inverse_kinematics(*sun_dirs[j])
+                        break
+                    except:
+                        j += 1
+
+                if len(next_sols) != 1:
+                    d1, d2 = next_sols[0][2], next_sols[1][2]
+
+                    if d1 > d2:
+                        next_th1, next_th2, next_dr = next_sols[0]
+                    else:
+                        next_th1, next_th2, next_dr = next_sols[1]
+                else:
+                    next_th1, next_th2, next_dr = next_sols[0]
+
+                index_dif = abs(j-i)
+
+                dr_per_point = (previous_dr + (RAIL_MAX_LIMIT-next_dr)) / index_dif
+
+                # Loops thought all unreachable by adjusting delta_r on each one, but
+                # keeping the th1 and th2 the same to previous or to next one
+                k = 0
+                while k < abs(j-i):
+                    
+                    new_dr = previous_dr - (dr_per_point * k)
+
+                    if new_dr > 0:
+                        sol = (previous_th1, previous_th2, new_dr)
+                    else:
+                        new_dr += RAIL_MAX_LIMIT
+                        sol = (next_th1, next_th2, new_dr)
+
+                    # sol = (previous_th1 + (th1_pre_point * k), previous_th2, previous_dr + (dr_pre_point * k))
+                    end_point = forward_kinematics(*sol)
+                    unreachable_points.append(sun_dirs[i+k].copy())
+                    sun_dirs[i+k] = end_point[-1]
+                    k += 1
+
+                '''
+
+    print(f"in total {counter} points are unreachabel")
+
+    return sun_dirs, np.array(unreachable_points), colors
+    
 
 def jsonify_path(path: np.array, 
                  colours: np.ndarray | None = None
