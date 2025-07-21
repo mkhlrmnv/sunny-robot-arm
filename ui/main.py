@@ -38,7 +38,7 @@ arm = Arm(shared)
 # Start the cooling controller in its own thread.
 def start_cooling_thread():
     print("starting cooling")
-    controller = cooling.FanController(fan_pin=18, min_temp=20, max_temp=45)
+    controller = cooling.FanController(fan_pin=18, min_temp=30, max_temp=60)
     atexit.register(controller.shutdown)
     controller.run(verbal=False, interval=0.1)
     print("started cooling")
