@@ -84,15 +84,15 @@ def get_sun_path(R=1700,
 
     # 3) Convert to unit‐sphere Cartesian for 3D plotting
     #    X axis → East, Y → North, Z → Up
-    x = R * np.cos(np.radians(alt)) * np.sin(np.radians(az + 135)) + (1820/2)
-    y = R * np.cos(np.radians(alt)) * np.cos(np.radians(az + 135)) - (1680/2)
+    x = R * np.cos(np.radians(alt)) * np.sin(np.radians(az + 135)) # + (1820/2)
+    y = R * np.cos(np.radians(alt)) * np.cos(np.radians(az + 135)) # - (1680/2)
     z = R * np.sin(np.radians(alt))
 
     # 4) Shift the path
-    # First shift it to start and end in the center of the box (kontti),
-    # then shift it so that none of the points are in the box
+    # Shift the path so the middle of the path is in intersection of the safety boxes - 300mm offset
+    # additionally robot z reach is equal to second arm length - PONTTO_Z_OFFSET
 
-    center_point = [-800, 800, -830]
+    center_point = [-SAFE_ZONE_X_CORD + 300, SAFE_ZONE_Y_CORD - 300, -PAATY_ARM_LENGTH + PONTTO_Z_OFFSET]  # Center of the box (kontti)
 
     # Shift to the center
     x_shift = center_point[0] - x.iloc[int(len(x)/2)]
@@ -197,7 +197,7 @@ def get_sun_path(R=1700,
             # total reach of the arm
             r = np.hypot(arm_reach_x, arm_reach_y)
             
-            if cy > RAIL_MIN_LIMIT  and cy < RAIL_MAX_LIMIT:
+            if cy > RAIL_MIN_LIMIT and cy < RAIL_MAX_LIMIT:
                 d = cx
             elif cy <= RAIL_MIN_LIMIT:
                 d = np.hypot(cx, cy)
@@ -319,7 +319,6 @@ def un_jsonify_path(json_file):
 
 if __name__ == "__main__":
 
-    '''
     sun_dirs, unreachable_points, colors = get_sun_path()
     
     res = jsonify_path(sun_dirs, colors)
@@ -359,4 +358,5 @@ if __name__ == "__main__":
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(sun_dirs2[:, 0], sun_dirs2[:, 1], sun_dirs2[:, 2], c=colors2, s=10)
     plt.show()
+    '''
 
