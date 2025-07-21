@@ -55,16 +55,40 @@ def alt_to_color(alt, min_temp=2000, max_temp=6500):
 
 
 
-def get_sun_path(R=1700,
-             latitude=60.1699, 
-             longitude=24.9384,
-             timezone = 'Europe/Helsinki'):
+def get_sun_path(R: int = 1700,
+             latitude: float = 60.1699, 
+             longitude: float = 24.9384,
+             timezone: str = 'Europe/Helsinki'
+             ) -> tuple[np.array, np.array, np.array]:
+    """
+    Compute the sun's 3D positions over a single day, transform them into the
+    robot's coordinate frame, clamp to workspace limits, and collect unreachable
+    points.
+
+    Parameters
+    ----------
+    R : float
+        Radius of the virtual celestial sphere (for plotting scale).
+    latitude, longitude : float
+        Observer's geographic coordinates.
+    timezone : str
+        IANA timezone for date localization.
+
+    Returns
+    -------
+    sun_dirs : np.array
+        N×3 array of robot-frame [x, y, z] sun directions (after workspace shift).
+    unreachable_pts : np.array
+        M×3 array of original sun_dirs that IK reported as unreachable.
+    colors : np.array
+        Nx3 array [r, g, b] of the estimated suns color for each points .
+    """
     
+    # Necessary imports for inverse kinematics and forward kinematics
+    # made here to avoid circular imports
     from kinematics_and_safety import inverse_kinematics, forward_kinematics
 
-    # 1) Define timespan
-    # Here we define from the day start to the end, cause we
-    # will get rid off the night time in step 2
+    # 1) Build datetime index for the day at 10-min intervals
     times = pd.date_range(
         end  ='2025-06-21 23:59',   
         start='2025-06-21 00:00',   
@@ -72,14 +96,15 @@ def get_sun_path(R=1700,
         tz=timezone
     )
 
-    # 2) Compute solar position (altitude & azimuth) and 
-    # remove the night time
+    # 2) Compute solar positions and drop nighttime (elevation ≤ 0°)
     location = pvlib.location.Location(latitude, longitude, timezone)
     solpos = location.get_solarposition(times)
-    solpos = solpos.loc[solpos['apparent_elevation'] > 0, :] #remove night time => remove all where altitude is below 0
-    alt = solpos['apparent_elevation']  # degrees above horizon
-    az  = solpos['azimuth']             # degrees clockwise from North
+    # keep only daytime
+    solpos = solpos.loc[solpos['apparent_elevation'] > 0, :]
+    alt = solpos['apparent_elevation']  
+    az  = solpos['azimuth']
 
+    # map altitude → RGB color
     colors = alt_to_color(alt)
 
     # 3) Convert to unit‐sphere Cartesian for 3D plotting
@@ -88,83 +113,72 @@ def get_sun_path(R=1700,
     y = R * np.cos(np.radians(alt)) * np.cos(np.radians(az + 135)) # - (1680/2)
     z = R * np.sin(np.radians(alt))
 
-    # 4) Shift the path
-    # Shift the path so the middle of the path is in intersection of the safety boxes - 300mm offset
-    # additionally robot z reach is equal to second arm length - PONTTO_Z_OFFSET
+    # 4) Shift path to align its midpoint with the overcrossing point 
+    # of the safety boxes + offset of 300mm
 
-    center_point = [-SAFE_ZONE_X_CORD + 300, SAFE_ZONE_Y_CORD - 300, -PAATY_ARM_LENGTH + PONTTO_Z_OFFSET]  # Center of the box (kontti)
-
-    # Shift to the center
-    x_shift = center_point[0] - x.iloc[int(len(x)/2)]
-    y_shift = center_point[1] - y.iloc[int(len(y)/2)] 
+    center_point = [-SAFE_ZONE_X_CORD + 300, 
+                    SAFE_ZONE_Y_CORD - 300, 
+                    -PAATY_ARM_LENGTH + PONTTO_Z_OFFSET]
+    
+    mid_idx = len(x)//2
+    # compute translation offsets so midpoint lands at center_pt
+    x_shift = center_point[0] - x.iloc[mid_idx]
+    y_shift = center_point[1] - y.iloc[mid_idx] 
     z_shift = center_point[2] - np.min([z.iloc[0], z.iloc[len(z)-1]])
+    x += x_shift; y += y_shift; z += z_shift
 
-    x += x_shift
-    y += y_shift
-    z += z_shift
-
-    # Shift to outside of the box
+    # 5) Shift path so the all points are outside the "kontti" box
     x_shift_2 = 0 - x.iloc[0]
     y_shift_2 = 0 - y.iloc[-1]
+    x += x_shift_2; y += y_shift_2
 
-    x += x_shift_2
-    y += y_shift_2
-
-    x_shift_3 = -128 - x.iloc[0]
-
-    # x += x_shift_3
-
-    x_avg_orig = np.average([x.iloc[0], x.iloc[-1]])
-    y_avg_orig = np.average([y.iloc[0], y.iloc[-1]])
-    z_avg_orig = np.average([z.iloc[0], z.iloc[-1]])
-
-    # stack for future steps
+    # Assemble N×3 array of 3D points
     sun_dirs = np.stack((x, y, z), axis=1)
 
-     
+    # trim first/last few as they are usually to close to the 
+    # "kontti" and cannot be reached safely
     sun_dirs =  sun_dirs[8:-6]
     colors = colors[8:-6]
+
+
+    # if point is in of the safety box, then set it to the edge of the box
+
+    # 6) If the points is inside safety boxes -> outside of the working area
+    # shift it into the limits
+    for i, (xi, yi, zi) in enumerate(sun_dirs):
+        xi = np.clip(xi, -1000+1, 1820-1)
+        yi = np.clip(yi, -1680+1, 1100-1)
+        sun_dirs[i,0], sun_dirs[i,1] = xi, yi
 
     counter = 0
     unreachable_points = []
 
+    # 7) Test each point with IK; collect unreachable, and adjust the to be reachable
     for i in range(len(sun_dirs)):
-        if sun_dirs[i][0] < -1000:
-            sun_dirs[i][0] = -999
-        if sun_dirs[i][0] > 1820:
-            sun_dirs[i][0] = 1819
-        if sun_dirs[i][1] < -1680:
-            sun_dirs[i][1] = -1679
-        if sun_dirs[i][1] > 1100:
-            sun_dirs[i][1] = 1099
-
-    # for loop through all the points
-    for i in range(len(sun_dirs)):
-
-        # try if they are reachable
         try: 
+            # only checking, we ignore returned solutions here
             inverse_kinematics(*sun_dirs[i], check_safety=True, verbal=False)
 
         # if not, then ...
         except ValueError:
             unreachable_points.append(sun_dirs[i].copy())
             counter += 1
-            print("counter ", counter)
-            print(f"Point {i} is unreachable: {sun_dirs[i]}")
+            # print("counter ", counter)
+            # print(f"Point {i} is unreachable: {sun_dirs[i]}")
 
-            # get the point
+            # collect original coordinates
             x, y, z = sun_dirs[i]
 
-            # translate it to the base + rail frames for inverse kinematics
+            # translate them into a base + rail coordinates
 
-            # Step 1: Bring world point into robot base frame
+            # base
             T_base=BASE_TRANSFORM_MATRIX
             T_inv = np.linalg.inv(T_base)
             p_world = np.array([x, y, z, 1])
             p_local = T_inv @ p_world
             x_l, y_l, z_l = p_local[:3]
 
-            # Step 2: Rotate point into rail frame (rail lies along +Y direction)
+            # rail
             from scipy.spatial.transform import Rotation as R
             Rz = R.from_euler('z', RAIL_ANGLE, degrees=True).as_matrix()
             p_rail = Rz.T @ np.array([x_l, y_l, z_l])
@@ -173,45 +187,52 @@ def get_sun_path(R=1700,
             # solve for how much high is the point above the first joint
             z_eff = z_r - PONTTO_Z_OFFSET
 
-            # rename the points 
-            cx, cy = x_r, y_r
-
-            # constant of how much is arm shifts in the joints in x direction (when aligned with the rail)
-            arm_reach_x = PONTTO_X_OFFSET + PAATY_X_OFFSET
-
-            # assume that the arm is not too long, so we can use the previous theta_2
-            j = 1
-
-            while True:
-                try: 
-                    theta_2_deg = inverse_kinematics(*sun_dirs[i-j])[0][1]
-                    break
-                except:
-                    j += 1
-
+            # assume that arm is too long / short and use theta_2 from previous point
+            theta_2_deg = inverse_kinematics(*sun_dirs[i-1])[0][1]
             theta_2 = np.radians(theta_2_deg)
 
-            # calculate the arm reach in y direction when the arm is aligned with the rail
+            # Two constants, that indicate the x and y offset of the arm, if arm is alligned 
+            # with y-axis 
+            arm_reach_x = PONTTO_X_OFFSET + PAATY_X_OFFSET
             arm_reach_y = z_eff / np.tan(theta_2) + PONTTO_ARM_LENGTH
 
-            # total reach of the arm
+            # total reach of the arm in 2d world (x, y)
             r = np.hypot(arm_reach_x, arm_reach_y)
             
+            # rename the points 
+            # (cx, cy) is the 2D coordinate of required end point
+            cx, cy = x_r, y_r
+
+            # calculate the d = required arm reach in 2d plane
             if cy > RAIL_MIN_LIMIT and cy < RAIL_MAX_LIMIT:
+                # Case 1: End points y cord is in the rail limits, so we will assume that arm will try
+                # to reach the point from closes point that is on the y-axis, resulting in d being
+                # equal to end points x cord
                 d = cx
             elif cy <= RAIL_MIN_LIMIT:
+                # Case 2: End points y cord is smaller then rail min limit, meaning that robot 
+                # will have to reach point from rails min position (0, 0), to the d is hypot between
+                # origin and the end point
                 d = np.hypot(cx, cy)
-            else:
+            elif cy >= RAIL_MAX_LIMIT:
+                # Case 3: End points y cord is bigger then rail max limit, meaning that robot 
+                # will have to reach point from rails maximum position (0, MAX_LIM), to the d is hypot between
+                # max pos and the end point
                 d = np.sqrt(cx**2 + (RAIL_MAX_LIMIT-cy)**2)
 
+            # If required reach is larger then actual reach of the robot, we will shift the
+            # end point closer to be reachable
             if d > r:
                 s  = r / d                     # 0 < s < 1
                 cx = s * cx
                 cy = s * cy
+                
                 # (optional) log or store how much we shortened:
                 shrink_mm = d - r
                 print(f"   → shortened ray by {shrink_mm:.1f} mm to stay reachable")
 
+            # everything under is copied from IK function is kinematics_and_safety.py
+            # so for more explanation look there
             rhs = r**2 - cx**2
 
             if rhs < 0: 
@@ -245,19 +266,12 @@ def get_sun_path(R=1700,
 
                 sol = (theta_1_deg, theta_2_deg, y_wrist)
 
+                # calculate the new adjusted end point and replace the unreachable with it
                 end_point = forward_kinematics(*sol)
-
-                # breakpoint()
-
-                print("new point z eff", end_point[-1][2] - PONTTO_Z_OFFSET)
-
                 sun_dirs[i] = end_point[-1]
             
-
-    # breakpoint()
+    # report count of unreachable
     print(f"{counter} points are unreachable out of {len(sun_dirs)}")
-
-    # making sure that none of the points are inside the safety boxes
 
     return sun_dirs, np.array(unreachable_points), colors
 
