@@ -12,7 +12,7 @@ BASE_Z_OFFSET = 0
 
 BASE_TRANSFORM_MATRIX = [[1, 0, 0, BASE_X_OFFSET], 
                          [0, 1, 0, BASE_Y_OFFSET], 
-                         [0, 0, BASE_Z_OFFSET, 0], 
+                         [0, 0, 1, BASE_Z_OFFSET], 
                          [0, 0, 0, 1]]
 
 RAIL_ANGLE = 137.6
@@ -45,3 +45,6 @@ MOTORS_MAX_DELAY= 1e-3
 FAN_PIN = 18
 MIN_TEMP_IN_BOX = 30.0
 MAX_TEMP_IN_BOX = 60.0
+
+SAFE_ZONE_Y_CORD = 1200
+SAFE_ZONE_X_CORD = -1100
