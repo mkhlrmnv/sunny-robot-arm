@@ -1,3 +1,29 @@
+"""
+sun_helper.py
+~~~~~~~~~~~~~
+
+Utilities for computing the sun's path and coloring for a robotic-arm simulation.
+
+Functions
+---------
+alt_to_color
+    Map solar altitude (°) to approximate RGB colors via color-temperature conversion.
+get_sun_path
+    Generate and adjust a series of 3D sun-direction points for one day,
+    clamp them to the robot's workspace, and record unreachable positions.
+jsonify_path
+    Convert an (N×3) path array (and optional colors) into JSON-friendly dict.
+un_jsonify_path
+    Load a JSON file produced by jsonify_path back into numpy arrays.
+
+Dependencies
+------------
+  - numpy, pandas, pvlib for solar geometry
+  - matplotlib for color normalization
+  - kinematics_and_safety.inverse_kinematics, forward_kinematics for reach checks
+  - config constants defining workspace limits and transforms
+"""
+
 import numpy as np
 import pvlib
 import pandas as pd
@@ -7,33 +33,60 @@ from mpl_toolkits.mplot3d import Axes3D
 import json
 import os
 
-from config import *
+from config import (
+    BASE_TRANSFORM_MATRIX, RAIL_ANGLE,
+    SAFE_ZONE_X_CORD, SAFE_ZONE_Y_CORD,
+    PONTTO_Z_OFFSET, PAATY_ARM_LENGTH,
+    PONTTO_X_OFFSET, PAATY_X_OFFSET,
+    RAIL_MIN_LIMIT, RAIL_MAX_LIMIT,
+    PONTTO_MOTOR_MIN_ANGLE,
+    PONTTO_ARM_LENGTH
+)
 
-def alt_to_color(alt, min_temp=2000, max_temp=6500):
+def alt_to_color(alt: pd.Series, 
+                 min_temp: int = 2000, 
+                 max_temp: int = 6500
+                 ) -> np.array:
+    """
+    Convert solar altitude angles to RGB colors by mapping to correlated color temperature.
+
+    Parameters
+    ----------
+    alt : pd.Series
+        Solar elevation angles (degrees) above horizon for each time point.
+    min_temp, max_temp : int
+        Bounds for color temperature mapping (Kelvin).
+
+    Returns
+    -------
+    colors : (N,3) array
+        RGB tuples normalized 0–1 for each altitude.
+    """
+    
+    # Scale altitudes to color temperatures between min_temp and max_temp
     max_alt = alt.max()
-
     temps = min_temp + (alt / max_alt) * (max_temp - min_temp)
 
-    def cct_to_rgb(cct_kelvin):
+    def cct_to_rgb(cct_kelvin: float) -> tuple[float,float,float]:
         """
-        Convert color temperature in Kelvin to an RGB tuple (each 0–1).
-        Based on Tanner Helland’s algorithm, but correctly uses 0–255 range.
+        Convert a color temperature (Kelvin) to an RGB triple (0–1).
+        Uses empirical formulas from Tanner Helland.
         """
         temp = cct_kelvin / 100.0
 
-        # RED
+        # Red channel
         if temp <= 66:
             red = 255.0
         else:
             red = 329.698727446 * ((temp - 60) ** -0.1332047592)
 
-        # GREEN
+        # Green channel
         if temp <= 66:
             green = 99.4708025861 * np.log(temp) - 161.1195681661
         else:
             green = 288.1221695283 * ((temp - 60) ** -0.0755148492)
 
-        # BLUE
+        # Blue channel
         if temp >= 66:
             blue = 255.0
         elif temp <= 19:
@@ -41,7 +94,7 @@ def alt_to_color(alt, min_temp=2000, max_temp=6500):
         else:
             blue = 138.5177312231 * np.log(temp - 10) - 305.0447927307
 
-        # Clamp to 0–255
+        # Clip
         red   = np.clip(red,   0, 255)
         green = np.clip(green, 0, 255)
         blue  = np.clip(blue,  0, 255)
@@ -49,10 +102,9 @@ def alt_to_color(alt, min_temp=2000, max_temp=6500):
         # Normalize to 0–1 for matplotlib
         return red/255.0, green/255.0, blue/255.0
 
+     # Vectorized conversion for all temperatures
     colors = np.array([cct_to_rgb(t) for t in temps])
-
     return colors
-
 
 
 def get_sun_path(R: int = 1700,
@@ -103,6 +155,8 @@ def get_sun_path(R: int = 1700,
     solpos = solpos.loc[solpos['apparent_elevation'] > 0, :]
     alt = solpos['apparent_elevation']  
     az  = solpos['azimuth']
+
+    print("alt type", type(alt))
 
     # map altitude → RGB color
     colors = alt_to_color(alt)
@@ -276,59 +330,39 @@ def get_sun_path(R: int = 1700,
     return sun_dirs, np.array(unreachable_points), colors
 
 
-def jsonify_path(path, colours=None):
+def jsonify_path(path: np.array, 
+                 colours: np.ndarray | None = None
+                 ) -> dict:
+    """
+    Convert path and optional RGB colors into JSON-serializable dict.
 
-    path_out = []
+    Returns {'path':[{'x':..,'y':..,'z':..},...], 'colors':[{'r':..,'g':..,'b':..},...]}
+    """
 
-    for p in path:
-        assert len(p) == 3, "Each point must have 3 coordinates (x, y, z)"
-
-        path_out.append({"x": p[0], "y": p[1], "z": p[2]})
-
-    result = {"path": path_out}
+    result = {'path': [{ 'x':float(x),'y':float(y),'z':float(z) } for x,y,z in path]}
 
     if colours is not None:
         assert len(path) == len(colours), "Path and colours must have the same length"
-
-        colors_out = []
-        
-        for c in colours:
-            assert len(c) == 3, "Each colour must have 3 components (r, g, b)"
-
-            colors_out.append({"r": int(c[0] * 255), "g": int(c[1] * 255), "b": int(c[2] * 255)})
-
-        result["colors"] = colors_out
+        result['colors'] = [
+            {'r':int(r*255),'g':int(g*255),'b':int(b*255)}
+            for r,g,b in colours
+        ]
 
     return result
 
-def un_jsonify_path(json_file):
+def un_jsonify_path(json_file: str) -> tuple[np.ndarray, np.ndarray | None]:
+    """
+    Load JSON file from jsonify_path into numpy arrays.
 
-    with open(json_file, "r") as f:
+    Returns (path_array, colors_array or None).
+    """
+    with open(json_file) as f:
         data = json.load(f)
-
-    path = data["path"]
-    colors = data.get("colors", None)
-
-    path_out = []
-
-    for p in path:
-        assert "x" in p and "y" in p and "z" in p, "Each point must have 'x', 'y', and 'z' keys"
-        assert len(p) == 3, "Each point must have 3 coordinates (x, y, z)"
-        p = [p["x"], p["y"], p["z"]]
-        path_out.append(p)
-
-
-    if colors is not None:
-        colors_out = []
-        for c in colors:
-            assert "r" in c and "g" in c and "b" in c, "Each color must have 'r', 'g', and 'b' keys"
-            assert len(c) == 3, "Each color must have 3 components (r, g, b)"
-            c = [c["r"], c["g"], c["b"]]
-            colors_out.append(c)
-        
-        return np.array(path_out), np.array(colors_out)
-
-    return np.array(path_out), None
+    path = np.array([[p['x'],p['y'],p['z']] for p in data['path']])
+    colors = None
+    if 'colors' in data:
+        colors = np.array([[c['r'],c['g'],c['b']] for c in data['colors']])
+    return path, colors
     
 
 if __name__ == "__main__":
