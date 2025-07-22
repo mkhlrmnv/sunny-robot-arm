@@ -235,6 +235,50 @@ def manual_control():
     return render_template('manual_control.html')
 
 
+@app.route('/api_play_path')
+def api_play_path():
+    global arm
+    name = request.args.get('name')
+    duration = int(request.args.get('duration'))
+    dynamic_lamp = bool(int(request.args.get('lamp')))
+
+    path = os.path.join(os.path.dirname(__file__), '..', 'paths', name)
+
+    start_arm_and_wait(arm.init, ())
+
+    arm.init_path(path, duration=duration, dynamic_lamp=dynamic_lamp)
+
+    shared.path_it = 0
+    # arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
+    start_arm_and_wait(arm.init, ())
+
+    exit_code = 0
+
+    while exit_code == 0 or exit_code == 66:
+        exit_code = start_arm_and_wait(arm.move, ())
+        # arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
+        # arm.iteration = shared.path_it
+        print("iteration", shared.path_it)
+
+    if exit_code == 68:
+        return jsonify({
+            "status": 'ok',
+            "message": 'arm reached the end of the path'
+            })
+    
+    elif exit_code == 69:
+        return jsonify({
+            "status": 'error',
+            "message": 'robot stopped due to safety reasons'
+            })
+    
+    else: 
+        return jsonify({
+            "status": 'error',
+            "message": 'robot stopped due to unknown reasons'
+            })
+
+
 @app.route('/move_arm')
 def move_arm():
     global arm, angles_per_key, motor_lock
