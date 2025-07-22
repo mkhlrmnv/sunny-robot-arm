@@ -9,4 +9,3 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 # Import test modules explicitly (optional)
 # from .test_motor import TestMotor
 # from .test_arm import TestArm
-from .test_helper import TestHelper
