@@ -10,6 +10,8 @@ This folder contains all the design files, documentation, and manufacturing spec
 
 ### Component Categories
 
+We tried adding all the basic components, but without assemblies that would showcase the whole robot / other big components, as they require a lot of files that we didn't feel necessary to be added to this repo. For more details, you can contact us and we will provide you with the files.
+
 #### Core Structural Components
 - **Bearing Housing**: Custom housing for rotational axis bearings
 - **Base Plate**: Main platform connecting linear rails adn the robot's rotational axis
