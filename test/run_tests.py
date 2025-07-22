@@ -12,6 +12,7 @@ Usage:
     python test/run_tests.py --verbose                    # Verbose output  
     python test/run_tests.py --integration               # Run integration tests
     python test/run_tests.py --sun-helper                # Run sun_helper utility tests
+    python test/run_tests.py --api                       # Run Flask API tests
     python test/run_tests.py --all                       # Run all test modules
     python test/run_tests.py --specific TestForwardKinematics  # Run specific test class
     python test/run_tests.py --method test_forward_kinematics_home_position  # Run specific test method
@@ -38,9 +39,11 @@ def main():
     parser.add_argument('--integration', '-i', action='store_true',
                        help='Run integration tests instead of unit tests')
     parser.add_argument('--all', '-a', action='store_true',
-                       help='Run all test modules (kinematics, sun_helper, integration)')
+                       help='Run all test modules (kinematics, sun_helper, integration, API)')
     parser.add_argument('--sun-helper', action='store_true',
                        help='Run sun_helper utility tests')
+    parser.add_argument('--api', action='store_true',
+                       help='Run Flask API tests')
     
     args = parser.parse_args()
     
@@ -51,6 +54,7 @@ def main():
             import test_kinematics_and_safety
             import test_sun_helper
             import test_integration_kinematics
+            # import test_move_arm_api
             
             loader = unittest.TestLoader()
             combined_suite = unittest.TestSuite()
@@ -58,6 +62,7 @@ def main():
             combined_suite.addTests(loader.loadTestsFromModule(test_kinematics_and_safety))
             combined_suite.addTests(loader.loadTestsFromModule(test_sun_helper))
             combined_suite.addTests(loader.loadTestsFromModule(test_integration_kinematics))
+            # combined_suite.addTests(loader.loadTestsFromModule(test_move_arm_api))
             
             print("✓ Successfully imported all test modules")
             
@@ -76,6 +81,10 @@ def main():
             import test_sun_helper
             test_module = test_sun_helper
             print("✓ Successfully imported sun_helper test module")
+        # elif args.api or (args.specific and 'API' in args.specific):
+        #     import test_move_arm_api
+        #     test_module = test_move_arm_api
+        #     print("✓ Successfully imported API test module")
         else:
             import test_kinematics_and_safety
             test_module = test_kinematics_and_safety
