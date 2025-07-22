@@ -10,4 +10,5 @@ plotly
 pydubpip 
 simpleaudio
 dotenv
+pytest
 # you’ll also need ffmpeg/avlib installed on your system
