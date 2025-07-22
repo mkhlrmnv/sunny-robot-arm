@@ -13,6 +13,9 @@ Usage:
     python test/run_tests.py --integration               # Run integration tests
     python test/run_tests.py --sun-helper                # Run sun_helper utility tests
     python test/run_tests.py --api                       # Run Flask API tests
+    python test/run_tests.py --hardware                  # Run all hardware component tests
+    python test/run_tests.py --spinning-joints           # Run spinning joints motor tests
+    python test/run_tests.py --linear-rail               # Run linear rail motor tests
     python test/run_tests.py --all                       # Run all test modules
     python test/run_tests.py --specific TestForwardKinematics  # Run specific test class
     python test/run_tests.py --method test_forward_kinematics_home_position  # Run specific test method
@@ -39,11 +42,17 @@ def main():
     parser.add_argument('--integration', '-i', action='store_true',
                        help='Run integration tests instead of unit tests')
     parser.add_argument('--all', '-a', action='store_true',
-                       help='Run all test modules (kinematics, sun_helper, integration, API)')
+                       help='Run all test modules (kinematics, sun_helper, integration, API, hardware)')
     parser.add_argument('--sun-helper', action='store_true',
                        help='Run sun_helper utility tests')
     parser.add_argument('--api', action='store_true',
                        help='Run Flask API tests')
+    parser.add_argument('--hardware', action='store_true',
+                       help='Run hardware component tests (spinning joints, linear rail)')
+    parser.add_argument('--spinning-joints', action='store_true',
+                       help='Run spinning joints motor tests')
+    parser.add_argument('--linear-rail', action='store_true',
+                       help='Run linear rail motor tests')
     
     args = parser.parse_args()
     
@@ -54,6 +63,8 @@ def main():
             import test_kinematics_and_safety
             import test_sun_helper
             import test_integration_kinematics
+            import test_spinning_joints
+            import test_linear_rail
             # import test_move_arm_api
             
             loader = unittest.TestLoader()
@@ -62,6 +73,8 @@ def main():
             combined_suite.addTests(loader.loadTestsFromModule(test_kinematics_and_safety))
             combined_suite.addTests(loader.loadTestsFromModule(test_sun_helper))
             combined_suite.addTests(loader.loadTestsFromModule(test_integration_kinematics))
+            combined_suite.addTests(loader.loadTestsFromModule(test_spinning_joints))
+            combined_suite.addTests(loader.loadTestsFromModule(test_linear_rail))
             # combined_suite.addTests(loader.loadTestsFromModule(test_move_arm_api))
             
             print("✓ Successfully imported all test modules")
@@ -81,6 +94,40 @@ def main():
             import test_sun_helper
             test_module = test_sun_helper
             print("✓ Successfully imported sun_helper test module")
+        elif args.hardware or (args.specific and ('SpinningJoints' in args.specific or 'LinearRail' in args.specific)):
+            if args.spinning_joints or (args.specific and 'SpinningJoints' in args.specific):
+                import test_spinning_joints
+                test_module = test_spinning_joints
+                print("✓ Successfully imported spinning joints test module")
+            elif args.linear_rail or (args.specific and 'LinearRail' in args.specific):
+                import test_linear_rail
+                test_module = test_linear_rail
+                print("✓ Successfully imported linear rail test module")
+            else:
+                # Run both hardware modules
+                import test_spinning_joints
+                import test_linear_rail
+                
+                loader = unittest.TestLoader()
+                combined_suite = unittest.TestSuite()
+                combined_suite.addTests(loader.loadTestsFromModule(test_spinning_joints))
+                combined_suite.addTests(loader.loadTestsFromModule(test_linear_rail))
+                
+                print("✓ Successfully imported hardware test modules")
+                
+                verbosity = 2 if args.verbose else 1
+                runner = unittest.TextTestRunner(verbosity=verbosity)
+                result = runner.run(combined_suite)
+                
+                return 0 if result.wasSuccessful() else 1
+        elif args.spinning_joints:
+            import test_spinning_joints
+            test_module = test_spinning_joints
+            print("✓ Successfully imported spinning joints test module")
+        elif args.linear_rail:
+            import test_linear_rail
+            test_module = test_linear_rail
+            print("✓ Successfully imported linear rail test module")
         # elif args.api or (args.specific and 'API' in args.specific):
         #     import test_move_arm_api
         #     test_module = test_move_arm_api

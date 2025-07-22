@@ -110,6 +110,82 @@ Comprehensive Flask API endpoint tests:
   - Multi-command sequences
   - State consistency validation
 
+### `test_spinning_joints.py`
+Comprehensive unit tests for the SpinningJoints stepper motor class:
+
+- **TestSpinningJointsInitialization**
+  - Parameter validation and object creation
+  - GPIO pin configuration validation
+  - Motor specifications (steps/rev, gear ratio, delays)
+
+- **TestStepCalculations**
+  - Step timing calculations based on speed percentage
+  - Motor stepping logic with direction control
+  - GPIO pulse generation and state updates
+
+- **TestAngleMovement**
+  - Relative angle movement (move_by_angle)
+  - Absolute angle positioning (move_to_angle)
+  - Angle limit enforcement and validation
+
+- **TestMotorInitialization**
+  - Motor-specific initialization sequences (pontto vs paaty)
+  - Limit switch detection and homing routines
+  - Initialization timeout and error handling
+
+- **TestSafetyValidation**
+  - Angle limit checking and enforcement
+  - Error handling for invalid parameters
+  - Safety constraint validation
+
+- **TestSharedStateManagement**
+  - Multiprocessing shared state coordination
+  - Motor-specific shared variable updates (theta_1, theta_2)
+  - Cross-process state synchronization
+
+- **TestCleanupAndUtilities**
+  - GPIO resource cleanup and management
+  - Utility functions (get_steps, get_angle, reset_position)
+  - Proper resource deallocation
+
+### `test_linear_rail.py`
+Comprehensive unit tests for the LinearRail stepper motor class:
+
+- **TestLinearRailInitialization**
+  - Parameter validation for linear stage setup
+  - GPIO configuration and mechanical parameters
+  - Screw drive pitch and gear ratio validation
+
+- **TestDistanceCalculations**
+  - Distance-to-steps conversion calculations
+  - Step timing based on speed percentage
+  - GPIO control for linear movement
+
+- **TestDistanceMovement**
+  - Relative distance movement (move_by_distance)
+  - Absolute distance positioning (move_to_distance)
+  - Movement direction and step calculation
+
+- **TestMotorInitialization**
+  - Limit switch-based homing sequences
+  - Back-off positioning after limit detection
+  - Multi-direction initialization support
+
+- **TestLimitSwitchHandling**
+  - Limit switch detection and response
+  - Movement blocking when limits are active
+  - Override capabilities with ignore_limit flag
+
+- **TestSharedStateManagement**
+  - Shared delta_r state coordination
+  - Real-time position tracking across processes
+  - State synchronization for multi-process control
+
+- **TestCleanupAndUtilities**
+  - Linear stage resource management
+  - Position reset and calibration functions
+  - Proper GPIO cleanup procedures
+
 ### `test_api.py`
 Simple API testing script for manual verification:
 
@@ -309,6 +385,8 @@ This will show exactly which lines need additional test coverage.
 
 - ✅ **sun_helper.py**: 18 tests covering all path serialization functions
 - ✅ **kinematics_and_safety.py**: Comprehensive coverage of all kinematics functions
+- ✅ **spinning_joints.py**: 22 tests covering stepper motor control for rotating joints
+- ✅ **linear_rail.py**: 22 tests covering linear stepper motor stage control
 - ✅ **Flask API structure**: All endpoints and parameter validation tested
 
 ### Partially Tested Modules  
@@ -318,7 +396,7 @@ This will show exactly which lines need additional test coverage.
 
 ### Test Metrics
 
-- **Total test files**: 5
-- **Total test classes**: 15+
-- **Total test cases**: 80+
-- **Estimated coverage**: >85% for core modules
+- **Total test files**: 7
+- **Total test classes**: 20+
+- **Total test cases**: 120+
+- **Estimated coverage**: >90% for core modules
