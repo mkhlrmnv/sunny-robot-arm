@@ -345,6 +345,8 @@ def check_solutions_safety(solutions: tuple[float,float,float],
                            safety_boxes: list[np.array] = all_boxes
                         ) -> bool:
     """Return True if FK path for sol does not intersect any safety box."""
+    assert len(solutions) == 3, "Solutions must have thee variables"
+
     pts = forward_kinematics(*solutions)
     return not any(edge_crosses_box(pts, box) for box in safety_boxes)
 
@@ -418,9 +420,11 @@ if __name__ == "__main__":
             print(f"Point {point} is unreachable")
             continue
 
-    # sols = inverse_kinematics(*[-253.98722105, -1449.53906117, -744.33173062], verbal=False)
+    sols = inverse_kinematics(*suns_path[40], verbal=False)
 
-    # th1, th2, dr = [50, 18, 500]
+    # sols = inverse_kinematics(*[-70, 900, -400], verbal=False)
+
+    # th1, th2, dr = [0, 0, 0]
     th1, th2, dr = sols[0]
 
     points = forward_kinematics(th1, th2, dr)
