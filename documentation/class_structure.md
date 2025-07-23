@@ -285,10 +285,6 @@ shared = {
 - `multiprocessing.Manager.Namespace` for inter-process communication
 - Thread-safe access to robot state across web server and control processes
 
-### **Strategy Pattern**
-- Different motor types (`SpinningJoints`, `LinearRail`) with common interface
-- Kinematics functions can be swapped for different robot configurations
-
 ### **Observer Pattern**
 - GPIO limit switches trigger events for safety monitoring
 - Real-time status updates to web interface
