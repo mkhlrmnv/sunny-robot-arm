@@ -120,8 +120,14 @@ class Arm:
         self.lamp.set_to_solid()
 
 
-    def init_path(self, path_file_path, duration, dynamic_lamp=True):
-        self.current_path, self.current_path_colors = un_jsonify_path(path_file_path)
+    def init_path(self, path, duration, dynamic_lamp=True):
+        if type(path) == str:
+            self.current_path, self.current_path_colors = un_jsonify_path(path_file_path)
+        elif type(path) == np.ndarray or type(path) == np.array:
+            self.current_path = path
+        else:
+            print(type(path))
+            raise ValueError("path should be in str format if it's path to the file or np.array if it is straight path")
         
         if not dynamic_lamp:
             self.current_path_colors = None
@@ -130,7 +136,7 @@ class Arm:
 
         self.shared.path = self.current_path
 
-        self.iteration = 0
+        self.iteration = self.shared.path_it = 0
         
         if self.current_path is None:
             raise ValueError("Path initialization failed. Check the path file.")
@@ -164,12 +170,12 @@ class Arm:
         # self.motor_paaty.angle = self.theta_2
         # self.motor_rail.distance = self.delta_r
 
-        since_last_move = time.time() - shared.timer
+        since_last_move = time.time() - self.shared.timer
         if since_last_move < self.duration_per_point:
             print(f"Waiting for {self.duration_per_point - since_last_move:.2f} seconds before next move")
             exit(66)
 
-        shared.timer = time.time()
+        self.shared.timer = time.time()
         
         try:
             if self._target_not_set():
@@ -195,12 +201,15 @@ class Arm:
                 all_at_target = True    # assume done until proven otherwise
 
                 try:
+                    print("required", self.required_theta_1)
                     at_target = self._step_towards('theta_1', self.required_theta_1,
                                                 check_safety=check_safety)
+                    print("theta 1 at target", at_target)
                     if not at_target:
                         self.motor_pontto.move_to_angle(self.required_theta_1, speed=speed_joint) # , shared=shared)
                         # if shared is not None:
                         #     shared.theta_1 = self.theta_1
+                        print("moved the motor")
                         progress_made = True
                         all_at_target = False
                 except ValueError:
@@ -210,6 +219,7 @@ class Arm:
                 try:
                     at_target = self._step_towards('delta_r', self.required_delta_r,
                                                 check_safety=check_safety)
+                    print("delta at target", at_target)
                     if not at_target:
                         self.motor_rail.move_to_distance(self.required_delta_r, speed=speed_rail) #, shared=shared)
                         # if shared is not None:
@@ -223,6 +233,7 @@ class Arm:
                 try:
                     at_target = self._step_towards('theta_2', self.required_theta_2,
                                                 check_safety=check_safety)
+                    print("theta 2 at target", at_target)
                     if not at_target:
                         self.motor_paaty.move_to_angle(self.required_theta_2, speed=speed_joint) #, shared=shared)
                         # if shared is not None:
@@ -253,7 +264,7 @@ class Arm:
             self._clear_target()
 
             if self.current_path_colors is not None:
-                color = self.current_path_colors[self.iteration]
+                color = self.current_path_colors[self.shared.path_it]
                 # self.lamp.set_color(*color, verbal=True)
                 self.lamp.set_to_solid(*color)
             else:
@@ -261,7 +272,7 @@ class Arm:
 
             self.warning_sound.stop()
             
-            shared.path_it += 1
+            self.shared.path_it += 1
         
             return False
         
@@ -283,8 +294,10 @@ class Arm:
         If already at target, return True.
         If not safe at any point, raise ValueError.
         """
-        current = getattr(self, attr)
+        current = getattr(self.shared, attr)
         diff = target - current
+
+        print("diff in step", diff)
 
         if abs(diff) < 1e-6:  # Already at target (with tolerance)
             return True
@@ -318,9 +331,9 @@ class Arm:
         """
         # Temporarily set value
         current_state = {
-            'theta_1': self.theta_1,
-            'theta_2': self.theta_2,
-            'delta_r': self.delta_r,
+            'theta_1': self.shared.theta_1,
+            'theta_2': self.shared.theta_2,
+            'delta_r': self.shared.delta_r,
         }
 
         current_state[attr] = value
@@ -334,15 +347,26 @@ class Arm:
             )
 
 
+    def _quantize(self, desired: float, current: float, motor) -> float:
+        step_angle = 360.0 / (motor.step_per_rev * motor.gear_ratio)
+        # how many steps from current → desired
+        n_steps = int((desired - current) / step_angle)
+        return current + n_steps * step_angle
+
+
     def _compute_next_target(self, check_safety=True):
         """Compute next target joint values based on current path."""
-        next_point = self.current_path[self.iteration]
-        curr_point = forward_kinematics(self.theta_1, self.theta_2, self.delta_r)[-1]
+        next_point = self.current_path[self.shared.path_it]
+        curr_point = forward_kinematics(self.shared.theta_1, self.shared.theta_2, self.shared.delta_r)[-1]
 
         sols = inverse_kinematics(*next_point, verbal=False, check_safety=check_safety)
         self.required_theta_1, self.required_theta_2, self.required_delta_r = choose_solution(
-            sols, (self.theta_1, self.theta_2, self.delta_r)
+            sols, (self.shared.theta_1, self.shared.theta_2, self.shared.delta_r)
         )
+
+        self.required_theta_1 = self._quantize(self.required_theta_1, self.shared.theta_1, self.motor_pontto)
+        self.required_theta_2 = self._quantize(self.required_theta_2, self.shared.theta_2, self.motor_paaty)
+        self.required_delta_r = self._quantize(self.required_delta_r, self.shared.delta_r, self.motor_rail)
 
         print(f"Next target: theta_1={self.required_theta_1}, "
                 f"theta_2={self.required_theta_2}, delta_r={self.required_delta_r}")
