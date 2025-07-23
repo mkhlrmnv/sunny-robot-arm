@@ -128,6 +128,8 @@ class Arm:
         else:
             raise ValueError("path should be in str format if it's path to the file or np.array if it is straight path")
         
+        print(self.current_path_colors)
+
         if not dynamic_lamp:
             self.current_path_colors = None
         
@@ -172,7 +174,8 @@ class Arm:
         since_last_move = time.time() - self.shared.timer
         if since_last_move < self.duration_per_point:
             print(f"Waiting for {self.duration_per_point - since_last_move:.2f} seconds before next move")
-            exit(66)
+            time.sleep(self.duration_per_point - since_last_move)
+            # exit(66)
 
         self.shared.timer = time.time()
         
@@ -200,25 +203,26 @@ class Arm:
                 all_at_target = True    # assume done until proven otherwise
 
                 try:
-                    print("required", self.required_theta_1)
+                    # print("required", self.required_theta_1)
                     at_target = self._step_towards('theta_1', self.required_theta_1,
                                                 check_safety=check_safety)
-                    print("theta 1 at target", at_target)
+                    # print("theta 1 at target", at_target)
                     if not at_target:
                         self.motor_pontto.move_to_angle(self.required_theta_1, speed=speed_joint) # , shared=shared)
                         # if shared is not None:
                         #     shared.theta_1 = self.theta_1
-                        print("moved the motor")
+                        # print("moved the motor")
                         progress_made = True
                         all_at_target = False
                 except ValueError:
+                    # iteration += 1
                     unsafe_joints.append('theta_1')
                     all_at_target = False
 
                 try:
                     at_target = self._step_towards('delta_r', self.required_delta_r,
                                                 check_safety=check_safety)
-                    print("delta at target", at_target)
+                    # print("delta at target", at_target)
                     if not at_target:
                         self.motor_rail.move_to_distance(self.required_delta_r, speed=speed_rail) #, shared=shared)
                         # if shared is not None:
@@ -226,13 +230,14 @@ class Arm:
                         progress_made = True
                         all_at_target = False
                 except ValueError:
+                    # iteration += 1
                     unsafe_joints.append('delta_r')
                     all_at_target = False
 
                 try:
                     at_target = self._step_towards('theta_2', self.required_theta_2,
                                                 check_safety=check_safety)
-                    print("theta 2 at target", at_target)
+                    # print("theta 2 at target", at_target)
                     if not at_target:
                         self.motor_paaty.move_to_angle(self.required_theta_2, speed=speed_joint) #, shared=shared)
                         # if shared is not None:
@@ -240,6 +245,7 @@ class Arm:
                         progress_made = True
                         all_at_target = False
                 except ValueError:
+                    # iteration += 1
                     unsafe_joints.append('theta_2')
                     all_at_target = False
                 
@@ -270,7 +276,10 @@ class Arm:
                 self.lamp.set_to_solid()
 
             self.warning_sound.stop()
-            
+
+            if self.shared.path_it == 0:
+                self.shared.timer = time.time()
+
             self.shared.path_it += 1
         
             return False
@@ -298,7 +307,7 @@ class Arm:
 
         print("diff in step", diff)
 
-        if abs(diff) < 1e-6:  # Already at target (with tolerance)
+        if abs(diff) < 0.226:  # Already at target (with tolerance)
             return True
 
         direction = diff / abs(diff)  # +1 or -1
