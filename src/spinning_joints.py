@@ -52,8 +52,10 @@ class SpinningJoints:
                                                     self.limit_event.clear())
 
         self.angle_limit = angle_limit
+
+        self.angle = 0
+            
         self.steps = 0
-        self.angle = 0 
         self.step_per_rev = step_per_rev
         self.min_delay = min_delay
         self.max_delay = max_delay
@@ -74,14 +76,13 @@ class SpinningJoints:
             direction = 1
 
             while not self.limit_event.is_set():
-                # TODO: CHECK THIS INIT FUNCTION!
-                if not direction_change and abs(self.angle) > abs(PONTTO_MOTOR_MIN_ANGLE-RAIL_ANGLE):
+                if not direction_change and abs(self.angle) > (180-RAIL_ANGLE):
                     self.angle = 0
                     time.sleep(2)
                     direction = -1 * direction
                     direction_change = True
 
-                if direction_change and abs(self.angle) > 360-abs(PONTTO_MOTOR_MIN_ANGLE-RAIL_ANGLE): # TODO: Check this number
+                if direction_change and abs(self.angle) > (180 + RAIL_ANGLE):
                     raise TimeoutError("Motor didn't find init pos")
 
                 self.step(direction=direction, speed=speed)
@@ -134,20 +135,21 @@ class SpinningJoints:
         time.sleep(delay)
         self.steps -= direction
         self.angle -= direction * (360 / (self.step_per_rev * self.gear_ratio))
-        self.angle = round(self.angle, 3)
+        # self.angle = round(self.angle, 3)
 
         if self.name=="pontto":
             self.shared.theta_1 -= direction * (360 / (self.step_per_rev * self.gear_ratio))
+            # self.shared.theta_1 = round(self.shared.theta_1, 3)
         elif self.name=="paaty":
             self.shared.theta_2 -= direction * (360 / (self.step_per_rev * self.gear_ratio))
+            # self.shared.theta_2 = round(self.shared.theta_2, 3)
 
     def move_by_angle(self, angle, speed=0.1): #, shared=None):
 
-        # if shared is not None:
-        #     if self.name == "pontto":
-        #         self.angle = shared.theta_1
-        #     elif self.name == "paaty":
-        #         self.angle = shared.theta_2
+        # if self.name == "pontto":
+        #     self.angle = self.shared.theta_1
+        # elif self.name == "paaty":
+        #     self.angle = self.shared.theta_2
 
         if abs(angle) > self.angle_limit:
            raise ValueError("Angle must be between -360 and 360 degrees.")
@@ -155,6 +157,7 @@ class SpinningJoints:
         print("angle ", self.angle)
         angle_per_step = 360 / (self.step_per_rev * self.gear_ratio)
         steps = int(angle / angle_per_step)
+        print("steps ", steps)
         direction = 1 if angle < 0 else -1
 
         for _ in range(abs(steps)):
@@ -171,7 +174,13 @@ class SpinningJoints:
         if abs(target_angle) > self.angle_limit:
             raise ValueError("Target angle must be between -360 and 360 degrees.")
 
+        if self.name == "pontto":
+            self.angle = self.shared.theta_1
+        elif self.name == "paaty":
+            self.angle = self.shared.theta_2
+
         angle_diff = target_angle - self.angle
+        print("diff", angle_diff)
 
         self.move_by_angle(angle_diff, speed=speed) #, shared=shared)
 

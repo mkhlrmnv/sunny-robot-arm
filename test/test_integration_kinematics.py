@@ -175,7 +175,7 @@ class TestKinematicsIntegration(unittest.TestCase):
             (-500, 1420, -500), # safe
             (-70, 900, 800),    # safe
             (-70, 900, -400),   # safe
-            (-1000, 1500, 210)  # not safe
+            (1082.5, 1500, 210)  # not safe
         ]
         
         for x, y, z in safe_positions:

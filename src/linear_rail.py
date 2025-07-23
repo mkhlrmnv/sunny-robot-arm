@@ -116,7 +116,7 @@ class LinearRail:
             self.step(direction=direction, speed=0.1)
 
         # Back‑off 90° (output shaft) opposite to approach direction to release the limit switch
-        self.move_by_distance(3, speed=0.5, ignore_limit=True)
+        self.move_by_distance(5, speed=0.5, ignore_limit=True)
         self.reset_position()
         print(f"Motor limit initialized, stop state {self.stop}")
 
@@ -180,6 +180,8 @@ class LinearRail:
         """Translate until :pyattr:`distance` == *target_distance* mm."""
         if target_distance < 0:
             raise ValueError("Target distance must be non-negative.")
+        
+        self.distance = self.shared.delta_r
         
         distance_diff = target_distance - self.distance
         self.move_by_distance(distance_diff, speed=speed) # , shared=shared)
