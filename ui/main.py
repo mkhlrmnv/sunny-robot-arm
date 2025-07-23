@@ -124,17 +124,17 @@ def stop_arm():
     global arm_process
     print("Stopping arm process...")
     if arm_process and arm_process.is_alive():
-        # arm_process.terminate()
-        # arm_process.join()
-        if arm_process.is_alive():
-            import os, signal
-            print("sending SIGKILL…")
-            try:
-                os.kill(arm_process.pid, signal.SIGKILL)
-            except OSError as e:
-                print("  kill failed:", e)
-            arm_process.join(timeout=1)
-        # print("Alive after all this?", arm_process.is_alive())
+        arm_process.kill()
+        arm_process.join()
+        # if arm_process.is_alive():
+        #     import os, signal
+        #     print("sending SIGKILL…")
+        #     try:
+        #         os.kill(arm_process.pid, signal.SIGKILL)
+        #     except OSError as e:
+        #         print("  kill failed:", e)
+        #     arm_process.join(timeout=1)
+        print("Alive after all this?", arm_process.is_alive())
         arm_process = None
 
 
@@ -186,6 +186,8 @@ def play_path():
     name = request.args.get('name')
     duration = int(request.args.get('duration'))
     dynamic_lamp = bool(int(request.args.get('lamp')))
+
+    print("lamp -> ", dynamic_lamp)
 
     path = os.path.join(os.path.dirname(__file__), '..', 'paths', name)
 
