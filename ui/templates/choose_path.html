@@ -27,23 +27,83 @@
           <button class="big-button" onclick="play('finish_sun_path.json')">Finnish Suns Path</button>
         </div>
         
-        <div class="controls">
-          <label for="durationInput">Duration:</label>
-          <input type="number" id="durationInput" value="100" min="0" />
-          <label for="lampCheckbox">
+        <div class="control-group">
+          <span class="control-label">Duration:</span>
+          <div class="step-control" id="durationControl">
+            <button class="small-button" id="durationDec">–</button>
+            <!-- now an input instead of a span -->
+            <input type="text" id="durationDisplay" value="100" />
+            <button class="small-button" id="durationInc">+</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label for="lampCheckbox" class="control-label">
             <input type="checkbox" id="lampCheckbox" checked />
             Lamp
           </label>
         </div>
+        <div class="desc">
+            <strong>Duration</strong> refers to total duration of the path, which starts when robot has reached the first point in the path</strong>
+            and ends when robot has reached the last one. Robot doesn't take into a account the time it takes to move from point to point, 
+            so if duration is set to low, robot will execute all points in a row.  <br><br>
+            
+            <strong>Lamp</strong> refers to option to choose dynamically changing lightning. Both Finnish and Singaporian paths include
+            estimation of the suns color based on the position, so by leaving the box checked lamp will adjust it's color 
+            on every point. If box is unchecked, the lamp will change color only to warn about large movements and will restore 
+            the original state after movement is completed.
+        </div>
       </div>
       
       <script>
-        function play(name) {
-          const duration = document.getElementById('durationInput').value || 100;
-          const lamp = document.getElementById('lampCheckbox').checked ? 1 : 0;
-          const url = `/play?name=${encodeURIComponent(name)}&duration=${encodeURIComponent(duration)}&lamp=${lamp}`;
-          window.location.href = url;
-        }
+          // grab elements
+          const decBtn = document.getElementById('durationDec');
+          const incBtn = document.getElementById('durationInc');
+          const disp   = document.getElementById('durationDisplay');
+
+          // internal state
+          let duration = parseInt(disp.value, 10) || 0;
+
+          function updateDisplay() {
+            disp.value = duration;
+          }
+
+          // button handlers
+          decBtn.addEventListener('click', () => {
+            duration = Math.max(0, duration - 10);
+            updateDisplay();
+          });
+          incBtn.addEventListener('click', () => {
+            duration += 10;
+            updateDisplay();
+          });
+
+          // typing / arrow‐key support
+          disp.addEventListener('input', e => {
+            const v = parseInt(e.target.value, 10);
+            if (!isNaN(v) && v >= 0) duration = v;
+          });
+          disp.addEventListener('keydown', e => {
+            if (e.key === 'ArrowUp') {
+              duration += 10;
+              updateDisplay();
+              e.preventDefault();
+            }
+            if (e.key === 'ArrowDown') {
+              duration = Math.max(0, duration - 10);
+              updateDisplay();
+              e.preventDefault();
+            }
+          });
+
+          function play(name) {
+            const lamp = document.getElementById('lampCheckbox').checked ? 1 : 0;
+            const url = `/play?name=${encodeURIComponent(name)}`
+                      + `&duration=${encodeURIComponent(duration)}`
+                      + `&lamp=${lamp}`;
+            window.location.href = url;
+          }
+          
         // Only poll cooling info if the left panel is visible (desktop)
         if (window.innerWidth > 768) {
           function fetchCoolingInfo() {
