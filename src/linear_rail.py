@@ -181,6 +181,8 @@ class LinearRail:
         if target_distance < 0:
             raise ValueError("Target distance must be non-negative.")
         
+        self.distance = self.shared.delta_r
+        
         distance_diff = target_distance - self.distance
         self.move_by_distance(distance_diff, speed=speed) # , shared=shared)
 
