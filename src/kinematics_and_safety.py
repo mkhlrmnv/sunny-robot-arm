@@ -101,7 +101,9 @@ def inverse_kinematics(x: float,
         arm_reach_y = dy0 + link_length * np.cos(theta_2)
         r = np.hypot(arm_reach_x, arm_reach_y)
         rhs = r**2 - x_r**2
-        if rhs < 0: 
+        if rhs <= 0:
+            if verbal:
+                print(f"\t rhs={rhs:.2f} => no intersections") 
             continue        # no intersection -> this theta_2 isn't valid solution
 
         if verbal:
