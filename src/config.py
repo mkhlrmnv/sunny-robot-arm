@@ -18,7 +18,7 @@ BASE_TRANSFORM_MATRIX = [[1, 0, 0, BASE_X_OFFSET],
 RAIL_ANGLE = 137.6
 
 THETA_2_VAL_IN_INIT = 90 + 73.17
-DELTA_R_VAL_IN_INIT = 0
+DELTA_R_VAL_IN_INIT = 0.0
 
 RAIL_MIN_LIMIT = -0.1   # This is basically zero, but to allow -0 value to pass it's nto actually zero
 RAIL_MAX_LIMIT = 731.3
