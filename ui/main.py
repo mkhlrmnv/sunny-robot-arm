@@ -87,10 +87,13 @@ def start_arm(func, args):
 def start_arm_and_wait(func, args):
     global arm_process
     if arm_process is None or not arm_process.is_alive():
-        arm_process = Process(target=func, args=args)
-        arm_process.start()
-        arm_process.join()
-        return arm_process.exitcode
+        try:
+            arm_process = Process(target=func, args=args)
+            arm_process.start()
+            arm_process.join()
+            return arm_process.exitcode
+        except:
+            return -1
 
 @app.route('/status')
 def status():
@@ -121,11 +124,11 @@ def stop_arm():
     global arm_process
     print("Stopping arm process...")
     if arm_process and arm_process.is_alive():
-        arm_process.terminate()
-        arm_process.join()
+        # arm_process.terminate()
+        # arm_process.join()
         if arm_process.is_alive():
             import os, signal
-            print("SIGTERM didn’t stick, sending SIGKILL…")
+            print("sending SIGKILL…")
             try:
                 os.kill(arm_process.pid, signal.SIGKILL)
             except OSError as e:
@@ -270,7 +273,7 @@ def api_play_path():
     global arm
     name = request.args.get('name')
     duration = int(request.args.get('duration'))
-    dynamic_lamp = bool(int(request.args.get('lamp')))
+    dynamic_lamp = bool(int(request.args.get('lamp', 1)))
 
     path = os.path.join(os.path.dirname(__file__), '..', 'paths', name)
 
@@ -279,8 +282,6 @@ def api_play_path():
     arm.init_path(path, duration=duration, dynamic_lamp=dynamic_lamp)
 
     shared.path_it = 0
-    # arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
-    start_arm_and_wait(arm.init, ())
 
     exit_code = 0
 
