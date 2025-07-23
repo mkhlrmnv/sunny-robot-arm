@@ -408,7 +408,7 @@ def move_arm():
                     arm.init_path(np.array([end_point]), duration=0, dynamic_lamp=False)
                     return_code = start_arm_and_wait(arm.move, ((speed, 0.5),))
                     if return_code == 0:
-                        angle = shared.theta_1 if motor == 'pontto' else shared.theta_2
+                        target = shared.theta_1 if motor == 'pontto' else shared.theta_2
                         response = f"Motor {motor} moved by {angle}° to {target} (with safety check)"
                     else:
                         status, response = "error", f"Function returned with exit code {return_code}"
@@ -485,15 +485,16 @@ def move_arm():
             
             if check:
                 # arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
-                target = arm.motor_rail.distance + dist
-                end_point = forward_kinematics(arm.theta_1, arm.theta_2, target)[-1]
+                target = shared.delta_r + dist
+                print("targer ", target)
+                end_point = forward_kinematics(shared.theta_1, shared.theta_2, target)[-1]
                 try:
                     sols = inverse_kinematics(*end_point, verbal=False)
                 except ValueError as e:
                     status, response = "error", f"Inverse kinematics failed: {e}"
                     return jsonify({"status": status, "message": response})
-                c_th1, c_th2, c_dr = choose_solution(sols, (arm.theta_1, arm.theta_2, arm.delta_r))
-                if round(c_th1, 1) != round(arm.theta_1, 2) or round(c_th2, 1) != round(arm.theta_2, 1):
+                c_th1, c_th2, c_dr = choose_solution(sols, (shared.theta_1, shared.theta_2, shared.delta_r))
+                if round(c_th1, 1) != round(shared.theta_1, 2) or round(c_th2, 1) != round(shared.theta_2, 1):
                     status, response = "error", "Safety check failed: safe movement will require movement of other motors"
                     return jsonify({"status": status, "message": response})
                 
@@ -518,14 +519,15 @@ def move_arm():
             if check:
                 # arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
                 origin = shared.delta_r
-                end_point = forward_kinematics(arm.theta_1, arm.theta_2, dist)[-1]
+                print("dist", dist)
+                end_point = forward_kinematics(shared.theta_1, shared.theta_2, dist)[-1]
                 try:
                     sols = inverse_kinematics(*end_point, verbal=False)
                 except ValueError as e:
                     status, response = "error", f"Inverse kinematics failed: {e}"
                     return jsonify({"status": status, "message": response})
-                c_th1, c_th2, c_dr = choose_solution(sols, (arm.theta_1, arm.theta_2, arm.delta_r))
-                if round(c_th1, 1) != round(arm.theta_1, 2) or round(c_th2, 1) != round(arm.theta_2, 1):
+                c_th1, c_th2, c_dr = choose_solution(sols, (shared.theta_1, shared.theta_2, shared.delta_r))
+                if round(c_th1, 1) != round(shared.theta_1, 2) or round(c_th2, 1) != round(shared.theta_2, 1):
                     status, response = "error", "Safety check failed: safe movement will require movement of other motors"
                     return jsonify({"status": status, "message": response})
                 
@@ -553,14 +555,20 @@ def move_arm():
 
             # arm.theta_1, arm.theta_2, arm.delta_r = shared.theta_1, shared.theta_2, shared.delta_r
 
-            sols = inverse_kinematics(x, y, z, verbal=False)
-            c_th1, c_th2, c_dr = choose_solution(sols, (arm.theta_1, arm.theta_2, arm.delta_r))
+            try:
+                sols = inverse_kinematics(x, y, z, verbal=False)
+            except ValueError as e:
+                status, response = "error", f"Inverse kinematics failed: {e}"
+                return jsonify({"status": status, "message": response})
+
+            c_th1, c_th2, c_dr = choose_solution(sols, (shared.theta_1, shared.theta_2, shared.delta_r))
             origin = forward_kinematics(c_th1, c_th2, c_dr)[-1]
 
-            arm.init_path(np.array([[x, y, z]]), duration=0, dynamic_lamp)
+            arm.init_path(np.array([[x, y, z]]), duration=0, dynamic_lamp=False)
             return_code = start_arm_and_wait(arm.move, ((speed_joints, speed_rail), check))
             if return_code == 0:
-                response = f"Arm moved from ({origin[0], origin[1], origin[2]} to ({x}, {y}, {z})"
+                res = forward_kinematics(shared.theta_1, shared.theta_2, shared.delta_r)[-1]
+                response = f"Arm moved from ({origin[0], origin[1], origin[2]} to ({res[0]}, {res[1]}, {res[2]})"
             else:
                 status, response = "error", f"Function returned with exit code {return_code}"
  
