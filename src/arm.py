@@ -122,11 +122,10 @@ class Arm:
 
     def init_path(self, path, duration, dynamic_lamp=True):
         if type(path) == str:
-            self.current_path, self.current_path_colors = un_jsonify_path(path_file_path)
+            self.current_path, self.current_path_colors = un_jsonify_path(path)
         elif type(path) == np.ndarray or type(path) == np.array:
             self.current_path = path
         else:
-            print(type(path))
             raise ValueError("path should be in str format if it's path to the file or np.array if it is straight path")
         
         if not dynamic_lamp:
@@ -151,7 +150,7 @@ class Arm:
         if self.current_path is None:
             raise ValueError("Initialize path first")
 
-        if self.iteration >= len(self.current_path):
+        if self.shared.path_it >= len(self.current_path):
             print("Robot has already reached the end of the path")
             exit(68)
             return
