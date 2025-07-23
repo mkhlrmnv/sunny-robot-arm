@@ -25,6 +25,7 @@ import requests
 import time
 import os
 from dotenv import load_dotenv
+import xml.etree.ElementTree as ET
 load_dotenv() 
 
 class Lamp:
@@ -41,7 +42,7 @@ class Lamp:
 
     def __init__(self,
                  brightness: int = 255,
-                 https_url: str = os.getenv("WLED_ADR")) -> None:
+                 https_url: str = 'http://192.168.1.111/win'):# os.getenv("WLED_ADR")) -> None:
         
         assert 0 <= brightness <= 255,          "Brightness must be between 0 and 255"
         assert isinstance(https_url, str),      "URL must be a string"
@@ -69,6 +70,55 @@ class Lamp:
             raise RuntimeError(
                 f"Device returned {response.status_code}: {response.text[:120]}"
             )
+        
+    def get_state(self) -> dict :
+        response = requests.get(self.https_url, timeout=5)
+        # print(response.text)
+
+        RENAME = {
+            'ac': 'master_brightness',
+            'cl': 'color',
+            'fx': 'effect index',
+            'sx': 'effect speed'
+        }
+
+        root = ET.fromstring(response.text)
+
+        params = {}
+        for el in root:
+            if el.tag not in RENAME:
+                continue  # skip everything else
+
+            key = RENAME[el.tag]
+            txt = el.text
+
+            # try to cast to int, else leave as string
+            try:
+                val = int(txt)
+            except (TypeError, ValueError):
+                val = txt
+
+            # fold repeats into a list
+            if key in params:
+                if isinstance(params[key], list):
+                    params[key].append(val)
+                else:
+                    params[key] = [params[key], val]
+            else:
+                params[key] = val
+
+        return params
+    
+    def set_state(self, state: dict) -> None:
+        self.brightness = state['master_brightness']
+        self.red = state['color'][0]
+        self.green = state['color'][1]
+        self.blue = state['color'][2]
+        self.effect = state['effect index']
+        self.speed = state['effect speed']
+
+        self.set_to_effect(self.red, self.green, self.blue, self.effect, self.speed)
+        self.set_brightness(self.brightness)
 
 
     def set_brightness(self, brightness: int, verbal: bool = False) -> None:
@@ -152,6 +202,15 @@ class Lamp:
 
 if __name__ == "__main__":
     lamp = Lamp()
+
+    # this should first chage lamp to blinking and then restore from original state
+    state = lamp.get_state()
+
+    time.sleep(2)
+    lamp.set_to_blink()
+    time.sleep(2)
+
+    lamp.set_state(state)
     
     # Demonstration: cycle through three modes
     try:
