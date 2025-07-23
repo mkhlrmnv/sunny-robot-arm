@@ -145,9 +145,10 @@ class Arm:
 
     def move(self, speeds=None, check_safety=True):
 
-        if self.lamp.brightness == 0 or self.lamp.effect != 0:
-            self.lamp.set_brightness(255)
-            self.lamp.set_to_solid()
+        # now i feel that this is unnecessary, if correct state is then set afterwards
+        # if self.lamp.brightness == 0 or self.lamp.effect != 0:
+        #     self.lamp.set_brightness(255)
+        #     self.lamp.set_to_solid()
 
         if self.current_path is None:
             raise ValueError("Initialize path first")
@@ -184,10 +185,10 @@ class Arm:
                 distance_to_target = self._compute_next_target(check_safety=check_safety)
 
             # if movement is over 10cm, lamp will blink
-            if distance_to_target > 100:
+            original_lamp_state = self.lamp.get_state()
+            if distance_to_target > MIN_WARNING_DISTANCE:
                 self.lamp.set_to_blink()
-            
-            self.warning_sound.start()
+                self.warning_sound.start()
         
             print(f"Moving to target: theta_1={self.required_theta_1}, "
                   f"theta_2={self.required_theta_2}, delta_r={self.required_delta_r}")
@@ -273,10 +274,12 @@ class Arm:
                 # self.lamp.set_color(*color, verbal=True)
                 self.lamp.set_to_solid(*color)
             else:
-                self.lamp.set_to_solid()
+                self.lamp.set_state(original_lamp_state)
+                # self.lamp.set_to_solid()
 
             self.warning_sound.stop()
 
+            # on first iteration timer starts only after robot has reached the point
             if self.shared.path_it == 0:
                 self.shared.timer = time.time()
 
