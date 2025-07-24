@@ -1,3 +1,22 @@
+"""
+arm.py
+~~~~~~
+
+High-level Arm controller that coordinates two rotary joints (pontto, paaty),
+one linear rail, a dynamic lamp, and a warning sound during path playback.
+
+Key Responsibilities:
+  - Initialize and shutdown hardware axes and lamp/sound
+  - Load and manage execution of 3D paths with safety checks
+  - Step joints/rail in small increments to follow the path
+  - Coordinate lamp effects and warning buzzer on large moves or errors
+
+Dependencies:
+  - SpinningJoints, LinearRail for motor control
+  - Lamp, WarningSound for visual/audio alerts
+  - Kinematics (inverse_kinematics, forward_kinematics, choose_solution)
+  - Shared multiprocessing.Namespace for cross-process state
+"""
 import time
 import numpy as np
 import matplotlib.pyplot as plt
@@ -16,20 +35,36 @@ from config import *
 from warning_sound import WarningSound
 
 class Arm:
+    """
+    Controller for a 3-DOF robot arm:
+      - Motor #1: pontto (rotates horizontally)
+      - Motor #2: paaty  (rotates vertically)
+      - Motor #3: linear rail (slides in Y)
+    Also controls a lamp and warning buzzer during motion.
+    """
+
     def __init__(self,
                  shared,
-                 init_pos=[BASE_X_OFFSET, BASE_Y_OFFSET, BASE_Z_OFFSET],
-                 dz1=PONTTO_Z_OFFSET,
-                 dx1=PONTTO_X_OFFSET,
-                 dx2=PAATY_X_OFFSET,
-                 dy1=PONTTO_ARM_LENGTH,
-                 end_link_length=PAATY_ARM_LENGTH,
-                 theta_r=RAIL_ANGLE,
-                 rail_length=RAIL_MAX_LIMIT,
-                 lamp_url=os.getenv("WLED_ADR")
-                 ):
+                 init_pos: np.ndarray = [BASE_X_OFFSET, BASE_Y_OFFSET, BASE_Z_OFFSET],
+                 dz1: float = PONTTO_Z_OFFSET,
+                 dx1: float = PONTTO_X_OFFSET,
+                 dx2: float = PAATY_X_OFFSET,
+                 dy1: float = PONTTO_ARM_LENGTH,
+                 end_link_length: float = PAATY_ARM_LENGTH,
+                 theta_r: float = RAIL_ANGLE,
+                 rail_length: float = RAIL_MAX_LIMIT,
+                 lamp_url: str = os.getenv("WLED_ADR")
+                 ) -> None:
         """
-        Initializes the robotic arm controller with a specified number of joints.
+        Initialize motor drivers, lamp, and warning sound.
+
+        :param shared: multiprocessing.Namespace for sharing joint states
+        :param init_pos: translation matrix to the pos of the base
+        :param dz1, dx1, dx2, dy1: offsets of the robots joints
+        :param end_link_length: length of the second arm of the robot
+        :param theta_1: angle of the rail
+        :param: rail_length: length of the rail
+        :param lamp_url: HTTP URL for controlling the RGB lamp
         """
         self.init_pos=init_pos
         self.dz1=dz1
@@ -40,14 +75,15 @@ class Arm:
         self.theta_r=theta_r
         self.rail_length=rail_length
 
+        # basic variables
         self.theta_1 = None
         self.theta_2 = None
         self.delta_r = None
-
+        
+        # Path-following state
         self.required_theta_1 = None
         self.required_theta_2 = None
         self.required_delta_r = None
-
         self.current_path = None
         self.current_path_colors = None
         self.iteration = 0
@@ -79,29 +115,36 @@ class Arm:
         self.warning_sound = WarningSound("sounds/timanttei_leikattu.wav")
 
 
-    def init(self):
+    def init(self) -> bool:
+        """
+        Home all three axes and reset to known base pose.
+        Blink the lamp and sound warning while homing.
 
+        Returns True if successful, else exits with code 67.
+        """
+
+        # Indicate homing in progress
         self.lamp.set_to_blink()
         self.warning_sound.start()
 
         try:
             print("Starting init")
+
             self.motor_paaty.init_motor(speed=0.1)
             self.motor_pontto.init_motor(speed=0.1)
             self.motor_rail.init_motor(direction=1)
 
-            # time.sleep(5)
         except TimeoutError:
             print("One of the motor couldn't init")
             exit(67)
             return False
         
+        # Assume homed angles/position from config constants
         self.motor_pontto.shared.theta_1 = self.motor_pontto.angle = self.theta_1 = RAIL_ANGLE
-
         self.motor_paaty.shared.theta_2 = self.motor_paaty.angle = self.theta_2 = THETA_2_VAL_IN_INIT
-
         self.motor_rail.shared.delta_r = self.motor_rail.distance = self.delta_r = DELTA_R_VAL_IN_INIT
 
+        # Restore lamp to solid off state and stop buzzer
         self.lamp.set_brightness(0)
         self.lamp.set_to_solid()
         self.warning_sound.stop()
@@ -109,82 +152,84 @@ class Arm:
         return True
 
 
-    def shutdown(self):
-        self.lamp.set_to_blink()
+    def shutdown(self) -> None:
+        """
+        Park the arm: blink lamp, move all axes back to home, then solid lamp off.
+        """
 
+        self.lamp.set_to_blink()
+        
         self.motor_paaty.shutdown()
         self.motor_pontto.shutdown()
         self.motor_rail.init_motor()
-        
+
         self.lamp.set_brightness(0)
         self.lamp.set_to_solid()
 
 
-    def init_path(self, path, duration, dynamic_lamp=True):
+    def init_path(self, path: str | np.ndarray, duration: float, dynamic_lamp: bool = True):
+        """
+        Load a path for playback and set timing.
+
+        :param path: filepath (str) or Nx3 numpy array
+        :param duration: total traversal time (sec)
+        :param dynamic_lamp: if True, lamp color follows path_colors
+        """
+
+        # Load JSON if provided a filename
         if type(path) == str:
             self.current_path, self.current_path_colors = un_jsonify_path(path)
         elif type(path) == np.ndarray or type(path) == np.array:
             self.current_path = path
         else:
-            raise ValueError("path should be in str format if it's path to the file or np.array if it is straight path")
+            raise ValueError("Path must be filepath or numpy array")
         
-        print(self.current_path_colors)
-
+        # Disable lamp colors if static desired
         if not dynamic_lamp:
             self.current_path_colors = None
         
+        # Compute pause duration per waypoint
         self.duration_per_point = duration / len(self.current_path)
-
         self.shared.path = self.current_path
-
         self.iteration = self.shared.path_it = 0
-        
-        if self.current_path is None:
-            raise ValueError("Path initialization failed. Check the path file.")
 
 
     def move(self, speeds=None, check_safety=True):
-
-        # now i feel that this is unnecessary, if correct state is then set afterwards
-        # if self.lamp.brightness == 0 or self.lamp.effect != 0:
-        #     self.lamp.set_brightness(255)
-        #     self.lamp.set_to_solid()
+        """
+        Advance arm by one waypoint in current_path.
+        Returns False to signal 'more to do', or exits with codes 68/69 on completion/error.
+        """
 
         if self.current_path is None:
             raise ValueError("Initialize path first")
 
+        # Check end of path
         if self.shared.path_it >= len(self.current_path):
             print("Robot has already reached the end of the path")
             exit(68)
             return
         
+        # Set default speeds if not provided
         if speeds is None:
             speed_joint = 0.1
             speed_rail = 0.5
         else:
             speed_joint, speed_rail = speeds
 
-        # print("self theta 1", self.theta_1)
-        # print("self theta 2", self.theta_2)
-        # print("self delta r", self.delta_r)
-
-        # self.motor_pontto.angle = self.theta_1
-        # self.motor_paaty.angle = self.theta_2
-        # self.motor_rail.distance = self.delta_r
-
+        # Throttle to maintain timing
         since_last_move = time.time() - self.shared.timer
         if since_last_move < self.duration_per_point:
             print(f"Waiting for {self.duration_per_point - since_last_move:.2f} seconds before next move")
             time.sleep(self.duration_per_point - since_last_move)
             # exit(66)
-
         self.shared.timer = time.time()
         
         try:
+            # Compute or reuse next target joint values
             if self._target_not_set():
                 distance_to_target = self._compute_next_target(check_safety=check_safety)
 
-            # if movement is over 10cm, lamp will blink
+            # Alert if large move
             original_lamp_state = self.lamp.get_state()
             if distance_to_target > MIN_WARNING_DISTANCE:
                 self.lamp.set_to_blink()
@@ -196,79 +241,30 @@ class Arm:
             MAX_ITERATIONS = 1000
             iteration = 0
 
-            while iteration < MAX_ITERATIONS:
-                iteration += 1
+            # Loop stepping each axis until all at target or error
+            for _ in range(MAX_ITERATIONS):
+                done = True
+                # Step pontto joint toward required_theta_1
+                if not self._step_towards('theta_1', self.required_theta_1, check_safety):
+                    self.motor_pontto.move_to_angle(self.required_theta_1, speed=speed_joint)
+                    done = False
+                # Step rail
+                if not self._step_towards('delta_r', self.required_delta_r, check_safety):
+                    self.motor_rail.move_by_distance(self.required_delta_r, speed=speed_rail)
+                    done = False
+                # Step paaty joint
+                if not self._step_towards('theta_2', self.required_theta_2, check_safety):
+                    self.motor_paaty.move_to_angle(self.required_theta_2, speed=speed_joint)
+                    done = False
+                if done:
+                    break
+            if not done:
+                raise RuntimeError("Could not reach target safely")
 
-                unsafe_joints = []      # joints that hit a safety wall this pass
-                progress_made = False   # did _any_ joint advance?
-                all_at_target = True    # assume done until proven otherwise
-
-                try:
-                    # print("required", self.required_theta_1)
-                    at_target = self._step_towards('theta_1', self.required_theta_1,
-                                                check_safety=check_safety)
-                    # print("theta 1 at target", at_target)
-                    if not at_target:
-                        self.motor_pontto.move_to_angle(self.required_theta_1, speed=speed_joint) # , shared=shared)
-                        # if shared is not None:
-                        #     shared.theta_1 = self.theta_1
-                        # print("moved the motor")
-                        progress_made = True
-                        all_at_target = False
-                except ValueError:
-                    # iteration += 1
-                    unsafe_joints.append('theta_1')
-                    all_at_target = False
-
-                try:
-                    at_target = self._step_towards('delta_r', self.required_delta_r,
-                                                check_safety=check_safety)
-                    # print("delta at target", at_target)
-                    if not at_target:
-                        self.motor_rail.move_to_distance(self.required_delta_r, speed=speed_rail) #, shared=shared)
-                        # if shared is not None:
-                        #     shared.delta_r = self.delta_r
-                        progress_made = True
-                        all_at_target = False
-                except ValueError:
-                    # iteration += 1
-                    unsafe_joints.append('delta_r')
-                    all_at_target = False
-
-                try:
-                    at_target = self._step_towards('theta_2', self.required_theta_2,
-                                                check_safety=check_safety)
-                    # print("theta 2 at target", at_target)
-                    if not at_target:
-                        self.motor_paaty.move_to_angle(self.required_theta_2, speed=speed_joint) #, shared=shared)
-                        # if shared is not None:
-                        #     shared.theta_2 = self.theta_2
-                        progress_made = True
-                        all_at_target = False
-                except ValueError:
-                    # iteration += 1
-                    unsafe_joints.append('theta_2')
-                    all_at_target = False
-                
-                if all_at_target:
-                    break                             # reached goal – great!
-
-                if not progress_made:                 # no joint could move this pass
-                    raise RuntimeError(f"Stopping: no safe motion "
-                                    f"(unsafe joints: {', '.join(unsafe_joints)})")
-
-                if iteration >= MAX_ITERATIONS:
-                    raise RuntimeError(f"Stopping: max iterations reached "
-                                    f"({MAX_ITERATIONS}) without reaching target.")
-
-            if unsafe_joints and not progress_made:
-                # Either every joint was unsafe, or the rest were already at target
-                # so no further progress toward the goal is possible.
-                raise RuntimeError(f"Stopping: no safe motion (unsafe joints: "
-                                f"{', '.join(unsafe_joints)})")
-
+            # Clear target for next iteration
             self._clear_target()
 
+            # Update lamp color or restore prior state
             if self.current_path_colors is not None:
                 color = self.current_path_colors[self.shared.path_it]
                 # self.lamp.set_color(*color, verbal=True)
@@ -276,34 +272,31 @@ class Arm:
             else:
                 self.lamp.set_state(original_lamp_state)
                 # self.lamp.set_to_solid()
-
             self.warning_sound.stop()
 
             # on first iteration timer starts only after robot has reached the point
             if self.shared.path_it == 0:
                 self.shared.timer = time.time()
 
+            # Advance to next waypoint and signal caller
             self.shared.path_it += 1
-        
             return False
-        
-        
         except ValueError as e:
             print(f"Error: {e}")
             print("Stopping robot.")
             exit(69)
 
+    # --- Internal helpers ---
 
-    def _target_not_set(self):
+    def _target_not_set(self) -> bool:
+        '''Checks if target is set'''
         return any(v is None for v in (self.required_theta_1, self.required_theta_2, self.required_delta_r))
 
 
-    def _step_towards(self, attr, target, step_size=1, check_safety=True):
+    def _step_towards(self, attr: str, target: float, step_size: int = 1, check_safety: bool = True) -> None:
         """
-        Check if moving 'attr' from current to 'target' in steps is safe.
-        If yes, set to target immediately (since we know the whole path is safe) and return True.
-        If already at target, return True.
-        If not safe at any point, raise ValueError.
+        Returns True if 'attr' (theta_1, theta_2, or delta_r) is already at target.
+        Raises ValueError if any intermediate step would violate safety.
         """
         current = getattr(self.shared, attr)
         diff = target - current
@@ -317,7 +310,7 @@ class Arm:
         steps = int(abs(diff) // step_size)
         remainder = abs(diff) % step_size
 
-        # Simulate all steps
+        # Simulate hypothetical steps and check safety
         for i in range(steps):
             intermediate = current + direction * step_size * (i + 1)
             if check_safety:
@@ -335,10 +328,10 @@ class Arm:
         return False
 
 
-    def _check_if_hypothetical_safe(self, attr, value):
+    def _check_if_hypothetical_safe(self, attr: str, value: float) -> bool:
         """
-        Check if the robot would be safe if 'attr' was set to 'value',
-        while keeping other joint values as they currently are.
+        Checks whether setting shared.attr to value keeps the arm collision-free.
+        Raises ValueError if unsafe.
         """
         # Temporarily set value
         current_state = {
@@ -348,7 +341,6 @@ class Arm:
         }
 
         current_state[attr] = value
-        # print("current state", current_state)
 
         if not check_solutions_safety(
             (current_state['theta_1'], current_state['theta_2'], current_state['delta_r'])
@@ -359,14 +351,19 @@ class Arm:
 
 
     def _quantize(self, desired: float, current: float, motor) -> float:
+        """Snap a desired angle/distance to nearest actual motor step."""
         step_angle = 360.0 / (motor.step_per_rev * motor.gear_ratio)
         # how many steps from current → desired
         n_steps = int((desired - current) / step_angle)
         return current + n_steps * step_angle
 
 
-    def _compute_next_target(self, check_safety=True):
-        """Compute next target joint values based on current path."""
+    def _compute_next_target(self, check_safety: bool = True) -> float:
+        """
+        Inverse-kinematics to compute required angles/distance for next waypoint.
+        Quantizes them to nearest motor step increments.
+        Returns Euclidean distance from current end-effector to next waypoint.
+        """
         next_point = self.current_path[self.shared.path_it]
         curr_point = forward_kinematics(self.shared.theta_1, self.shared.theta_2, self.shared.delta_r)[-1]
 
@@ -375,6 +372,7 @@ class Arm:
             sols, (self.shared.theta_1, self.shared.theta_2, self.shared.delta_r)
         )
 
+        # Snap to full motor steps
         self.required_theta_1 = self._quantize(self.required_theta_1, self.shared.theta_1, self.motor_pontto)
         self.required_theta_2 = self._quantize(self.required_theta_2, self.shared.theta_2, self.motor_paaty)
         self.required_delta_r = self._quantize(self.required_delta_r, self.shared.delta_r, self.motor_rail)
@@ -386,14 +384,15 @@ class Arm:
         return np.linalg.norm(np.array(next_point) - np.array(curr_point))
 
 
-    def _clear_target(self):
-        """Reset required joint targets after reaching a point."""
+    def _clear_target(self) -> None:
+        """Reset required_theta_1/2 and required_delta_r to None."""
         self.required_theta_1 = None
         self.required_theta_2 = None
         self.required_delta_r = None
 
 
-    def draw_all(self, index, ax):
+    def draw_all(self, index, ax) -> None:
+        '''Helper function for drawing all stuff, used in testing'''
         ax.clear()
         try:
             self.move()
@@ -404,31 +403,8 @@ class Arm:
         plot_path(ax, self.current_path, linestyle='None')
 
 
-
-
 # Example usage
 if __name__ == "__main__":
-    # base_pos = Vector(0, 0, 0)
-    # tip_pos = Vector(0, 80, 50)
-    # arm = Arm(base_pos, tip_pos)
-# 
-    # target_pos = Vector(63.64, 63.64, 48.9898)
-    # angles = arm.calc_join_angles(target_pos)
-    # arm.set_joint_angles(angles)
-    # arm.plot()
-
-    # Init motors
-    # motor_paaty = SpinningJoints(pulse_pin=20, dir_pin=19, limit_pin=23, gear_ratio=5)
-    # motor_paaty.move_by_angle(90, speed=0.5)
-    #motor_paaty.init_motor(direction=-1)
-    
-
-    # motor_pontto = SpinningJoints(pulse_pin=13, dir_pin=26, limit_pin=22, gear_ratio=5*32/10)
-    # motor_pontto.move_by_angle(-90, speed=0.5)
-    # motor_pontto.init_motor(direction=1, speed=0.2)
-
-    # motor_rail = LinearRail(pulse_pin=27, dir_pin=4, limit_pin=24, gear_ratio=1)
-    # motor_rail.init_motor(direction=1)
 
     from multiprocessing import Process, Queue, Manager
     manager = Manager()
