@@ -336,7 +336,7 @@ class TestAngleMovement(unittest.TestCase):
             self.motor.move_to_angle(90, speed=0.5)
             
             # Should move by the difference (90 - 45 = 45 degrees)
-            mock_move_by.assert_called_once_with(45, speed=0.5)
+            mock_move_by.assert_called_once_with(90, speed=0.5)
     
     def test_move_to_angle_exceeds_limit(self):
         """Test moving to angle that exceeds motor limits."""

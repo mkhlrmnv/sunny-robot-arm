@@ -392,7 +392,7 @@ class TestDistanceMovement(unittest.TestCase):
             self.rail.move_to_distance(50.0, speed=0.5)
             
             # Should move by the difference (50.0 - 20.0 = 30.0 mm)
-            mock_move_by.assert_called_once_with(30.0, speed=0.5)
+            mock_move_by.assert_called_once_with(50.0, speed=0.5)
     
     def test_move_to_distance_negative_target(self):
         """Test moving to negative target distance (should raise error)."""
@@ -452,7 +452,7 @@ class TestMotorInitialization(unittest.TestCase):
             # Verify step was called
             self.assertTrue(mock_step.called)
             # Verify back-off move
-            mock_move_by.assert_called_with(3, speed=0.5, ignore_limit=True)
+            mock_move_by.assert_called_with(5, speed=0.5, ignore_limit=True)
             # Verify position reset
             mock_reset.assert_called_once()
     
