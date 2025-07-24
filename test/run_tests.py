@@ -26,10 +26,12 @@ import os
 import argparse
 import unittest
 
-# Add the src directory to Python path
+# Add the src and ui directories to Python path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 src_path = os.path.join(project_root, 'src')
+ui_path = os.path.join(project_root, 'ui')
 sys.path.insert(0, src_path)
+sys.path.insert(0, ui_path)
 
 def main():
     parser = argparse.ArgumentParser(description='Run tests for sunny-robot-arm')
@@ -65,7 +67,7 @@ def main():
             import test_integration_kinematics
             import test_spinning_joints
             import test_linear_rail
-            # import test_move_arm_api
+            import test_move_arm_api
             
             loader = unittest.TestLoader()
             combined_suite = unittest.TestSuite()
@@ -75,7 +77,7 @@ def main():
             combined_suite.addTests(loader.loadTestsFromModule(test_integration_kinematics))
             combined_suite.addTests(loader.loadTestsFromModule(test_spinning_joints))
             combined_suite.addTests(loader.loadTestsFromModule(test_linear_rail))
-            # combined_suite.addTests(loader.loadTestsFromModule(test_move_arm_api))
+            combined_suite.addTests(loader.loadTestsFromModule(test_move_arm_api))
             
             print("✓ Successfully imported all test modules")
             
@@ -128,10 +130,10 @@ def main():
             import test_linear_rail
             test_module = test_linear_rail
             print("✓ Successfully imported linear rail test module")
-        # elif args.api or (args.specific and 'API' in args.specific):
-        #     import test_move_arm_api
-        #     test_module = test_move_arm_api
-        #     print("✓ Successfully imported API test module")
+        elif args.api or (args.specific and 'API' in args.specific):
+            import test_move_arm_api
+            test_module = test_move_arm_api
+            print("✓ Successfully imported API test module")
         else:
             import test_kinematics_and_safety
             test_module = test_kinematics_and_safety
