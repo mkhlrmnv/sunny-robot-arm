@@ -111,7 +111,7 @@ source sunny/bin/activate
 python -m ui.main
 ```
 
-Access the interface at `http://localhost:5000` for:
+Access the interface at `http://localhost:5000` or `http://127.0.0.1:5000` for:
 - Path execution with real-time robot visualization
 - Manual motor control
 - Sensor testing
@@ -124,12 +124,12 @@ While the web server is running, you can access the REST API endpoints for progr
 ### Stoping the Robot
 To stop the robot at any points, just call the index endpoint `/`:
 ```bash
-curl "http://localhost:5000/"
+curl "http://127.0.0.1:5000/"
 ``` 
 
 ### Base URL
 ```
-http://localhost:5000
+http://127.0.0.1:5000
 ```
 
 ### Main Control Endpoint: `/move_arm`
@@ -141,17 +141,17 @@ All robot control commands use the `/move_arm` endpoint with different `cmd` par
 **Step-based Movement (for manual jogging):**
 ```bash
 # Move joints by step increments
-curl "http://localhost:5000/move_arm?cmd=motor_paaty_up"      # Pitch up
-curl "http://localhost:5000/move_arm?cmd=motor_paaty_down"    # Pitch down  
-curl "http://localhost:5000/move_arm?cmd=motor_pontto_ccw"    # Rotate counter-clockwise
-curl "http://localhost:5000/move_arm?cmd=motor_pontto_cw"     # Rotate clockwise
-curl "http://localhost:5000/move_arm?cmd=motor_rail_right"    # Rail right
-curl "http://localhost:5000/move_arm?cmd=motor_rail_left"     # Rail left
+curl "http://127.0.0.1:5000/move_arm?cmd=motor_paaty_up"      # Pitch up
+curl "http://127.0.0.1:5000/move_arm?cmd=motor_paaty_down"    # Pitch down  
+curl "http://127.0.0.1:5000/move_arm?cmd=motor_pontto_ccw"    # Rotate counter-clockwise
+curl "http://127.0.0.1:5000/move_arm?cmd=motor_pontto_cw"     # Rotate clockwise
+curl "http://127.0.0.1:5000/move_arm?cmd=motor_rail_right"    # Rail right
+curl "http://127.0.0.1:5000/move_arm?cmd=motor_rail_left"     # Rail left
 
 # Adjust step size
-curl "http://localhost:5000/move_arm?cmd=pl"                 # Increase step size (+10)
-curl "http://localhost:5000/move_arm?cmd=mn"                 # Decrease step size (-10)
-curl "http://localhost:5000/move_arm?cmd=set_step_size&to=5" # Set specific step size
+curl "http://127.0.0.1:5000/move_arm?cmd=pl"                 # Increase step size (+10)
+curl "http://127.0.0.1:5000/move_arm?cmd=mn"                 # Decrease step size (-10)
+curl "http://127.0.0.1:5000/move_arm?cmd=set_step_size&to=5" # Set specific step size
 ```
 
 #### Precise Motor Control
@@ -159,17 +159,17 @@ curl "http://localhost:5000/move_arm?cmd=set_step_size&to=5" # Set specific step
 **Move by relative angle/distance:**
 ```bash
 # Move motor by specified amount (with safety checking)
-curl "http://localhost:5000/move_arm?cmd=by_angle&motor=pontto&angle=45&speed=0.3&check_safety=1"
-curl "http://localhost:5000/move_arm?cmd=by_angle&motor=paaty&angle=-30&speed=0.5&check_safety=0"
-curl "http://localhost:5000/move_arm?cmd=by_distance&dist=100&speed=0.2&check_safety=1"
+curl "http://127.0.0.1:5000/move_arm?cmd=by_angle&motor=pontto&angle=45&speed=0.3&check_safety=1"
+curl "http://127.0.0.1:5000/move_arm?cmd=by_angle&motor=paaty&angle=-30&speed=0.5&check_safety=0"
+curl "http://127.0.0.1:5000/move_arm?cmd=by_distance&dist=100&speed=0.2&check_safety=1"
 ```
 
 **Move to absolute angle/distance:**
 ```bash
 # Move motor to absolute position
-curl "http://localhost:5000/move_arm?cmd=to_angle&motor=pontto&angle=90&speed=0.4&check_safety=1"
-curl "http://localhost:5000/move_arm?cmd=to_angle&motor=paaty&angle=45&speed=0.3&check_safety=0"
-curl "http://localhost:5000/move_arm?cmd=to_distance&dist=200&speed=0.5&check_safety=1"
+curl "http://127.0.0.1:5000/move_arm?cmd=to_angle&motor=pontto&angle=90&speed=0.4&check_safety=1"
+curl "http://127.0.0.1:5000/move_arm?cmd=to_angle&motor=paaty&angle=45&speed=0.3&check_safety=0"
+curl "http://127.0.0.1:5000/move_arm?cmd=to_distance&dist=200&speed=0.5&check_safety=1"
 ```
 
 #### Coordinate-based Movement
@@ -177,20 +177,20 @@ curl "http://localhost:5000/move_arm?cmd=to_distance&dist=200&speed=0.5&check_sa
 **Move to 3D point:**
 ```bash
 # Move end-effector to specific coordinates (x, y, z in mm)
-curl "http://localhost:5000/move_arm?cmd=to_point&x=500&y=300&z=800&speed_joints=0.2&speed_rail=0.4&check_safety=1"
+curl "http://127.0.0.1:5000/move_arm?cmd=to_point&x=500&y=300&z=800&speed_joints=0.2&speed_rail=0.4&check_safety=1"
 ```
 
 **Move to joint configuration:**
 ```bash
 # Move to specific joint angles and rail position
-curl "http://localhost:5000/move_arm?cmd=to_angles&theta_1=90&theta_2=45&delta_r=200&speed_joints=0.3&speed_rail=0.5&check_safety=1"
+curl "http://127.0.0.1:5000/move_arm?cmd=to_angles&theta_1=90&theta_2=45&delta_r=200&speed_joints=0.3&speed_rail=0.5&check_safety=1"
 ```
 
 #### System Commands
 
 **Initialize robot:**
 ```bash
-curl "http://localhost:5000/move_arm?cmd=init"
+curl "http://127.0.0.1:5000/move_arm?cmd=init"
 ```
 
 ### Parameters
@@ -271,8 +271,65 @@ else:
    3. '/path_points' end point for path points
 - Manual control
 
+### Path Execution Endpoint
+
+**Execute complete path sequence:**
+
+```bash
+# Execute a saved path with motor initialization and synchronous completion
+curl "http://127.0.0.1:5000/api_play_path?name=finish_sun_path.json&duration=3600&lamp=1"
+```
+
+| Parameter | Type | Description | Required |
+|-----------|------|-------------|----------|
+| `name` | string | Path filename in `/paths` directory | Yes |
+| `duration` | int | Total execution time in seconds | Yes |
+| `lamp` | int | Enable dynamic lamp colors (0/1) | No (default: 1) |
+
+**Response Format:**
+
+```json
+{
+  "status": "ok",                                    // "ok" or "error"
+  "message": "arm reached the end of the path"       // Completion status
+}
+```
+
+**Error Responses:**
+
+```json
+{
+  "status": "error",
+  "message": "robot stopped due to safety reasons"   // Error code 69
+}
+```
+
+```json
+{
+  "status": "error", 
+  "message": "robot stopped due to unknown reasons"  // Other exit codes
+}
+```
+
+**Key Features:**
+
+- **Automatic Initialization**: Performs motor homing before path execution
+- **Synchronous Operation**: Blocks until path completion or error
+- **Safety Monitoring**: Integrated collision detection throughout execution
+- **Status Reporting**: Returns specific error codes for different failure modes
+- **LED Synchronization**: Optional color coordination with path positions
+
+### API Endpoints
+
+- `/points`: Get all points of the robot arm
+- `/angles`: Get current joint angles
+- `/path_points`: Get current path points for visualization
+- `/cooling_info`: Get current cooling system status (temperature, fan state)
+
 ### Cooling System
+
 Automatic temperature management with configurable thresholds:
+
 - Fan activation at 30°C
 - Maximum cooling at 60°C
 - Temperature logging and alerts
