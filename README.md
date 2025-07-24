@@ -1,13 +1,17 @@
 # Sunny Robot Arm 🌞🤖
 
-A precision solar tracking robotic arm system that automatically follows the sun's path throughout the day. This 2-DOF robotic arm mounted on a linear rail uses advanced kinematics calculations to track solar positions while maintaining safety through collision detection. At the end arm has RGB LED lamp that ajust its brightness and color based on the solar position and system status. This features allow robot to simulate effect of the sunlight on office enviroment, which is then used in the Aalto University research to study the impact of natural light on human well-being and productivity in house automation and smart buildings.
+A precision solar tracking robotic arm system that automatically follows the sun's path throughout the day. This 2-DOF robotic arm mounted on a linear rail uses advanced kinematics calculations to track solar positions while maintaining safety through collision detection. At the end arm has RGB LED lamp that aj## 📊 Monitoring
+
+### Web Dashboard Features
+
+- Real-time 3D robot visualization while executing pathits brightness and color based on the solar position and system status. This features allow robot to simulate effect of the sunlight on office enviroment, which is then used in the Aalto University research to study the impact of natural light on human well-being and productivity in house automation and smart buildings.
 
 Project is Build by Mikhail Romanov and Jaakko Aalto completely from scratch. Only motors, drivers, linear rail and arms aluminion profile were bought, all the rest is custom made by first desigining parts in CAD, then manufacturing them using multiple metalworking techniques like CNC milling, water cutting and metal turning or 3D printing for smaller parts.
 
 ## 🌟 Features
 
 - **Automated Solar Tracking**: Follows the sun's path automatically using astronomical calculations
-- **Adjusting RGB LED Lamp**: Simulates sunlight effects with dynamic color and brightness
+- **Smart RGB LED Lamp**: WLED-controlled end effector with dynamic color and brightness that can be controlled via web browser, mobile app, or automatically synchronized with robot movements
 - **Precise Kinematics**: Forward and inverse kinematics for accurate positioning
 - **Safety Systems**: Built-in collision detection and safety boundary enforcement
 - **Web Interface**: Real-time control and monitoring via Flask web application
@@ -22,7 +26,7 @@ Project is Build by Mikhail Romanov and Jaakko Aalto completely from scratch. On
 - **Pontto Joint**: Base rotation motor (spinning joint) controlling the yaw angle
 - **Paaty Joint**: Pitch/elevation motor (spinning joint) controlling the pitch angle
 - **Linear Rail**: Horizontal positioning system
-- **LED Strip**: End effector with RGB LED lamp for visual status feedback via WLED
+- **LED Strip**: End effector with RGB LED lamp for visual status feedback via WLED (controllable via web browser, mobile app, or automatically synchronized with robot movements)
 - **Cooling Fan**: Temperature management system
 - **Limit Switches and Induction Sensors**: Safety and homing sensors
 
@@ -260,17 +264,6 @@ else:
     print(f"Error: {result['message']}")
 ```
 
-## 📊 Monitoring
-
-### Web Dashboard Features
-- Real-time 3D robot visualization while executing path
-- Live joint position and temperature readings
-  - Also available via API by:
-   1. '/points' end point for all robot points
-   2. '/cooling_info' end point for cooling system status
-   3. '/path_points' end point for path points
-- Manual control
-
 ### Path Execution Endpoint
 
 **Execute complete path sequence:**
@@ -319,12 +312,84 @@ curl "http://127.0.0.1:5000/api_play_path?name=finish_sun_path.json&duration=360
 - **Status Reporting**: Returns specific error codes for different failure modes
 - **LED Synchronization**: Optional color coordination with path positions
 
-### API Endpoints
+### �📊 Monitoring end points
 
 - `/points`: Get all points of the robot arm
 - `/angles`: Get current joint angles
 - `/path_points`: Get current path points for visualization
 - `/cooling_info`: Get current cooling system status (temperature, fan state)
+
+
+## � LED Lamp Control
+
+The robotic arm features a WLED-compatible RGB LED strip at the end effector that can be controlled in multiple ways:
+
+### Control Methods
+
+#### 1. Web Browser Control
+
+Access the WLED interface directly in your web browser:
+
+```text
+http://<WLED_IP_ADDRESS>
+```
+
+- Full color picker and brightness control
+- Pre-built lighting effects and animations
+- Real-time adjustments and live preview
+- Custom color palettes and scenes
+
+#### 2. Mobile App Control
+
+Download the official WLED app for iOS/Android:
+
+- **WLED** app from App Store/Google Play
+- Automatic device discovery on local network
+- Touch-friendly color controls and effect selection
+- Favorites and preset management
+
+#### 3. Automatic Robot Control
+
+The lamp automatically synchronizes with robot operations:
+
+**During Path Execution:**
+
+- **Dynamic Colors**: Each path position can have associated RGB values for smooth color transitions
+- **Solar Simulation**: Colors can represent sun temperature/intensity throughout the day
+- **Warning Indicators**: Changes to red blinking during safety warnings or large movements (>10cm)
+
+
+### API Integration
+
+The lamp integrates with path execution:
+
+```bash
+# Execute path with automatic lamp synchronization
+curl "http://127.0.0.1:5000/api_play_path?name=solar_path.json&duration=3600&lamp=1"
+
+# Disable automatic lamp control during path execution
+curl "http://127.0.0.1:5000/api_play_path?name=solar_path.json&duration=3600&lamp=0"
+```
+
+### Technical Details
+
+- **LED Strip**: 144 LEDs/meter for smooth color gradients
+- **Protocol**: WLED firmware via WiFi/Ethernet
+- **Colors**: 16.7 million color combinations (24-bit RGB)
+- **Effects**: 100+ built-in animations and patterns
+- **Integration**: Synchronized with robot kinematics and path data
+
+## �📊 Monitoring
+
+### Web Dashboard Features
+- Real-time 3D robot visualization while executing path
+- Live joint position and temperature readings
+  - Also available via API by:
+   1. '/points' end point for all robot points
+   2. '/cooling_info' end point for cooling system status
+   3. '/path_points' end point for path points
+- Manual control
+
 
 ### Cooling System
 
