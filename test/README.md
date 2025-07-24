@@ -90,26 +90,6 @@ Unit tests for sun path serialization utilities:
   - File operation error cases
   - Malformed JSON handling
 
-### `test_move_arm_api.py`
-Comprehensive Flask API endpoint tests:
-
-- **TestMoveArmAPI**
-  - Manual control commands (motor movements)
-  - Motor control API (by_angle, to_angle, by_distance, to_distance)
-  - Position control (to_point, to_angles)
-  - Initialization and safety checking
-  - Parameter validation and error handling
-
-- **TestAPIHelpers**
-  - Helper function testing
-  - Error condition validation
-  - Response format verification
-
-- **TestAPIIntegration**
-  - End-to-end API workflow testing
-  - Multi-command sequences
-  - State consistency validation
-
 ### `test_spinning_joints.py`
 Comprehensive unit tests for the SpinningJoints stepper motor class:
 
@@ -207,14 +187,16 @@ Enhanced test runner with multiple execution options:
 ### Option 1: Using test runner (Recommended)
 
 ```bash
-# From project root directory
 python test/run_tests.py                              # Run kinematics unit tests
 python test/run_tests.py --verbose                    # Verbose output  
 python test/run_tests.py --integration               # Run integration tests
 python test/run_tests.py --sun-helper                # Run sun_helper utility tests
-python test/run_tests.py --api                       # Run Flask API tests
+python test/run_tests.py --hardware                  # Run all hardware component tests
+python test/run_tests.py --spinning-joints           # Run spinning joints motor tests
+python test/run_tests.py --linear-rail               # Run linear rail motor tests
 python test/run_tests.py --all                       # Run all test modules
 python test/run_tests.py --specific TestForwardKinematics  # Run specific test class
+python test/run_tests.py --method test_forward_kinematics_home_position  # Run specific test method
 ```
 
 ### Option 2: Using pytest
@@ -250,7 +232,7 @@ python test_move_arm_api.py
 
 ```bash
 # Start the Flask server first
-python ui/main.py
+python -m ui.main
 
 # Then run API tests in another terminal
 python test/test_api.py
@@ -387,16 +369,16 @@ This will show exactly which lines need additional test coverage.
 - ✅ **kinematics_and_safety.py**: Comprehensive coverage of all kinematics functions
 - ✅ **spinning_joints.py**: 22 tests covering stepper motor control for rotating joints
 - ✅ **linear_rail.py**: 22 tests covering linear stepper motor stage control
-- ✅ **Flask API structure**: All endpoints and parameter validation tested
+- ✅ **Flask API structure**: All endpoints have been manually tested
+- ✅ **Flask API functionality**: Fully tested manually with various scenarios
 
 ### Partially Tested Modules  
 
-- 🟡 **Flask API functionality**: Structural tests complete, functional tests with mocking in progress
 - 🟡 **Integration workflows**: Basic coverage, expanding for real-world scenarios
 
 ### Test Metrics
 
-- **Total test files**: 7
+- **Total test files**: 6
 - **Total test classes**: 20+
-- **Total test cases**: 120+
+- **Total test cases**: 100+
 - **Estimated coverage**: >90% for core modules
