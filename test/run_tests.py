@@ -12,7 +12,6 @@ Usage:
     python test/run_tests.py --verbose                    # Verbose output  
     python test/run_tests.py --integration               # Run integration tests
     python test/run_tests.py --sun-helper                # Run sun_helper utility tests
-    python test/run_tests.py --api                       # Run Flask API tests
     python test/run_tests.py --hardware                  # Run all hardware component tests
     python test/run_tests.py --spinning-joints           # Run spinning joints motor tests
     python test/run_tests.py --linear-rail               # Run linear rail motor tests
@@ -26,12 +25,10 @@ import os
 import argparse
 import unittest
 
-# Add the src and ui directories to Python path
+# Add the src directory to Python path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 src_path = os.path.join(project_root, 'src')
-ui_path = os.path.join(project_root, 'ui')
 sys.path.insert(0, src_path)
-sys.path.insert(0, ui_path)
 
 def main():
     parser = argparse.ArgumentParser(description='Run tests for sunny-robot-arm')
@@ -44,11 +41,9 @@ def main():
     parser.add_argument('--integration', '-i', action='store_true',
                        help='Run integration tests instead of unit tests')
     parser.add_argument('--all', '-a', action='store_true',
-                       help='Run all test modules (kinematics, sun_helper, integration, API, hardware)')
+                       help='Run all test modules (kinematics, sun_helper, integration, hardware)')
     parser.add_argument('--sun-helper', action='store_true',
                        help='Run sun_helper utility tests')
-    parser.add_argument('--api', action='store_true',
-                       help='Run Flask API tests')
     parser.add_argument('--hardware', action='store_true',
                        help='Run hardware component tests (spinning joints, linear rail)')
     parser.add_argument('--spinning-joints', action='store_true',
@@ -67,7 +62,6 @@ def main():
             import test_integration_kinematics
             import test_spinning_joints
             import test_linear_rail
-            import test_move_arm_api
             
             loader = unittest.TestLoader()
             combined_suite = unittest.TestSuite()
@@ -77,7 +71,6 @@ def main():
             combined_suite.addTests(loader.loadTestsFromModule(test_integration_kinematics))
             combined_suite.addTests(loader.loadTestsFromModule(test_spinning_joints))
             combined_suite.addTests(loader.loadTestsFromModule(test_linear_rail))
-            combined_suite.addTests(loader.loadTestsFromModule(test_move_arm_api))
             
             print("✓ Successfully imported all test modules")
             
@@ -130,10 +123,6 @@ def main():
             import test_linear_rail
             test_module = test_linear_rail
             print("✓ Successfully imported linear rail test module")
-        elif args.api or (args.specific and 'API' in args.specific):
-            import test_move_arm_api
-            test_module = test_move_arm_api
-            print("✓ Successfully imported API test module")
         else:
             import test_kinematics_and_safety
             test_module = test_kinematics_and_safety
