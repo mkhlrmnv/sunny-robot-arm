@@ -97,7 +97,9 @@ class WarningSound:
 if __name__ == "__main__":
     # Example: adjust path to your sound file
     # ws = WarningSound("sounds/timanttei_leikattu.wav")
-    ws = WarningSound("sounds/700-hz-beeps-86815.wav")
+    # ws = WarningSound("sounds/700-hz-beeps-86815.wav")
+    #ws = WarningSound("sounds/ai_warning_1.wav")
+    ws = WarningSound("sounds/ai_warning_2.wav")
     # Begin playing the warning sound
     ws.start()
     print("Warning sound started. Press Ctrl+C to exit.")
