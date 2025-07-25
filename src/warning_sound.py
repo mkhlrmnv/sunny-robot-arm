@@ -45,6 +45,7 @@ class WarningSound:
         # Initialize the mixer; must be called before loading/playing sounds
         pygame.mixer.init()
         # Load the music track for playback
+        pygame.mixer.music.set_volume(1)
         pygame.mixer.music.load(audio_file)
         # Threading event to signal when playback should stop
         self._stop = threading.Event()
@@ -95,7 +96,8 @@ class WarningSound:
 # -----------------------------------------------------------------------------
 if __name__ == "__main__":
     # Example: adjust path to your sound file
-    ws = WarningSound("sounds/timanttei_leikattu.wav")
+    # ws = WarningSound("sounds/timanttei_leikattu.wav")
+    ws = WarningSound("sounds/700-hz-beeps-86815.wav")
     # Begin playing the warning sound
     ws.start()
     print("Warning sound started. Press Ctrl+C to exit.")
