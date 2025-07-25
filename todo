@@ -1,0 +1,33 @@
+
+Just in case, lineaari liikkumaa on 718.40625mm
+
+TODO: In Metropolia
+
+- Implement linear homing with induction sensor
+
+- Test wsd control
+
+- Test all functionalities
+   - APIs
+   - Real paths (singapore + helsinki)
+   - Sensor tests
+
+- (Mark safety zones on the floor)
+
+
+TODO: Before Metropolia
+
+- DONE: 3d print gear + metal holderw
+    - Add all cads
+    - Verify class structure
+    - Add instructions about all above to readme
+    - Add to readme pictures of the robot and one picture with all the terms (pontto / paaty) explanations
+
+- Test / rewrite testes so they are usable
+    - Look into tests <- currently no idea what is happening there
+    - Add to readme
+
+- Add API call for paths / verify that they work
+    - Add to readme
+
+- Test all API calls as the shared mess has been deleted 
