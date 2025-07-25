@@ -112,7 +112,7 @@ class Arm:
                                      gear_ratio=RAIL_MOTOR_GEAR_RATIO)
 
         self.lamp = Lamp(https_url=lamp_url)
-        self.warning_sound = WarningSound("sounds/timanttei_leikattu.wav")
+        # self.warning_sound = WarningSound("sounds/ai_warning_2.wav")
 
 
     def init(self) -> bool:
@@ -125,7 +125,9 @@ class Arm:
 
         # Indicate homing in progress
         self.lamp.set_to_blink()
-        self.warning_sound.start()
+
+        warning_sound = WarningSound("sounds/ai_warning_2.wav")
+        warning_sound.start()
 
         try:
             print("Starting init")
@@ -147,7 +149,7 @@ class Arm:
         # Restore lamp to solid off state and stop buzzer
         self.lamp.set_brightness(0)
         self.lamp.set_to_solid()
-        self.warning_sound.stop()
+        warning_sound.stop()
 
         return True
 
@@ -230,10 +232,11 @@ class Arm:
                 distance_to_target = self._compute_next_target(check_safety=check_safety)
 
             # Alert if large move
+            warning_sound = WarningSound("sounds/ai_warning_2.wav")
             original_lamp_state = self.lamp.get_state()
             if distance_to_target > MIN_WARNING_DISTANCE:
                 self.lamp.set_to_blink()
-                self.warning_sound.start()
+                warning_sound.start()
         
             print(f"Moving to target: theta_1={self.required_theta_1}, "
                   f"theta_2={self.required_theta_2}, delta_r={self.required_delta_r}")
@@ -272,7 +275,7 @@ class Arm:
             else:
                 self.lamp.set_state(original_lamp_state)
                 # self.lamp.set_to_solid()
-            self.warning_sound.stop()
+            warning_sound.stop()
 
             # on first iteration timer starts only after robot has reached the point
             if self.shared.path_it == 0:
