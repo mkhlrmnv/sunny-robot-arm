@@ -70,7 +70,7 @@ sunny-robot-arm/
 
 ### Were to start
 
-- **Basic Guide** Basic tutorial on how to use the robot via web interface or API, refer to the tutorial md [here](quick_start.md).
+- **Basic Guide** Basic tutorial on how to use the robot via web interface or API, refer to the tutorial md [here](quick_tutorial.md).
 - **Documentation**: Detailed documentation in strucuture of the robot (electrical wirings, class structure, manufacturing process, etc.) can be found in the [documentation](documentation/README.md).
 
 
